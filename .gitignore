@@ -1,0 +1,39 @@
+# ── Streamlit Secrets (NEVER commit these) ────────────────────────────
+.streamlit/secrets.toml
+
+# ── Local Session & Audit Cache ───────────────────────────────────────
+data_store/
+session_cache.json
+
+# ── Vector DB & Document Store ────────────────────────────────────────
+db/
+docstore.json
+
+# ── PDF Files (user uploads & generated reports) ──────────────────────
+*.pdf
+
+# ── Python Cache ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual Environments ──────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── OS & Editor Junk ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# ── Build & Dist Artifacts ────────────────────────────────────────────
+build/
+dist/
+*.egg-info/
