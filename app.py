@@ -5,6 +5,9 @@ import json
 
 # Import functions from existing backend
 from main import get_retriever, run_compliance_audit
+
+# Premium Access Key
+ACCESS_KEY = "EM84vz81##"
 from report_gen import generate_report
 
 # Paths for Disk Persistence
@@ -45,13 +48,27 @@ st.markdown("""
         padding-top: 2rem;
     }
     .paywall-box {
-        background-color: #fce4ec;
-        border: 2px solid #f06292;
-        padding: 20px;
-        border-radius: 10px;
+        background: linear-gradient(135deg, #0f2044 0%, #1a3a6b 60%, #0d1f42 100%);
+        border: 1.5px solid #4a7fd4;
+        padding: 28px 32px;
+        border-radius: 14px;
         text-align: center;
         margin-top: 30px;
         margin-bottom: 20px;
+        box-shadow: 0 4px 24px rgba(10, 30, 80, 0.45);
+    }
+    .paywall-box h4 {
+        color: #f0c93a !important;
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        letter-spacing: 0.03em;
+    }
+    .paywall-box p {
+        color: #d0dff8 !important;
+        font-size: 0.97rem;
+        margin: 0;
+        line-height: 1.6;
     }
     .sidebar .stButton>button {
         text-align: left;
@@ -64,6 +81,13 @@ if "current_page" not in st.session_state:
     st.session_state.current_page = "audit"
 if "credits" not in st.session_state:
     st.session_state.credits = 5
+if "is_premium" not in st.session_state:
+    st.session_state.is_premium = False
+
+# Admin Backdoor: ?admin=true in URL auto-grants premium
+query_params = st.query_params
+if query_params.get("admin", "").lower() == "true":
+    st.session_state.is_premium = True
 
 if "audit_results" not in st.session_state:
     # Load from Disk Cache if it exists
@@ -128,8 +152,42 @@ with st.sidebar:
     
     if st.session_state.credits <= 0:
         st.error("Insufficient Credits! Please Top Up.")
-        
-    st.button("Upgrade to Premium", type="primary", use_container_width=True)
+
+    st.markdown("---")
+    # Premium Access Key Gate
+    if not st.session_state.is_premium:
+        st.markdown("### 🔐 Premium Access")
+        if "show_key_input" not in st.session_state:
+            st.session_state.show_key_input = False
+
+        if not st.session_state.show_key_input:
+            if st.button("⭐ Upgrade to Premium", type="primary", use_container_width=True):
+                st.session_state.show_key_input = True
+                st.rerun()
+        else:
+            access_input = st.text_input(
+                "Enter Access Key",
+                type="password",
+                placeholder="Enter your key...",
+                key="access_key_input"
+            )
+            if access_input:
+                if access_input == ACCESS_KEY:
+                    st.session_state.is_premium = True
+                    st.session_state.show_key_input = False
+                    st.success("Access Granted: Premium Features Unlocked!")
+                    st.rerun()
+                else:
+                    st.error("Invalid key. Please try again.")
+            
+            st.info(
+                "Need an Access Key for full professional reports and 100+ document audits? "
+                "Contact our team for enterprise and individual plans.\n\n"
+                "📧 **Email:** meenasujal60@gmail.com\n\n"
+                "⏱️ Get a response within 2 hours."
+            )
+    else:
+        st.success("✅ Premium Active — Full Access Enabled")
 
 
 # ---- Page Routing ----
@@ -208,13 +266,16 @@ if st.session_state.current_page == "audit":
         
         file_dl_name = st.session_state.last_filename if st.session_state.last_filename else "Document"
         if st.session_state.pdf_bytes is not None:
-            st.download_button(
-                label="📄 Download Full Professional PDF Report",
-                data=st.session_state.pdf_bytes,
-                file_name=f"DPDP_Compliance_{file_dl_name}.pdf",
-                mime="application/pdf",
-                type="primary"
-            )
+            if st.session_state.get('is_premium', False):
+                st.download_button(
+                    label="📄 Download Full Professional PDF Report",
+                    data=st.session_state.pdf_bytes,
+                    file_name=f"DPDP_Compliance_{file_dl_name}.pdf",
+                    mime="application/pdf",
+                    type="primary"
+                )
+            else:
+                st.info("💡 Premium Feature: The full 10-page Legal Audit Report is locked. Click 'Upgrade' in the sidebar to unlock.")
 
     else:
         # ---- Main Page: Upload Zone ----
