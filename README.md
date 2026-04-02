@@ -34,34 +34,30 @@ By leveraging **RAG (Retrieval-Augmented Generation)** and **Llama 3 (via Groq)*
 
 ---
 
-## 🚀 Getting Started (For Developers)
+## 🛡️ Intellectual Property & Licensing
 
-### 1. Clone the Repository
+This repository serves as a **Technical Demonstration** of my capabilities in RAG (Retrieval-Augmented Generation) and Legal-Tech engineering. 
 
-```bash
-git clone https://github.com/sujalmeena7/lexguard-ai.git
-cd lexguard-ai
-```
+* **Proprietary Logic:** The core prompt engineering, compliance scoring algorithms, and PDF generation logic are the intellectual property of the developer (**Sujal Meena**).
+* **Usage:** You are welcome to clone this repository for **personal educational purposes** or to review the code quality for hiring/partnership evaluations.
+* **Restricted Use:** Commercial redistribution, white-labeling, or using this code to launch a competing service without written consent is strictly prohibited.
 
-### 2. Install Dependencies
+---
 
-```bash
-pip install -r requirements.txt
-```
+## 🛠️ Technical Architecture (High-Level)
 
-### 3. Set Up Environment Variables
+For security and IP protection, the production environment variables (API Keys) and specific Vector Store weights are not included in this public repository. 
 
-Create a `.env` file or add to Streamlit Secrets:
+1.  **Ingestion:** Documents are processed via a custom PDF-to-Text pipeline.
+2.  **Vectorization:** Text chunks are embedded and stored in an ephemeral **ChromaDB** instance.
+3.  **Inference:** Queries are routed through **LangChain** to the **Llama 3 70B** model via the **Groq LPU™** Inference Engine.
+4.  **Verification:** The "Premium Access" layer validates session state before unlocking the **FPDF-based** report generator.
 
-```toml
-GROQ_API_KEY = "your_groq_key_here"
-```
+---
 
-### 4. Launch the App
+## 🤝 Collaboration & Customization
 
-```bash
-streamlit run app.py
-```
+If you are a legal firm or a developer interested in building a production-grade version of this tool with custom DPDP-specific datasets, please reach out via the contact details below.
 
 ---
 
