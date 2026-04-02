@@ -1,6 +1,8 @@
 # ⚖️ LexGuard AI: Enterprise DPDP Compliance Auditor
 
-![LexGuard Banner](https://raw.githubusercontent.com/sujalmeena7/lexguard-ai/main/assets/banner_screenshot.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sujalmeena7/lexguard-ai/main/assets/banner_screenshot.png" width="800">
+</p>
 
 **LexGuard AI** is a high-precision, LLM-powered compliance engine designed to automate the auditing of legal contracts against India's **Digital Personal Data Protection (DPDP) Act 2023**.
 
