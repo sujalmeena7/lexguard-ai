@@ -8,7 +8,7 @@
 
 By leveraging **RAG (Retrieval-Augmented Generation)** and **Llama 3 (via Groq)**, LexGuard transforms dense legal jargon into actionable risk scores and professional audit reports in seconds.
 
-[🚀 View Live Demo](https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/) | [📧 Request Enterprise Access](mailto:meenasujal60@gmail.com)
+[🚀 View Live Demo](https://lexguard-ai-h5on.vercel.app/) | [📧 Request Enterprise Access](mailto:meenasujal60@gmail.com)
 
 ---
 
