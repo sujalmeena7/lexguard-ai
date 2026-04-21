@@ -35,7 +35,7 @@ st.set_page_config(
     page_title="LexGuard AI - DPDP Auditor",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Custom Styling (CSS)
