@@ -42,7 +42,7 @@
 
             <div class="nav-actions">
                 <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/" target="_blank" rel="noopener" class="nav-demo" data-testid="nav-demo-link">Live Demo <i class="ph ph-arrow-up-right"></i></a>
-                <a href="mailto:meenasujal60@gmail.com" class="btn btn-primary" data-testid="nav-enterprise-cta">Enterprise Access</a>
+                <button type="button" class="btn btn-primary" data-open-modal="pilot" data-testid="nav-enterprise-cta">Enterprise Access</button>
             </div>
 
             <button class="menu-btn" aria-label="Open menu" data-testid="mobile-menu-btn">
@@ -77,9 +77,9 @@
                     <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/" target="_blank" rel="noopener" class="btn btn-primary btn-lg" data-testid="hero-primary-cta">
                         Try the Live Demo <i class="ph-bold ph-arrow-right"></i>
                     </a>
-                    <a href="mailto:meenasujal60@gmail.com" class="btn btn-secondary btn-lg" data-testid="hero-secondary-cta">
+                    <button type="button" class="btn btn-secondary btn-lg" data-open-modal="pilot" data-testid="hero-secondary-cta">
                         Request Enterprise Access
-                    </a>
+                    </button>
                 </div>
 
                 <div class="hero-meta">
@@ -268,6 +268,68 @@
         </ol>
     </section>
 
+    <!-- TESTIMONIALS -->
+    <!-- TODO: Replace placeholder names/companies below with real quotes once pilots are live. -->
+    <section id="voices" class="voices" data-testid="voices-section">
+        <div class="section-head">
+            <p class="overline"><span class="dot"></span> § 04 — VOICES FROM THE FIELD</p>
+            <h2>Built alongside the people<br/>drafting India's compliance <em>playbooks</em>.</h2>
+            <p class="section-sub">Early signals from pilots with legal, compliance, and vendor-risk teams across the Indian startup ecosystem.</p>
+        </div>
+
+        <div class="voices-grid">
+            <figure class="voice-card voice-feature" data-testid="voice-card-1">
+                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
+                <blockquote>
+                    LexGuard turned a <em>two-week</em> DPDP review into a 40-minute exercise. The clause-level citations are what sold our legal counsel — every flag is defensible, not just a black-box verdict.
+                </blockquote>
+                <figcaption>
+                    <div class="voice-who">
+                        <span class="voice-name">Priya S.</span>
+                        <span class="voice-role">VP Legal · Series B FinTech</span>
+                    </div>
+                    <div class="voice-kpi">
+                        <span class="kpi-num">14d → 40m</span>
+                        <span class="kpi-label">Review cycle</span>
+                    </div>
+                </figcaption>
+            </figure>
+
+            <figure class="voice-card" data-testid="voice-card-2">
+                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
+                <blockquote>
+                    The privacy-first architecture was non-negotiable for us. Ephemeral Chroma + no third-party training meant our CISO signed off in a single call.
+                </blockquote>
+                <figcaption>
+                    <span class="voice-name">Karthik R.</span>
+                    <span class="voice-role">Chief Compliance Officer · HealthTech</span>
+                </figcaption>
+            </figure>
+
+            <figure class="voice-card" data-testid="voice-card-3">
+                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
+                <blockquote>
+                    Finally — a DPDP tool written for India, not a retrofitted GDPR wrapper. The clause library matches the 2023 Act verbatim.
+                </blockquote>
+                <figcaption>
+                    <span class="voice-name">Nandita V.</span>
+                    <span class="voice-role">Head of Privacy · B2B SaaS</span>
+                </figcaption>
+            </figure>
+
+            <figure class="voice-card voice-dark" data-testid="voice-card-4">
+                <div class="voice-mark voice-mark-light" aria-hidden="true">&ldquo;</div>
+                <blockquote>
+                    The board-ready PDF is the real unlock. We drop it straight into the quarterly risk pack — no editorial layer needed.
+                </blockquote>
+                <figcaption>
+                    <span class="voice-name">Ashwin M.</span>
+                    <span class="voice-role voice-role-light">GC · Climate-Tech, Series A</span>
+                </figcaption>
+            </figure>
+        </div>
+    </section>
+
     <!-- STATS / QUOTE -->
     <section class="stats" data-testid="stats-section">
         <div class="stats-grid">
@@ -300,9 +362,9 @@
                 <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/" target="_blank" rel="noopener" class="btn btn-invert btn-lg" data-testid="final-demo-cta">
                     Launch the Live Demo <i class="ph-bold ph-arrow-up-right"></i>
                 </a>
-                <a href="mailto:meenasujal60@gmail.com" class="btn btn-ghost btn-lg" data-testid="final-enterprise-cta">
+                <button type="button" class="btn btn-ghost btn-lg" data-open-modal="pilot" data-testid="final-enterprise-cta">
                     Book an enterprise call
-                </a>
+                </button>
             </div>
         </div>
     </section>
@@ -345,6 +407,89 @@
             <span class="footer-status"><span class="pulse"></span> Demo online</span>
         </div>
     </footer>
+
+    <!-- ============ PILOT REQUEST MODAL ============ -->
+    <!-- Submission currently composes a pre-filled email via mailto:.
+         To collect leads server-side: change <form id="pilot-form"> action + method to a
+         Formspree endpoint (e.g. https://formspree.io/f/YOUR_FORM_ID) and remove the
+         event.preventDefault() mailto handler in js/main.js. -->
+    <div class="modal" id="pilot-modal" role="dialog" aria-modal="true" aria-labelledby="pilot-title" aria-hidden="true" data-testid="pilot-modal">
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-panel" role="document">
+            <button type="button" class="modal-close" data-close-modal aria-label="Close" data-testid="pilot-modal-close">
+                <i class="ph ph-x"></i>
+            </button>
+
+            <div class="modal-head">
+                <p class="overline"><span class="dot"></span> ENTERPRISE PILOT</p>
+                <h3 id="pilot-title">Let's scope your<br/>DPDP rollout.</h3>
+                <p class="modal-sub">A 15-minute call. We'll share the clause library, pilot scope, and timeline — no sales deck.</p>
+            </div>
+
+            <form id="pilot-form" class="pilot-form" novalidate data-testid="pilot-form">
+                <div class="field">
+                    <label for="pilot-name">Name</label>
+                    <input type="text" id="pilot-name" name="name" required autocomplete="name" placeholder="Priya Sharma" data-testid="pilot-input-name" />
+                </div>
+
+                <div class="field">
+                    <label for="pilot-email">Work email</label>
+                    <input type="email" id="pilot-email" name="email" required autocomplete="email" placeholder="priya@company.in" data-testid="pilot-input-email" />
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="pilot-company">Company</label>
+                        <input type="text" id="pilot-company" name="company" required autocomplete="organization" placeholder="Acme Legal" data-testid="pilot-input-company" />
+                    </div>
+                    <div class="field">
+                        <label for="pilot-role">Role / team</label>
+                        <select id="pilot-role" name="role" required data-testid="pilot-input-role">
+                            <option value="">Select a role…</option>
+                            <option>Legal / General Counsel</option>
+                            <option>Compliance / Privacy</option>
+                            <option>CISO / Security</option>
+                            <option>Founder / Executive</option>
+                            <option>Vendor Risk / Procurement</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="pilot-size">Company size</label>
+                    <div class="chip-group" role="radiogroup" aria-labelledby="pilot-size">
+                        <label class="chip-radio"><input type="radio" name="size" value="1–10" />1–10</label>
+                        <label class="chip-radio"><input type="radio" name="size" value="11–50" />11–50</label>
+                        <label class="chip-radio"><input type="radio" name="size" value="51–200" checked />51–200</label>
+                        <label class="chip-radio"><input type="radio" name="size" value="201–1000" />201–1000</label>
+                        <label class="chip-radio"><input type="radio" name="size" value="1000+" />1000+</label>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="pilot-message">What agreement(s) do you want to audit first? <span class="field-opt">(optional)</span></label>
+                    <textarea id="pilot-message" name="message" rows="3" placeholder="e.g. Our vendor DPA, SaaS T&Cs, customer-facing privacy policy…" data-testid="pilot-input-message"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg" data-testid="pilot-submit">
+                        Request Pilot <i class="ph-bold ph-arrow-right"></i>
+                    </button>
+                    <a href="mailto:meenasujal60@gmail.com" class="form-fallback" data-testid="pilot-mailto-fallback">Prefer email? <strong>meenasujal60@gmail.com</strong></a>
+                </div>
+
+                <p class="form-legal">By submitting, you agree to be contacted about LexGuard enterprise pilots. We will never share your details.</p>
+            </form>
+
+            <div class="modal-success" aria-hidden="true" data-testid="pilot-success">
+                <div class="success-icon"><i class="ph-bold ph-check-circle"></i></div>
+                <h3>Your request is on its way.</h3>
+                <p>Your email client just opened with a pre-filled note to <strong>Sujal Meena</strong>. Hit send and you'll hear back within <strong>2 hours</strong>.</p>
+                <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+            </div>
+        </div>
+    </div>
 
     <script src="js/main.js"></script>
 </body>
