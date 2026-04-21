@@ -43,3 +43,12 @@ dist/
 /backend/
 /design_guidelines.json
 /memory/
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
