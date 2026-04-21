@@ -77,5 +77,137 @@
                 }
             }, { passive: true });
         }
+        // --- Pilot modal + form -----------------------------------
+        const modal = document.getElementById('pilot-modal');
+        const form = document.getElementById('pilot-form');
+        const success = modal && modal.querySelector('.modal-success');
+
+        const openModal = () => {
+            if (!modal) return;
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            // Focus first field
+            setTimeout(() => {
+                const first = form && form.querySelector('input, select, textarea');
+                if (first) first.focus();
+            }, 50);
+        };
+
+        const closeModal = () => {
+            if (!modal) return;
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            // Reset state so next open shows the form, not success
+            if (form && success) {
+                setTimeout(() => {
+                    form.style.display = '';
+                    success.classList.remove('show');
+                    form.reset();
+                    form.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+                }, 200);
+            }
+        };
+
+        document.querySelectorAll('[data-open-modal="pilot"]').forEach(btn => {
+            btn.addEventListener('click', evt => {
+                evt.preventDefault();
+                openModal();
+            });
+        });
+
+        document.querySelectorAll('[data-close-modal]').forEach(el => {
+            el.addEventListener('click', evt => {
+                evt.preventDefault();
+                closeModal();
+            });
+        });
+
+        document.addEventListener('keydown', evt => {
+            if (evt.key === 'Escape' && modal && modal.classList.contains('open')) {
+                closeModal();
+            }
+        });
+
+        // Form submit — composes a pre-filled mailto and shows success state.
+        // To switch to Formspree: replace this handler with a fetch() POST to your
+        // endpoint and set <form action="..." method="POST"> in the HTML.
+        if (form) {
+            // Clear invalid state as the user corrects their input
+            form.querySelectorAll('input, select, textarea').forEach(el => {
+                el.addEventListener('input', () => el.classList.remove('invalid'));
+                el.addEventListener('change', () => el.classList.remove('invalid'));
+            });
+
+            form.addEventListener('submit', evt => {
+                evt.preventDefault();
+                let valid = true;
+                form.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.classList.remove('invalid');
+                    if (el.hasAttribute('required') && !el.value.trim()) {
+                        el.classList.add('invalid');
+                        valid = false;
+                    }
+                });
+                const email = form.querySelector('#pilot-email');
+                if (email && email.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
+                    email.classList.add('invalid');
+                    valid = false;
+                }
+                if (!valid) {
+                    const firstInvalid = form.querySelector('.invalid');
+                    if (firstInvalid) firstInvalid.focus();
+                    return;
+                }
+
+                const data = new FormData(form);
+                const name = data.get('name') || '';
+                const emailVal = data.get('email') || '';
+                const company = data.get('company') || '';
+                const role = data.get('role') || '';
+                const size = data.get('size') || '';
+                const message = data.get('message') || '';
+
+                const subject = `LexGuard AI — Pilot Request from ${name} (${company})`;
+                const body =
+`Hi Sujal,
+
+I'd like to explore a LexGuard AI pilot.
+
+— Name: ${name}
+— Work email: ${emailVal}
+— Company: ${company}
+— Role: ${role}
+— Company size: ${size}
+
+${message ? 'First agreements to audit:\n' + message + '\n\n' : ''}Looking forward to connecting.
+
+Sent from lexguard-ai landing page.
+`;
+
+                const mailto = `mailto:meenasujal60@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.location.href = mailto;
+
+                // Swap to success state
+                form.style.display = 'none';
+                if (success) success.classList.add('show');
+            });
+        }
+
+        // --- Scroll reveal includes new sections ------------------
+        document.querySelectorAll('.voice-card').forEach(el => {
+            if (!el.classList.contains('reveal')) {
+                el.classList.add('reveal');
+                if ('IntersectionObserver' in window) {
+                    const o = new IntersectionObserver(es => {
+                        es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); o.unobserve(e.target); } });
+                    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+                    o.observe(el);
+                } else {
+                    el.classList.add('in');
+                }
+            }
+        });
     });
 })();
