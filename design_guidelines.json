@@ -1,0 +1,120 @@
+{
+  "theme_archetype": {
+    "archetype": "Archetype 4 (Swiss & High-Contrast)",
+    "theme": "Light Theme",
+    "description": "Enterprise-grade, authoritative, and precise. Designed for legal tech and compliance officers. Focuses on stark contrasts, strict grids, and clear typography over decorative elements."
+  },
+  "color_palette": {
+    "primary": {
+      "hex": "#000000",
+      "name": "True Black",
+      "usage": "Primary CTA backgrounds, headings, structural borders"
+    },
+    "secondary": {
+      "hex": "#FFFFFF",
+      "name": "Stark White",
+      "usage": "Page background, card background"
+    },
+    "accent": {
+      "hex": "#002FA7",
+      "name": "International Klein Blue",
+      "usage": "Hover states, active data points, highlight indicators"
+    },
+    "neutral_light": {
+      "hex": "#F4F4F5",
+      "name": "Zinc 100",
+      "usage": "Secondary background, alternating sections"
+    },
+    "neutral_dark": {
+      "hex": "#27272A",
+      "name": "Zinc 800",
+      "usage": "Body text, subtle borders"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": {
+        "family": "'Cabinet Grotesk', sans-serif",
+        "source": "https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500&display=swap",
+        "usage": "H1, H2, H3, large stat numbers"
+      },
+      "body": {
+        "family": "'Satoshi', sans-serif",
+        "source": "https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap",
+        "usage": "Paragraphs, labels, button text"
+      },
+      "mono": {
+        "family": "'IBM Plex Mono', monospace",
+        "source": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap",
+        "usage": "Overlines, tags, data points, 'Health Score' values"
+      }
+    },
+    "scales": {
+      "h1": "text-5xl md:text-6xl+ tracking-tighter font-black leading-none",
+      "h2": "text-3xl md:text-4xl tracking-tight font-bold leading-tight",
+      "h3": "text-xl md:text-2xl tracking-tight font-bold",
+      "body": "text-base md:text-lg leading-relaxed text-zinc-800",
+      "overline": "text-xs tracking-[0.2em] uppercase font-mono text-zinc-500"
+    }
+  },
+  "layout_and_spacing": {
+    "spacing_scale": "Use generous Tailwind spacing: p-6, p-8, p-12, py-24, py-32. Ensure containers with borders have internal padding of at least p-8.",
+    "grid_system": "Mode A: 'Tetris' Bento Grid for features. Base grid md:grid-cols-8. Wide gaps gap-8.",
+    "alignment": "Strict left-alignment for text in hero and features to enforce an editorial, document-like feel. No centered text blocks unless explicitly for a single closing CTA."
+  },
+  "surface_styles": {
+    "cards": "Grid Borders ('Technical' Look). border border-black/10 background-white/50 backdrop-blur-sm shadow-none. On hover: -translate-y-1 shadow-[0_8px_0_0_rgba(0,0,0,1)] transition-transform duration-200.",
+    "buttons": {
+      "primary": "bg-black text-white rounded-none px-8 py-4 font-bold tracking-wide hover:bg-[#002FA7] transition-colors duration-200 ease-out",
+      "secondary": "bg-transparent text-black border-2 border-black rounded-none px-8 py-4 font-bold tracking-wide hover:bg-black hover:text-white transition-all duration-200 ease-out"
+    }
+  },
+  "sections_and_components": {
+    "navigation": "Sticky nav with a hard bottom border (border-b border-black/10) and backdrop-blur-md bg-white/80. Logo on left, links on right, 'Enterprise Access' CTA button on far right.",
+    "hero": {
+      "layout": "Massive left-aligned typography. H1 must be bold and commanding. Subheadline in Satoshi. Two CTAs side-by-side.",
+      "visual": "A raw, technical aesthetic using the abstract architectural images as a subdued, greyscale background overlay with opacity-20."
+    },
+    "trust_bar": "Monochrome sponsor/tech logos (Groq, Llama 3, ChromaDB, LangChain) displayed in an 'Editorial Ribbon' format, spaced generously (gap-24), opacity-50.",
+    "features_bento": "Asymmetric bento grid. \n- 'Instant Legal Audits' (col-span-1 md:col-span-8)\n- 'Compliance Health Score' (col-span-1 md:col-span-4)\n- 'Privacy-First Architecture' (col-span-1 md:col-span-4)\n- 'Board-Ready Reports' (col-span-1 md:col-span-8 or 4)",
+    "how_it_works": "3-step list with large typography numbers (01, 02, 03) in IBM Plex Mono. Left-aligned, heavy bottom borders separating each step.",
+    "footer": "Dark background (bg-black text-white) to contrast the light body. Massive 'LexGuard' text (text-[10vw]). Simple links. 'Built by Sujal Meena' credit."
+  },
+  "motion_and_interaction": {
+    "hover_states": "Buttons and cards must have distinct hover states. Use sharp, mechanical transitions (ease-out duration-200) not springy bouncy ones.",
+    "scroll_reveal": "Since it's pure JS/HTML, use a simple IntersectionObserver to add 'opacity-100 translate-y-0' to elements on scroll. Keep it minimal."
+  },
+  "media_and_assets": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1673106349323-db411e27ec13?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMG1vZGVybiUyMGFyY2hpdGVjdHVyZSUyMHdoaXRlfGVufDB8fHx8MTc3NjgwODExNXww&ixlib=rb-4.1.0&q=85",
+      "usage": "Use as a very faint background pattern behind the hero section (opacity-10 or 20, mix-blend-multiply)."
+    },
+    "feature_visual_1": {
+      "url": "https://images.pexels.com/photos/1029622/pexels-photo-1029622.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "usage": "Use within the 'Privacy-First Architecture' bento card as a structural background, with a dark gradient overlay for text readability."
+    },
+    "feature_visual_2": {
+      "url": "https://images.unsplash.com/photo-1739732106770-690d3d544bf8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMG1vZGVybiUyMGFyY2hpdGVjdHVyZSUyMHdoaXRlfGVufDB8fHx8MTc3NjgwODExNXww&ixlib=rb-4.1.0&q=85",
+      "usage": "Use within the 'Board-Ready Reports' card to emphasize structure and scale."
+    },
+    "logos": {
+      "instructions": "Use inline SVG logos or text-based typographic logos for Llama 3, Groq, ChromaDB, LangChain. Do not use placeholder image URLs. Keep them monochrome black."
+    },
+    "icons": {
+      "library": "Use Phosphor Icons (via unpkg CDN since it's vanilla HTML/JS: `<script src=\"https://unpkg.com/@phosphor-icons/web\"></script>`)."
+    }
+  },
+  "testing_attributes": {
+    "convention": "kebab-case, role-based, prefix with 'data-testid='",
+    "examples": [
+      "data-testid='hero-primary-cta'",
+      "data-testid='hero-secondary-cta'",
+      "data-testid='nav-enterprise-cta'",
+      "data-testid='feature-card-audits'"
+    ]
+  },
+  "implementation_notes_for_agent": {
+    "stack": "Pure HTML, Tailwind CSS (via CDN or local build), Vanilla JS. Do NOT use React/Shadcn.",
+    "design_feel": "Avoid typical 'AI slop' (purple gradients, glowing blobs). LexGuard is an enterprise legal tool. Make it look like a high-end financial or architectural firm's website—sharp lines, monochromatic palette, high contrast, immense typographical hierarchy."
+  }
+}
