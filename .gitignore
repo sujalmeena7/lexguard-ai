@@ -37,3 +37,9 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+
+# ── Emergent preview scaffolding (not part of the repo) 
+/frontend/
+/backend/
+/design_guidelines.json
+/memory/
