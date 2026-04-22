@@ -372,10 +372,12 @@ async def admin_leads_csv(token: str = ""):
 
 app.include_router(api_router)
 
+cors_origins = os.environ.get('CORS_ORIGINS', '*').split(',')
+
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
+    allow_credentials=('*' not in cors_origins),  # Must be False if '*'
     allow_methods=["*"],
     allow_headers=["*"],
 )
