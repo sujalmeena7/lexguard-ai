@@ -255,10 +255,15 @@
                     throw new Error(err.detail || `HTTP ${resp.status}`);
                 }
                 // Email saved — show redirect state and open Streamlit in new tab
+                // Pass lead email + analysis_id so Streamlit can auto-track conversion
+                const streamlitUrl = `${STREAMLIT_URL}/?lead=${encodeURIComponent(email)}&src=landing&analysis=${encodeURIComponent(state.analysisId)}`;
                 showState('full');
-                const newTab = window.open(STREAMLIT_URL, '_blank', 'noopener');
+                // Update the fallback link href to also carry the lead param
+                document.querySelectorAll('[data-testid="lg-redirect-cta"], [data-testid="lg-redirect-fallback"]').forEach(el => {
+                    if (el.tagName === 'A') el.href = streamlitUrl;
+                });
+                const newTab = window.open(streamlitUrl, '_blank', 'noopener');
                 if (!newTab) {
-                    // Popup blocked — show fallback message
                     const sub = document.getElementById('lg-redirect-sub');
                     if (sub) sub.textContent = "Popup blocked — click the button below to launch the dashboard manually.";
                 }

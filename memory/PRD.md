@@ -58,3 +58,11 @@ Add an inline "Try it now" hero widget to the LexGuard AI landing page. User pas
 - Drip email to captured leads via Resend
 - Analytics funnel chart (paste → analyze → email → Streamlit open) on admin page
 - A/B testing email-gate copy variants
+
+### Iteration 4 (Jan 2026)
+- [x] **Lead email passed to Streamlit** — widget opens `${STREAMLIT_URL}/?lead=<email>&src=landing&analysis=<analysis_id>` on unlock submit. Streamlit app can read query params for auto-tracking & personalization.
+- [x] **CSV export** — `GET /api/admin/leads.csv?token=<ADMIN_TOKEN>` streams CSV with columns: lead_id, email, name, company, analysis_id, compliance_score, verdict, total_clauses_flagged, source, created_at. "Export CSV" button added to admin page (gold-accented).
+- [x] **+1 Credit granted badge** — prominent green/gold gradient reward badge in redirect state with pulsing gift icon. Headline: "+1 free audit credit granted". CTA copy updated to "Open Dashboard & claim credit". Framing: email capture = user gains something (1-free-audit credit), reduces friction.
+
+## Known Issue
+⚠ Groq free tier = 100K tokens/day (TPD). If quota is hit, `/api/analyze` returns 502 until quota resets (~24h) or user upgrades at https://console.groq.com/settings/billing.

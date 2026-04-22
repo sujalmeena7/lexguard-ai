@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Header
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -306,6 +307,57 @@ async def admin_lead_detail(lead_id: str, _: bool = Depends(require_admin)):
         raise HTTPException(status_code=404, detail="Lead not found")
     analysis = await db.analyses.find_one({"analysis_id": lead["analysis_id"]}, {"_id": 0})
     return {"lead": lead, "analysis": analysis}
+
+
+@api_router.get("/admin/leads.csv")
+async def admin_leads_csv(token: str = ""):
+    """Export all leads as CSV. Auth via ?token=... query param (so the browser can open the URL directly)."""
+    if token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+    import csv
+    import io
+
+    async def stream_csv():
+        # Header
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow([
+            "lead_id", "email", "name", "company", "analysis_id",
+            "compliance_score", "verdict", "total_clauses_flagged",
+            "source", "created_at"
+        ])
+        yield buf.getvalue()
+
+        # Rows — join with analysis data
+        cursor = db.leads.find({}, {"_id": 0}).sort("created_at", -1)
+        async for lead in cursor:
+            analysis = await db.analyses.find_one(
+                {"analysis_id": lead.get("analysis_id")},
+                {"_id": 0, "compliance_score": 1, "verdict": 1, "total_clauses_flagged": 1},
+            ) or {}
+            buf = io.StringIO()
+            writer = csv.writer(buf)
+            writer.writerow([
+                lead.get("lead_id", ""),
+                lead.get("email", ""),
+                lead.get("name", "") or "",
+                lead.get("company", "") or "",
+                lead.get("analysis_id", ""),
+                analysis.get("compliance_score", ""),
+                analysis.get("verdict", ""),
+                analysis.get("total_clauses_flagged", ""),
+                lead.get("source", ""),
+                lead.get("created_at", ""),
+            ])
+            yield buf.getvalue()
+
+    filename = f"lexguard-leads-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}.csv"
+    return StreamingResponse(
+        stream_csv(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 app.include_router(api_router)
