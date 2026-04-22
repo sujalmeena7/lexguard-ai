@@ -1,11 +1,25 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "buildCommand": "echo 'Static landing page, no build step needed.'",
-  "installCommand": "echo 'No dependencies to install.'",
-  "outputDirectory": "frontend/public",
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/frontend/public/admin.html"
+    },
+    {
+      "source": "/(css|js|assets)/(.*)",
+      "destination": "/frontend/public/$1/$2"
+    },
+    {
+      "source": "/favicon.png",
+      "destination": "/frontend/public/favicon.png"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/frontend/public/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -13,18 +27,6 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-      ]
-    },
-    {
-      "source": "/css/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/js/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
       ]
     }
   ]
