@@ -27,3 +27,4 @@ typer>=0.9.0
 groq==0.30.0
 slowapi==0.1.9
 certifi>=2024.2.2
+tenacity>=8.0.0
