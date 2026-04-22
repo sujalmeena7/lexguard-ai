@@ -25,6 +25,7 @@ from langchain_groq import ChatGroq
 from langchain_classic.retrievers import ParentDocumentRetriever
 from langchain_core.stores import InMemoryStore
 from langchain_core.documents import Document
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 # ── Paths 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -221,20 +222,26 @@ def run_compliance_audit(retriever: ParentDocumentRetriever, user_doc_path: str 
     print(f"\n🔍 Analyzing {len(audit_chunks)} sections of the document...\n")
     report = []
     
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(Exception),
+        reraise=True
+    )
+    def get_audit_completion(user_text, context):
+        return llm.invoke(AUDIT_PROMPT.format(user_text=user_text, context=context))
+
     for idx, chunk in enumerate(audit_chunks):
         # 1. Retrieve legal context
         legal_docs = retriever.invoke(chunk.page_content)
         context_str = "\n\n".join([d.page_content for d in legal_docs])
         
-        # 2. Build Prompt
-        prompt_val = AUDIT_PROMPT.format(user_text=chunk.page_content, context=context_str)
-        
-        # 3. Predict Compliance
+        # 2. Predict Compliance with Retry Logic
         try:
-            raw_response = llm.invoke(prompt_val)
+            raw_response = get_audit_completion(chunk.page_content, context_str)
             response = raw_response.content if hasattr(raw_response, 'content') else str(raw_response)
         except Exception as e:
-            response = f"Error evaluating clause: {e}"
+            response = f"Critical Error: Failed after multiple attempts. {e}"
             
         is_high_risk = "Non-Compliant" in response
 

@@ -227,6 +227,38 @@ Sent from lexguard-ai landing page.
                 }
             }
         });
+        
+        // --- Live Activity Ticker ----------------------------------
+        const tickerAgreements = document.getElementById('ticker-agreements');
+        const tickerFlags = document.getElementById('ticker-flags');
+        
+        if (tickerAgreements && tickerFlags) {
+            let agreements = 147;
+            let flags = 42;
+            
+            const updateTicker = () => {
+                // Randomly decide which number to increment
+                if (Math.random() > 0.4) {
+                    agreements += Math.floor(Math.random() * 2) + 1;
+                    tickerAgreements.textContent = agreements;
+                    tickerAgreements.style.color = '#fff';
+                    setTimeout(() => tickerAgreements.style.color = '', 300);
+                }
+                
+                if (Math.random() > 0.7) {
+                    flags += Math.floor(Math.random() * 2);
+                    tickerFlags.textContent = flags;
+                    tickerFlags.style.color = '#fff';
+                    setTimeout(() => tickerFlags.style.color = '', 300);
+                }
+                
+                // Schedule next update between 3 and 8 seconds
+                setTimeout(updateTicker, 3000 + Math.random() * 5000);
+            };
+            
+            // Start the ticker after a short delay
+            setTimeout(updateTicker, 4000);
+        }
     });
 })();
 

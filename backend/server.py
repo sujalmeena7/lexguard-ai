@@ -16,6 +16,7 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
 from groq import AsyncGroq
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 
 ROOT_DIR = Path(__file__).parent
@@ -170,25 +171,34 @@ async def root():
 @limiter.limit("5/minute;30/hour")
 async def analyze_policy(request: Request, req: AnalyzeRequest):
     """Analyze privacy policy against DPDP Act 2023. Rate limited: 5/min, 30/hour per IP."""
-    try:
-        completion = await groq_client.chat.completions.create(
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(Exception),
+        reraise=True
+    )
+    async def get_groq_completion(text: str):
+        return await groq_client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Audit this document against DPDP Act 2023:\n\n---\n{req.policy_text}\n---"},
+                {"role": "user", "content": f"Audit this document against DPDP Act 2023:\n\n---\n{text}\n---"},
             ],
             temperature=0.2,
             max_completion_tokens=2048,
             response_format={"type": "json_object"},
         )
+
+    try:
+        completion = await get_groq_completion(req.policy_text)
         raw = completion.choices[0].message.content
         data = json.loads(raw)
     except json.JSONDecodeError as e:
-        logger.error(f"Groq returned invalid JSON: {e}")
+        logger.error(f"Groq returned invalid JSON after retries: {e}")
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
     except Exception as e:
-        logger.error(f"Groq error: {e}")
-        raise HTTPException(status_code=502, detail=f"Analysis failed: {str(e)[:120]}")
+        logger.error(f"Groq error after multiple attempts: {e}")
+        raise HTTPException(status_code=502, detail=f"Analysis failed after multiple attempts: {str(e)[:120]}")
 
     analysis_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()

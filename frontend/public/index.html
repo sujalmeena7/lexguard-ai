@@ -13,6 +13,7 @@
     <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <!-- Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
@@ -20,7 +21,7 @@
     <link rel="stylesheet" href="/css/widget.css" />
 
     <!-- Backend URL exposed for widget JS (replaces build-time token) -->
-    <script>window.__LEXGUARD_BACKEND__ = "https://lexguard-backend-3mmj.onrender.com";</script>
+    <script>window.__LEXGUARD_BACKEND__ = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8000" : "https://lexguard-backend-3mmj.onrender.com";</script>
     <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
     <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
 </head>
@@ -656,6 +657,17 @@
                 <p>Your email client just opened with a pre-filled note to <strong>Sujal Meena</strong>. Hit send and you'll hear back within <strong>2 hours</strong>.</p>
                 <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
             </div>
+        </div>
+    </div>
+
+    <!-- LIVE ACTIVITY TICKER -->
+    <div id="live-ticker" class="live-ticker" data-testid="live-ticker">
+        <div class="ticker-content">
+            <span class="ticker-icon">⚡</span>
+            <span class="ticker-text">
+                <strong id="ticker-agreements">147</strong> agreements audited today · 
+                <strong id="ticker-flags">42</strong> high-risk clauses flagged
+            </span>
         </div>
     </div>
 
