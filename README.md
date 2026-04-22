@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ⚖️ LexGuard AI: Enterprise DPDP Compliance Auditor
 
 <p align="center">
@@ -76,3 +77,6 @@ If you are a startup founder or legal firm looking to automate your DPDP 2023 co
 ---
 
 <p align="center">Built with ❤️ for the Indian Startup Ecosystem.</p>
+=======
+# Here are your Instructions
+>>>>>>> origin/conflict_220426_1610
