@@ -228,6 +228,30 @@ Sent from lexguard-ai landing page.
             }
         });
     });
-})();
-d o c u m e n t . a d d E v e n t L i s t e n e r ( ' D O M C o n t e n t L o a d e d ' ,   ( )   = >   {   d o c u m e n t . g e t E l e m e n t B y I d ( ' t h e m e - t o g g l e ' ) . a d d E v e n t L i s t e n e r ( ' c l i c k ' ,   ( e )   = >   {   i f ( ! d o c u m e n t . s t a r t V i e w T r a n s i t i o n )   {   d o c u m e n t . d o c u m e n t E l e m e n t . c l a s s L i s t . t o g g l e ( ' d a r k ' ) ;   r e t u r n ;   }   c o n s t   t r a n s i t i o n   =   d o c u m e n t . s t a r t V i e w T r a n s i t i o n ( ( )   = >   {   d o c u m e n t . d o c u m e n t E l e m e n t . c l a s s L i s t . t o g g l e ( ' d a r k ' ) ;   } ) ;   t r a n s i t i o n . r e a d y . t h e n ( ( )   = >   {   c o n s t   r   =   M a t h . h y p o t ( M a t h . m a x ( e . c l i e n t X ,   i n n e r W i d t h   -   e . c l i e n t X ) ,   M a t h . m a x ( e . c l i e n t Y ,   i n n e r H e i g h t   -   e . c l i e n t Y ) ) ;   d o c u m e n t . d o c u m e n t E l e m e n t . a n i m a t e ( {   c l i p P a t h :   [ \ c i r c l e ( 0 p x   a t   \ p x   \ p x ) \ ,   \ c i r c l e ( \ p x   a t   \ p x   \ p x ) \ ]   } ,   {   d u r a t i o n :   5 0 0 ,   e a s i n g :   ' e a s e - i n - o u t ' ,   p s e u d o E l e m e n t :   ' : : v i e w - t r a n s i t i o n - n e w ( r o o t ) '   } ) ;   } ) ;   } ) ;   } ) ;  
- 
+}();
+
+document.addEventListener('DOMContentLoaded', () => {
+    const themeBtn = document.getElementById('theme-toggle');
+    if (!themeBtn) return;
+    themeBtn.addEventListener('click', (e) => {
+        if (!document.startViewTransition) {
+            document.documentElement.classList.toggle('dark');
+            return;
+        }
+        const transition = document.startViewTransition(() => {
+            document.documentElement.classList.toggle('dark');
+        });
+        transition.ready.then(() => {
+            const r = Math.hypot(Math.max(e.clientX, innerWidth - e.clientX), Math.max(e.clientY, innerHeight - e.clientY));
+            document.documentElement.animate({
+                clipPath: [
+                    \circle(0px at \px \px)\,
+                    \circle(\px at \px \px)\n                ]
+            }, {
+                duration: 500,
+                easing: 'ease-in-out',
+                pseudoElement: '::view-transition-new(root)'
+            });
+        });
+    });
+});
