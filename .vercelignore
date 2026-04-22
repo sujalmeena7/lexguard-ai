@@ -35,10 +35,10 @@ session_cache.json
 .streamlit/
 
 # Emergent preview scaffolding
-frontend/
-backend/
-design_guidelines.json
-memory/
+# frontend/
+# backend/
+# design_guidelines.json
+# memory/
 
 # Misc
 *.pdf
