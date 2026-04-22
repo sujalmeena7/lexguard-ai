@@ -8,6 +8,7 @@
 
     const BACKEND = (window.__LEXGUARD_BACKEND__ || '').replace(/\/+$/, '');
     const API = (BACKEND ? BACKEND : '') + '/api';
+    const STREAMLIT_URL = 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app';
 
     const SAMPLE_POLICY = `We may collect, process, store, and share your personal data — including your name, email, phone number, location, browsing behaviour, device identifiers, and financial information — with our affiliates, business partners, marketing agencies, and any third-party service providers for purposes we deem necessary, in perpetuity. By using this service, you are deemed to have given your consent to all current and any future uses of your data, even if our policy changes without prior notice. We may retain your data indefinitely, even after your account is closed, and we reserve the right not to respond to requests for data deletion if we believe retention serves a legitimate business interest. In the event of a data breach, we will evaluate on a case-by-case basis whether notification is warranted.`;
 
@@ -43,13 +44,6 @@
             gateEmail: document.getElementById('lg-gate-email'),
             resetBtn: document.getElementById('lg-reset-btn'),
             resetBtn2: document.getElementById('lg-reset-btn-2'),
-            fullScoreNum: document.getElementById('lg-full-score-num'),
-            fullScoreLabel: document.getElementById('lg-full-score-label'),
-            fullVerdict: document.getElementById('lg-full-verdict'),
-            fullSummary: document.getElementById('lg-full-summary'),
-            fullClauses: document.getElementById('lg-full-clauses'),
-            fullClauseCount: document.getElementById('lg-full-clause-count'),
-            checklist: document.getElementById('lg-checklist'),
             errorMsg: document.getElementById('lg-error-msg'),
             errorRetry: document.getElementById('lg-error-retry'),
         };
@@ -260,44 +254,23 @@
                     const err = await resp.json().catch(() => ({ detail: 'Unlock failed' }));
                     throw new Error(err.detail || `HTTP ${resp.status}`);
                 }
-                const full = await resp.json();
-                renderFull(full);
+                // Email saved — show redirect state and open Streamlit in new tab
+                showState('full');
+                const newTab = window.open(STREAMLIT_URL, '_blank', 'noopener');
+                if (!newTab) {
+                    // Popup blocked — show fallback message
+                    const sub = document.getElementById('lg-redirect-sub');
+                    if (sub) sub.textContent = "Popup blocked — click the button below to launch the dashboard manually.";
+                }
             } catch (e) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalHtml;
-                els.errorMsg.textContent = e.message || 'Unlock failed. Please try again.';
+                els.errorMsg.textContent = e.message || 'Something went wrong. Please try again.';
                 showState('error');
             }
         });
 
         els.gateEmail.addEventListener('input', () => els.gateEmail.classList.remove('invalid'));
-
-        const renderFull = (data) => {
-            els.fullScoreNum.textContent = data.compliance_score;
-            els.fullVerdict.className = `lg-verdict ${verdictClass(data.verdict)}`;
-            els.fullVerdict.querySelector('.lg-verdict-text').textContent = data.verdict;
-            els.fullSummary.textContent = data.summary;
-
-            els.fullClauses.innerHTML = '';
-            (data.flagged_clauses || []).forEach(c => els.fullClauses.appendChild(renderClauseCard(c)));
-            els.fullClauseCount.textContent = (data.flagged_clauses || []).length;
-
-            renderChecklist(data.checklist);
-
-            showState('full');
-        };
-
-        // ---------- tabs (full report) ----------
-        widget.querySelectorAll('.lg-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                widget.querySelectorAll('.lg-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                const panel = tab.dataset.lgTab;
-                widget.querySelectorAll('.lg-tab-panel').forEach(p => {
-                    p.hidden = p.dataset.lgPanel !== panel;
-                });
-            });
-        });
 
         // ---------- reset ----------
         const reset = () => {
