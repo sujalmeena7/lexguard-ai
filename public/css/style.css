@@ -1506,3 +1506,130 @@ html.dark {
     }
 }
 
+
+/* --- CASE STUDY --- */
+.case-study {
+    padding: 120px 0;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+}
+
+.case-study::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0, 47, 167, 0.15) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.case-study-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 40px;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 80px;
+    align-items: center;
+}
+
+.case-study-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    background: rgba(0, 47, 167, 0.2);
+    border: 1px solid rgba(0, 47, 167, 0.4);
+    color: #3b82f6;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 32px;
+}
+
+.partner-logo {
+    height: 40px;
+    margin-bottom: 24px;
+    filter: brightness(0) invert(1);
+}
+
+.case-study-title {
+    font-size: 48px;
+    line-height: 1.1;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-weight: 800;
+    margin-bottom: 24px;
+    color: #fff;
+}
+
+.case-study-quote {
+    font-size: 20px;
+    line-height: 1.6;
+    color: #a1a1aa;
+    font-style: italic;
+    margin-bottom: 48px;
+    border-left: 2px solid #002FA7;
+    padding-left: 24px;
+}
+
+.case-study-kpis {
+    display: flex;
+    gap: 40px;
+}
+
+.kpi-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-val {
+    font-size: 32px;
+    font-weight: 800;
+    color: #3b82f6;
+    font-family: 'Cabinet Grotesk', sans-serif;
+}
+
+.kpi-label {
+    font-size: 14px;
+    color: #71717a;
+    font-weight: 500;
+}
+
+.case-study-visual {
+    position: relative;
+}
+
+.case-study-screen {
+    background: #111;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 40px 100px rgba(0,0,0,0.8);
+    transform: perspective(1000px) rotateY(-10deg) rotateX(5deg);
+    transition: transform 0.6s ease;
+}
+
+.case-study-screen:hover {
+    transform: perspective(1000px) rotateY(0deg) rotateX(0deg);
+}
+
+.case-study-screen img {
+    width: 100%;
+    border-radius: 4px;
+    display: block;
+}
+
+@media (max-width: 1024px) {
+    .case-study-inner {
+        grid-template-columns: 1fr;
+        gap: 60px;
+    }
+    .case-study-title {
+        font-size: 36px;
+    }
+}
+
