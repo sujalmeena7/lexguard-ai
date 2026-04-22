@@ -50,7 +50,7 @@
             </nav>
 
             <div class="nav-actions">
-                <a href="#try-it" class="nav-demo" data-testid="nav-demo-link">Live Audit <i class="ph ph-arrow-down-right"></i></a>
+                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="nav-demo" data-testid="nav-demo-link">Launch Dashboard <i class="ph ph-arrow-up-right"></i></a>
                 <button type="button" class="btn btn-primary" data-open-modal="pilot" data-testid="nav-enterprise-cta">Enterprise Access</button>
             </div>
 
@@ -86,9 +86,9 @@
                     <a href="#try-it-widget" class="btn btn-primary btn-lg" data-testid="hero-primary-cta">
                         Try a Live Audit <i class="ph-bold ph-arrow-right"></i>
                     </a>
-                    <button type="button" class="btn btn-secondary btn-lg" data-open-modal="pilot" data-testid="hero-secondary-cta">
-                        Request Enterprise Access
-                    </button>
+                    <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="btn btn-secondary btn-lg" data-testid="hero-dashboard-cta">
+                        Launch Dashboard <i class="ph-bold ph-arrow-up-right"></i>
+                    </a>
                 </div>
 
                 <div class="hero-meta">
@@ -217,10 +217,10 @@
                             <!-- Email gate -->
                             <div class="lg-gate" data-testid="lg-gate">
                                 <div class="lg-gate-head">
-                                    <i class="ph-bold ph-lock-simple"></i>
+                                    <i class="ph-bold ph-rocket-launch"></i>
                                     <div>
-                                        <div class="lg-gate-title">Unlock the full audit report</div>
-                                        <div class="lg-gate-sub">All flagged clauses · 6-point DPDP checklist · suggested fixes</div>
+                                        <div class="lg-gate-title">Launch the full LexGuard Dashboard</div>
+                                        <div class="lg-gate-sub">Upload full PDFs · 10-page audit report · PDF export · clause-level fixes</div>
                                     </div>
                                 </div>
                                 <form class="lg-gate-form" id="lg-gate-form" novalidate>
@@ -234,53 +234,43 @@
                                         autocomplete="email"
                                     />
                                     <button type="submit" class="lg-btn lg-btn-primary lg-btn-gate" data-testid="lg-gate-submit">
-                                        <i class="ph-bold ph-lock-open"></i> Unlock full report
+                                        <i class="ph-bold ph-arrow-up-right"></i> Launch Dashboard
                                     </button>
                                 </form>
-                                <p class="lg-gate-legal">No spam. Used to share audit updates &amp; DPDP guidance. Unsubscribe anytime.</p>
+                                <p class="lg-gate-legal">You'll be redirected to the LexGuard Streamlit dashboard in a new tab. No spam.</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ============ STATE: UNLOCKED (full report) ============ -->
+                    <!-- ============ STATE: REDIRECT (after email capture → Streamlit) ============ -->
                     <div class="lg-state lg-state-full" data-lg-state="full" hidden>
                         <div class="lg-head">
                             <span class="lg-head-dot lg-head-dot-ok"></span>
-                            <span class="lg-head-title">audit.report — <span class="lg-head-pill lg-head-pill-unlocked">UNLOCKED</span></span>
+                            <span class="lg-head-title">audit.captured — <span class="lg-head-pill lg-head-pill-unlocked">EMAIL SAVED</span></span>
                             <button type="button" class="lg-reset" id="lg-reset-btn-2" data-testid="lg-reset-btn-2">
                                 <i class="ph ph-arrow-counter-clockwise"></i> New audit
                             </button>
                         </div>
 
-                        <div class="lg-full-body">
-                            <div class="lg-score-row">
-                                <div class="lg-score">
-                                    <div class="lg-score-num"><span id="lg-full-score-num">--</span><span class="lg-score-max">/100</span></div>
-                                    <div class="lg-score-label" id="lg-full-score-label">COMPLIANCE SCORE</div>
-                                </div>
-                                <div class="lg-verdict" id="lg-full-verdict">
-                                    <span class="lg-verdict-dot"></span>
-                                    <span class="lg-verdict-text">—</span>
-                                </div>
+                        <div class="lg-redirect-body">
+                            <div class="lg-redirect-icon">
+                                <i class="ph-bold ph-rocket-launch"></i>
                             </div>
-
-                            <p class="lg-summary" id="lg-full-summary">—</p>
-
-                            <div class="lg-tabs" role="tablist">
-                                <button type="button" class="lg-tab active" data-lg-tab="clauses" data-testid="lg-tab-clauses">
-                                    <i class="ph-bold ph-flag"></i> All flagged clauses <span class="lg-tab-count" id="lg-full-clause-count">0</span>
-                                </button>
-                                <button type="button" class="lg-tab" data-lg-tab="checklist" data-testid="lg-tab-checklist">
-                                    <i class="ph-bold ph-list-checks"></i> DPDP checklist
-                                </button>
-                            </div>
-
-                            <div class="lg-tab-panel" data-lg-panel="clauses">
-                                <div class="lg-clauses" id="lg-full-clauses" data-testid="lg-full-clauses"></div>
-                            </div>
-
-                            <div class="lg-tab-panel" data-lg-panel="checklist" hidden>
-                                <div class="lg-checklist" id="lg-checklist" data-testid="lg-checklist"></div>
+                            <h3 class="lg-redirect-title">Opening the full dashboard…</h3>
+                            <p class="lg-redirect-sub" id="lg-redirect-sub">
+                                We've opened the LexGuard Streamlit dashboard in a new tab. There you can upload full PDFs, export branded reports, and audit 100+ documents.
+                            </p>
+                            <div class="lg-redirect-actions">
+                                <a
+                                    href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="lg-btn lg-btn-primary lg-btn-redirect"
+                                    data-testid="lg-redirect-cta"
+                                >
+                                    <span class="lg-btn-label"><i class="ph-bold ph-arrow-up-right"></i> Open Dashboard</span>
+                                </a>
+                                <p class="lg-redirect-hint">Didn't open? <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
                             </div>
                         </div>
                     </div>
@@ -528,8 +518,8 @@
             <h2>Stop reading agreements.<br/>Start <em>auditing</em> them.</h2>
             <p class="final-sub">Bring LexGuard AI to your legal, compliance, or vendor-risk team. Enterprise pilots include a custom DPDP clause library and white-labelled reports.</p>
             <div class="final-ctas">
-                <a href="#try-it" class="btn btn-invert btn-lg" data-testid="final-demo-cta">
-                    Run a Live Audit <i class="ph-bold ph-arrow-up-right"></i>
+                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="btn btn-invert btn-lg" data-testid="final-demo-cta">
+                    Launch Dashboard <i class="ph-bold ph-arrow-up-right"></i>
                 </a>
                 <button type="button" class="btn btn-ghost btn-lg" data-open-modal="pilot" data-testid="final-enterprise-cta">
                     Book an enterprise call
@@ -551,6 +541,7 @@
                 <div>
                     <h4>Product</h4>
                     <a href="#try-it">Try it Now</a>
+                    <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener">Launch Dashboard</a>
                     <a href="#features">Features</a>
                     <a href="#process">Process</a>
                 </div>
