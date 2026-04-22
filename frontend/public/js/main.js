@@ -30,7 +30,25 @@
                 const id = a.getAttribute('href');
                 if (id.length > 1 && document.querySelector(id)) {
                     evt.preventDefault();
-                    document.querySelector(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    const target = document.querySelector(id);
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // If the target is the live widget, also focus the textarea so
+                    // users on desktop (where the widget is already in view) get
+                    // immediate visible feedback.
+                    if (id === '#try-it-widget' || id === '#try-it') {
+                        setTimeout(() => {
+                            const ta = document.getElementById('lg-input');
+                            if (ta && !ta.hidden) {
+                                ta.focus({ preventScroll: true });
+                                // Flash the widget border briefly
+                                const widget = document.getElementById('lg-widget');
+                                if (widget) {
+                                    widget.classList.add('lg-widget-flash');
+                                    setTimeout(() => widget.classList.remove('lg-widget-flash'), 900);
+                                }
+                            }
+                        }, 400);
+                    }
                 }
             });
         });
