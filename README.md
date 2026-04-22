@@ -64,7 +64,6 @@ LexGuard AI utilizes a decoupled, high-performance architecture to ensure scalab
    MONGO_URL=your_mongodb_uri
    DB_NAME=lexguard_db
    GROQ_API_KEY=your_groq_key
-   ADMIN_TOKEN=lexguard-admin-2026
    ```
 
 3. **Install Dependencies:**
