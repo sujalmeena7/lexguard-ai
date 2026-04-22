@@ -160,10 +160,9 @@ async def analyze_policy(req: AnalyzeRequest):
         "checklist": checklist,
         "created_at": created_at,
         "unlocked": False,
-        "policy_text": req.policy_text[:5000],  # store truncated for auditability
     }
 
-    # Persist full analysis for email-gate unlock later
+    # Persist analysis for email-gate unlock later (raw policy text is NOT retained — ephemeral processing only)
     await db.analyses.insert_one({**result})
 
     # Return PREVIEW: only first 2 flagged clauses
