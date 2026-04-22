@@ -30,8 +30,14 @@ GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'lexguard-admin-2026')
 groq_client = AsyncGroq(api_key=GROQ_API_KEY)
 
-# Rate limiter (per client IP)
-limiter = Limiter(key_func=get_remote_address)
+# Rate limiter (per client IP, proxy-aware: honors X-Forwarded-For)
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return get_remote_address(request)
+
+limiter = Limiter(key_func=_client_ip)
 
 app = FastAPI()
 app.state.limiter = limiter
@@ -250,8 +256,9 @@ async def leads_count():
 # ====================== Admin routes ======================
 
 @api_router.post("/admin/login")
-async def admin_login(payload: dict):
-    """Validate admin token. Returns {ok: true} or 401."""
+@limiter.limit("10/minute")
+async def admin_login(request: Request, payload: dict):
+    """Validate admin token. Rate limited to prevent brute force."""
     token = (payload or {}).get("token", "")
     if token != ADMIN_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid token")
