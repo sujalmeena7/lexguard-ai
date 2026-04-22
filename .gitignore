@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+ HEAD
 # ── Streamlit Secrets 
 .streamlit/secrets.toml
 
@@ -44,7 +44,7 @@ dist/
 /backend/
 /design_guidelines.json
 /memory/
-=======
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # IDE and editors
@@ -135,7 +135,7 @@ credentials.json
 *.pem
 *.key
 .credentials
->>>>>>> origin/conflict_220426_1610
+ origin/conflict_220426_1610
 -e 
 # Environment and credential files
 .env
