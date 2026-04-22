@@ -257,26 +257,22 @@
                     const err = await resp.json().catch(() => ({ detail: 'Unlock failed' }));
                     throw new Error(err.detail || `HTTP ${resp.status}`);
                 }
-                const fullData = await resp.json();
                 
-                // Show full report in-app
-                if (document.getElementById('lg-score-num-full')) {
-                    document.getElementById('lg-score-num-full').textContent = fullData.compliance_score;
-                    document.getElementById('lg-score-bar-fill-full').style.width = fullData.compliance_score + '%';
-                    const vf = document.getElementById('lg-verdict-full');
-                    vf.className = `lg-verdict ${verdictClass(fullData.verdict)}`;
-                    vf.querySelector('.lg-verdict-text').textContent = fullData.verdict;
-                    document.getElementById('lg-summary-full').textContent = fullData.summary;
-                    document.getElementById('lg-total-count-full').textContent = fullData.total_clauses_flagged;
-                }
-
-                if (els.clausesFull) {
-                    els.clausesFull.innerHTML = '';
-                    (fullData.flagged_clauses || []).forEach(c => els.clausesFull.appendChild(renderClauseCard(c)));
-                }
-                renderChecklist(fullData.checklist);
-
+                // Email saved — show redirect state and open Streamlit in new tab
+                // Pass lead email + analysis_id so Streamlit can auto-track conversion
+                const streamlitUrl = `${STREAMLIT_URL}/?lead=${encodeURIComponent(email)}&src=landing&analysis=${encodeURIComponent(state.analysisId)}`;
                 showState('full');
+                
+                // Update the fallback link href to also carry the lead param
+                document.querySelectorAll('[data-testid="lg-redirect-cta"], [data-testid="lg-redirect-fallback"]').forEach(el => {
+                    if (el.tagName === 'A') el.href = streamlitUrl;
+                });
+                
+                const newTab = window.open(streamlitUrl, '_blank', 'noopener');
+                if (!newTab) {
+                    const sub = document.getElementById('lg-redirect-sub');
+                    if (sub) sub.textContent = "Popup blocked — click the button below to launch the dashboard manually.";
+                }
             } catch (e) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalHtml;
