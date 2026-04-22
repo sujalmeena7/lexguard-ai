@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LexGuard AI — Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0b1020;
+            color: #e6ebfa;
+            min-height: 100vh;
+            padding: 32px 24px 80px;
+        }
+        a { color: #6fa8ff; text-decoration: none; }
+        a:hover { color: #f0c93a; }
+
+        .a-wrap { max-width: 1200px; margin: 0 auto; }
+
+        .a-nav {
+            display: flex; align-items: center; justify-content: space-between;
+            padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 28px;
+        }
+        .a-brand {
+            font-family: 'Cabinet Grotesk', sans-serif;
+            font-weight: 800; font-size: 22px; letter-spacing: -0.02em;
+        }
+        .a-brand span { color: #f0c93a; }
+        .a-nav-right { display: flex; align-items: center; gap: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8a93b5; }
+        .a-logout {
+            background: transparent; border: 1px solid rgba(255,255,255,0.14);
+            color: #e6ebfa; padding: 6px 12px; border-radius: 6px;
+            cursor: pointer; font-family: inherit; font-size: 12px;
+        }
+        .a-logout:hover { background: rgba(255,255,255,0.06); }
+
+        /* Login */
+        .a-login-wrap {
+            max-width: 420px; margin: 120px auto 0;
+            padding: 28px; border-radius: 14px;
+            background: linear-gradient(180deg, #0f1730 0%, #0a0f1e 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 30px 80px -20px rgba(8, 15, 40, 0.55);
+        }
+        .a-login-wrap h1 {
+            font-family: 'Cabinet Grotesk', sans-serif;
+            font-weight: 800; font-size: 26px; letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+        .a-login-wrap p {
+            color: #8a93b5; font-size: 13px; margin-bottom: 20px;
+        }
+        .a-input {
+            width: 100%; padding: 12px 14px; border-radius: 8px;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14);
+            color: #e6ebfa; font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .a-input:focus {
+            outline: none; border-color: #f0c93a;
+            box-shadow: 0 0 0 3px rgba(240,201,58,0.12);
+        }
+        .a-btn {
+            width: 100%; padding: 12px 18px; border-radius: 8px;
+            background: #f0c93a; color: #0a0f1e; border: none; cursor: pointer;
+            font-family: 'Cabinet Grotesk', sans-serif; font-weight: 700; font-size: 14px;
+            transition: transform .12s ease, background .15s ease;
+        }
+        .a-btn:hover { background: #ffde6d; transform: translateY(-1px); }
+        .a-err {
+            color: #ff6b6b; font-size: 12px; margin-top: 10px;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        /* Stats */
+        .a-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 32px; }
+        .a-stat {
+            padding: 18px 20px; border-radius: 12px;
+            background: linear-gradient(180deg, #0f1730 0%, #0a0f1e 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .a-stat-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px; letter-spacing: 0.12em; color: #8a93b5;
+            text-transform: uppercase; margin-bottom: 8px;
+        }
+        .a-stat-num {
+            font-family: 'Cabinet Grotesk', sans-serif;
+            font-weight: 800; font-size: 34px; letter-spacing: -0.02em;
+            color: #e6ebfa;
+        }
+        .a-stat-num .unit {
+            font-size: 16px; color: #8a93b5; margin-left: 4px; font-weight: 500;
+        }
+
+        /* Leads table */
+        .a-section-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .a-section-head h2 {
+            font-family: 'Cabinet Grotesk', sans-serif;
+            font-weight: 800; font-size: 22px; letter-spacing: -0.02em;
+        }
+        .a-refresh {
+            background: transparent; border: 1px solid rgba(255,255,255,0.14);
+            color: #e6ebfa; padding: 6px 12px; border-radius: 6px;
+            cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .a-refresh:hover { background: rgba(255,255,255,0.06); }
+
+        .a-table-wrap {
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; overflow: hidden;
+            background: linear-gradient(180deg, #0f1730 0%, #0a0f1e 100%);
+        }
+        .a-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .a-table th {
+            text-align: left; padding: 12px 16px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px; letter-spacing: 0.1em; color: #8a93b5;
+            text-transform: uppercase; font-weight: 500;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+        }
+        .a-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: #e6ebfa;
+        }
+        .a-table tr:last-child td { border-bottom: none; }
+        .a-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .a-email {
+            font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+            color: #6fa8ff; cursor: pointer;
+        }
+        .a-date {
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8a93b5;
+        }
+        .a-source-chip {
+            display: inline-block; padding: 2px 7px; border-radius: 4px;
+            background: rgba(240,201,58,0.14); color: #f0c93a;
+            font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+            letter-spacing: 0.06em;
+        }
+        .a-empty {
+            padding: 60px 20px; text-align: center; color: #8a93b5;
+            font-size: 14px;
+        }
+
+        /* Detail modal */
+        .a-modal {
+            position: fixed; inset: 0; background: rgba(5,10,25,0.8);
+            display: none; align-items: center; justify-content: center;
+            padding: 24px; z-index: 100; backdrop-filter: blur(6px);
+        }
+        .a-modal.open { display: flex; }
+        .a-modal-panel {
+            max-width: 760px; width: 100%; max-height: 85vh; overflow-y: auto;
+            background: linear-gradient(180deg, #0f1730 0%, #0a0f1e 100%);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px; padding: 28px;
+            position: relative;
+        }
+        .a-modal-close {
+            position: absolute; top: 14px; right: 14px;
+            background: transparent; border: none; color: #8a93b5;
+            font-size: 20px; cursor: pointer;
+        }
+        .a-modal-close:hover { color: #e6ebfa; }
+        .a-modal h3 {
+            font-family: 'Cabinet Grotesk', sans-serif;
+            font-weight: 800; font-size: 20px; margin-bottom: 14px;
+        }
+        .a-kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 14px; margin-bottom: 20px; font-size: 13px; }
+        .a-kv dt { color: #8a93b5; font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 2px; }
+        .a-kv dd { color: #e6ebfa; word-break: break-word; }
+
+        .a-badge {
+            display: inline-block; padding: 3px 8px; border-radius: 4px;
+            font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+            letter-spacing: 0.08em; font-weight: 700;
+        }
+        .a-badge.low { background: rgba(61,220,151,0.14); color: #3ddc97; }
+        .a-badge.mod { background: rgba(240,169,58,0.14); color: #f0a93a; }
+        .a-badge.high { background: rgba(255,107,107,0.14); color: #ff6b6b; }
+
+        .a-foot {
+            margin-top: 28px; font-size: 11px; color: #8a93b5;
+            font-family: 'IBM Plex Mono', monospace; text-align: center;
+        }
+        .a-foot a { color: #6fa8ff; }
+    </style>
+</head>
+<body data-testid="admin-page">
+
+    <!-- ============ LOGIN ============ -->
+    <div id="admin-login" class="a-wrap">
+        <div class="a-login-wrap" data-testid="admin-login">
+            <h1>LexGuard <span style="color:#f0c93a">/</span> Admin</h1>
+            <p>Enter your admin token to view captured leads and audit analytics.</p>
+            <input
+                type="password"
+                id="admin-token"
+                class="a-input"
+                placeholder="Admin token"
+                autocomplete="off"
+                data-testid="admin-token-input"
+            />
+            <button type="button" class="a-btn" id="admin-login-btn" data-testid="admin-login-btn">
+                <i class="ph-bold ph-sign-in"></i> Unlock dashboard
+            </button>
+            <div class="a-err" id="admin-err" hidden data-testid="admin-err"></div>
+        </div>
+    </div>
+
+    <!-- ============ DASHBOARD ============ -->
+    <div id="admin-dash" class="a-wrap" hidden data-testid="admin-dash">
+        <nav class="a-nav">
+            <div class="a-brand">LexGuard<span>/</span>Admin</div>
+            <div class="a-nav-right">
+                <span id="admin-ts">—</span>
+                <button type="button" class="a-logout" id="admin-logout-btn" data-testid="admin-logout-btn">
+                    <i class="ph ph-sign-out"></i> Sign out
+                </button>
+            </div>
+        </nav>
+
+        <!-- stats -->
+        <div class="a-stats" id="admin-stats" data-testid="admin-stats"></div>
+
+        <!-- leads -->
+        <div class="a-section-head">
+            <h2>Captured leads</h2>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="a-refresh" id="admin-export-btn" data-testid="admin-export-btn" style="background:rgba(240,201,58,0.14); border-color:rgba(240,201,58,0.4); color:#f0c93a;">
+                    <i class="ph ph-file-csv"></i> Export CSV
+                </button>
+                <button type="button" class="a-refresh" id="admin-refresh-btn" data-testid="admin-refresh-btn">
+                    <i class="ph ph-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="a-table-wrap">
+            <table class="a-table" id="admin-leads-table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Source</th>
+                        <th>Analysis ID</th>
+                        <th>Captured</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-leads-body" data-testid="admin-leads-body"></tbody>
+            </table>
+            <div id="admin-empty" class="a-empty" hidden>
+                No leads captured yet. Share your landing page to start collecting.
+            </div>
+        </div>
+
+        <p class="a-foot">
+            <a href="/">← Back to landing</a>
+        </p>
+    </div>
+
+    <!-- ============ DETAIL MODAL ============ -->
+    <div class="a-modal" id="admin-modal" data-testid="admin-modal">
+        <div class="a-modal-panel">
+            <button type="button" class="a-modal-close" id="admin-modal-close">
+                <i class="ph ph-x"></i>
+            </button>
+            <h3>Lead detail</h3>
+            <dl class="a-kv" id="admin-lead-kv"></dl>
+            <h3>Audit snapshot</h3>
+            <dl class="a-kv" id="admin-audit-kv"></dl>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const TOKEN_KEY = 'lg_admin_token';
+            const loginView = document.getElementById('admin-login');
+            const dashView = document.getElementById('admin-dash');
+            const tokenInput = document.getElementById('admin-token');
+            const loginBtn = document.getElementById('admin-login-btn');
+            const logoutBtn = document.getElementById('admin-logout-btn');
+            const errEl = document.getElementById('admin-err');
+            const statsEl = document.getElementById('admin-stats');
+            const tbody = document.getElementById('admin-leads-body');
+            const emptyEl = document.getElementById('admin-empty');
+            const refreshBtn = document.getElementById('admin-refresh-btn');
+            const tsEl = document.getElementById('admin-ts');
+            const modal = document.getElementById('admin-modal');
+            const modalClose = document.getElementById('admin-modal-close');
+            const leadKv = document.getElementById('admin-lead-kv');
+            const auditKv = document.getElementById('admin-audit-kv');
+
+            const API = 'https://lexguard-backend-3mmj.onrender.com/api';
+            const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+            const fmtDate = (iso) => {
+                try { return new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }); }
+                catch { return iso || '—'; }
+            };
+
+            const verdictBadge = (v) => {
+                const up = (v || '').toUpperCase();
+                const cls = up.includes('LOW') ? 'low' : (up.includes('HIGH') ? 'high' : 'mod');
+                return `<span class="a-badge ${cls}">${esc(v)}</span>`;
+            };
+
+            const authFetch = async (path, opts = {}) => {
+                const token = sessionStorage.getItem(TOKEN_KEY);
+                return fetch(`${API}${path}`, {
+                    ...opts,
+                    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token || '', ...(opts.headers || {}) },
+                });
+            };
+
+            const showDash = async () => {
+                loginView.hidden = true;
+                dashView.hidden = false;
+                tsEl.textContent = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+                await Promise.all([loadStats(), loadLeads()]);
+            };
+
+            const loadStats = async () => {
+                const r = await authFetch('/admin/stats');
+                if (!r.ok) return logout();
+                const s = await r.json();
+                statsEl.innerHTML = `
+                    <div class="a-stat"><div class="a-stat-label">Total leads</div><div class="a-stat-num">${s.total_leads}</div></div>
+                    <div class="a-stat"><div class="a-stat-label">Total audits</div><div class="a-stat-num">${s.total_analyses}</div></div>
+                    <div class="a-stat"><div class="a-stat-label">Unlocked reports</div><div class="a-stat-num">${s.unlocked_analyses}</div></div>
+                    <div class="a-stat"><div class="a-stat-label">Conversion rate</div><div class="a-stat-num">${s.conversion_rate}<span class="unit">%</span></div></div>
+                    <div class="a-stat"><div class="a-stat-label">Leads · last 24h</div><div class="a-stat-num">${s.leads_last_24h}</div></div>
+                    <div class="a-stat"><div class="a-stat-label">Audits · last 24h</div><div class="a-stat-num">${s.analyses_last_24h}</div></div>
+                `;
+            };
+
+            const loadLeads = async () => {
+                const r = await authFetch('/admin/leads?limit=200');
+                if (!r.ok) return logout();
+                const leads = await r.json();
+                tbody.innerHTML = '';
+                if (!leads.length) {
+                    emptyEl.hidden = false;
+                    return;
+                }
+                emptyEl.hidden = true;
+                leads.forEach(l => {
+                    const tr = document.createElement('tr');
+                    tr.setAttribute('data-testid', 'admin-lead-row');
+                    tr.innerHTML = `
+                        <td><span class="a-email" data-lead-id="${esc(l.lead_id)}">${esc(l.email)}</span></td>
+                        <td><span class="a-source-chip">${esc(l.source || 'unknown')}</span></td>
+                        <td><code style="font-size:11px;color:#8a93b5;font-family:'IBM Plex Mono',monospace">${esc(l.analysis_id).slice(0, 8)}…</code></td>
+                        <td class="a-date">${fmtDate(l.created_at)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                tbody.querySelectorAll('.a-email').forEach(el => {
+                    el.addEventListener('click', () => openDetail(el.dataset.leadId));
+                });
+            };
+
+            const openDetail = async (leadId) => {
+                const r = await authFetch(`/admin/lead/${leadId}`);
+                if (!r.ok) return;
+                const { lead, analysis } = await r.json();
+                leadKv.innerHTML = `
+                    <dt>Email</dt><dd>${esc(lead.email)}</dd>
+                    <dt>Name</dt><dd>${esc(lead.name || '—')}</dd>
+                    <dt>Company</dt><dd>${esc(lead.company || '—')}</dd>
+                    <dt>Source</dt><dd>${esc(lead.source)}</dd>
+                    <dt>Captured</dt><dd>${fmtDate(lead.created_at)}</dd>
+                `;
+                if (analysis) {
+                    auditKv.innerHTML = `
+                        <dt>Score</dt><dd><strong>${analysis.compliance_score}</strong>/100</dd>
+                        <dt>Verdict</dt><dd>${verdictBadge(analysis.verdict)}</dd>
+                        <dt>Flagged</dt><dd>${analysis.total_clauses_flagged} clauses</dd>
+                        <dt>Summary</dt><dd>${esc(analysis.summary)}</dd>
+                        <dt>Analysis ID</dt><dd><code style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#8a93b5">${esc(analysis.analysis_id)}</code></dd>
+                    `;
+                } else {
+                    auditKv.innerHTML = `<dt>—</dt><dd>Audit snapshot no longer available.</dd>`;
+                }
+                modal.classList.add('open');
+            };
+
+            modalClose.addEventListener('click', () => modal.classList.remove('open'));
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+
+            const logout = () => {
+                sessionStorage.removeItem(TOKEN_KEY);
+                dashView.hidden = true;
+                loginView.hidden = false;
+                tokenInput.value = '';
+                errEl.hidden = true;
+            };
+
+            const login = async () => {
+                const token = (tokenInput.value || '').trim();
+                if (!token) return;
+                errEl.hidden = true;
+                const r = await fetch(`${API}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token }),
+                });
+                if (!r.ok) {
+                    errEl.hidden = false;
+                    errEl.textContent = 'Invalid admin token. Please try again.';
+                    return;
+                }
+                sessionStorage.setItem(TOKEN_KEY, token);
+                await showDash();
+            };
+
+            loginBtn.addEventListener('click', login);
+            tokenInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+            logoutBtn.addEventListener('click', logout);
+            refreshBtn.addEventListener('click', () => { loadStats(); loadLeads(); });
+
+            // CSV export — open the streaming endpoint with token in query param
+            const exportBtn = document.getElementById('admin-export-btn');
+            exportBtn.addEventListener('click', () => {
+                const token = sessionStorage.getItem(TOKEN_KEY);
+                if (!token) return;
+                const url = `${API}/admin/leads.csv?token=${encodeURIComponent(token)}`;
+                window.open(url, '_blank');
+            });
+
+            // Auto-login if token stored
+            if (sessionStorage.getItem(TOKEN_KEY)) {
+                authFetch('/admin/stats').then(r => {
+                    if (r.ok) showDash();
+                    else logout();
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
