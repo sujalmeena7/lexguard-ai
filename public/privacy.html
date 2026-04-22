@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy — LexGuard AI</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+    <style>
+        .legal-page { padding: 120px 0; background: #09090b; min-height: 100vh; }
+        .legal-container { max-width: 800px; margin: 0 auto; padding: 0 24px; color: #a1a1aa; line-height: 1.8; }
+        .legal-container h1 { color: #fff; font-size: 48px; font-family: 'Cabinet Grotesk', sans-serif; margin-bottom: 40px; }
+        .legal-container h2 { color: #fff; font-size: 24px; margin-top: 48px; margin-bottom: 16px; font-family: 'Cabinet Grotesk', sans-serif; }
+        .legal-container p { margin-bottom: 24px; }
+        .legal-container ul { margin-bottom: 24px; padding-left: 20px; }
+        .legal-container li { margin-bottom: 12px; }
+        .legal-back { display: inline-flex; align-items: center; gap: 8px; color: #3b82f6; text-decoration: none; font-weight: 600; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+    <header class="nav">
+        <div class="nav-inner">
+            <a href="/" class="brand">
+                <span class="brand-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M12 3 L21 7 V13 C21 17.5 17 20.5 12 21 C7 20.5 3 17.5 3 13 V7 Z" />
+                        <path d="M8 12 L11 15 L16 10" />
+                    </svg>
+                </span>
+                <span class="brand-word">LexGuard<span class="brand-slash">/</span><span class="brand-ai">AI</span></span>
+            </a>
+            <a href="/" class="nav-demo">Back to Home</a>
+        </div>
+    </header>
+
+    <main class="legal-page">
+        <div class="legal-container">
+            <a href="/" class="legal-back">← Back to Overview</a>
+            <h1>Privacy Policy</h1>
+            <p>Last Updated: April 23, 2026</p>
+
+            <p>At LexGuard AI, we take your privacy as seriously as the compliance audits we perform. This policy outlines our commitment to the Digital Personal Data Protection (DPDP) Act 2023 and how we handle your information.</p>
+
+            <h2>1. Data Minimization & Ephemeral Processing</h2>
+            <p>LexGuard is engineered to be a non-custodial auditing platform. We do not store the documents you upload for audit. All legal documents processed via our "Live Audit" or "Dashboard" environments are stored in an ephemeral, session-scoped vector store (ChromaDB) and are purged immediately upon the termination of your session.</p>
+
+            <h2>2. Information We Collect</h2>
+            <p>We only collect the minimum information necessary to provide our services:</p>
+            <ul>
+                <li><strong>Contact Information:</strong> When you unlock a report or request a pilot, we collect your name, email, and company details to facilitate delivery and business communication.</li>
+                <li><strong>Usage Metadata:</strong> We track anonymized audit counts and risk verdict frequencies to maintain our "Live Activity Ticker" and improve our detection algorithms.</li>
+            </ul>
+
+            <h2>3. No Model Training</h2>
+            <p><strong>Crucial Commitment:</strong> We never use your uploaded documents, legal clauses, or audit results to train our LLMs (Llama 3) or any third-party AI models. Your proprietary legal data remains yours.</p>
+
+            <h2>4. Third-Party Processing</h2>
+            <p>We utilize Groq LPU™ for high-speed inference. Data sent to Groq for analysis is processed ephemerally and is not retained for training purposes by the infrastructure provider.</p>
+
+            <h2>5. Your Rights under DPDP 2023</h2>
+            <p>As a data principal in India, you have the right to access, rectify, and erase your personal data. Since we do not retain your documents, these rights primarily apply to the contact information you provide during lead capture.</p>
+
+            <h2>6. Contact Us</h2>
+            <p>For any privacy-related inquiries, please contact our Data Protection Officer at <a href="mailto:meenasujal60@gmail.com" style="color: #3b82f6;">meenasujal60@gmail.com</a>.</p>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">
+            <span>© 2026 LexGuard AI. Built for the DPDP 2023 ecosystem.</span>
+        </div>
+    </footer>
+</body>
+</html>
