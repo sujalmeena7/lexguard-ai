@@ -1,49 +1,45 @@
 # LexGuard AI — Product Requirements Document
 
 ## Original Problem Statement
-Add an inline "Try it now" hero widget to the LexGuard AI landing page (repo: https://github.com/sujalmeena7/lexguard-ai). Replace the static terminal mockup with a live text box. User pastes any paragraph of a privacy policy → gets a real DPDP verdict in 2 seconds → sees flagged clauses + a score → is prompted "Enter email to unlock full report." Uses Groq (Llama 3.3 70B) for fast inference.
-
-## User Preferences (captured at kickoff)
-- Groq API key: provided by user
-- Email storage: MongoDB (leads collection) + show full report in-app (no email sending)
-- Full report: all flagged clauses + recommendations + DPDP 6-point checklist
-- Preview: 2 flagged clauses + compliance score (0-100) + verdict
-- DPDP focus areas: Consent, Notice, Purpose Limitation, Data Minimization, Data Principal Rights, Breach Notification
+Add an inline "Try it now" hero widget to the LexGuard AI landing page. User pastes a privacy policy → gets a real DPDP verdict in 2 seconds → sees flagged clauses + score → email gate unlocks full report. Follow-up: fix CTA, rate-limit Groq, index Mongo, build admin view.
 
 ## Architecture
-- **Backend**: FastAPI at /app/backend/server.py — endpoints `POST /api/analyze`, `POST /api/unlock`, `GET /api/leads/count`. Groq AsyncGroq client (model: llama-3.3-70b-versatile) with JSON-object response_format. MongoDB collections: `analyses` (full analysis cached by analysis_id), `leads` (captured emails).
-- **Frontend**: Static landing page served from /app/frontend/public/index.html (CRA's public folder). Widget HTML/CSS/JS: /app/frontend/public/css/widget.css + /app/frontend/public/js/widget.js. React App.js returns null — landing is pure HTML/CSS/JS for fast load. Uses relative `/api` paths (ingress routes to backend).
+- **Backend** (FastAPI /app/backend/server.py): `/api/analyze`, `/api/unlock`, `/api/leads/count`, `/api/admin/*`. Groq (llama-3.3-70b-versatile). MongoDB `analyses` + `leads`. Rate limiter via slowapi (proxy-aware X-Forwarded-For). Indexes on startup.
+- **Frontend** (static HTML in /app/frontend/public/):
+  - `index.html` — landing page with live hero widget
+  - `admin.html` — token-gated admin SPA (stats + leads table + detail modal)
+  - `js/widget.js`, `css/widget.css`, `js/main.js`
+  - React App.js returns null (landing is pure HTML)
 
-## Widget States
-1. **input** — textarea + "Run DPDP Audit" + "Try a sample clause"
-2. **loading** — animated log lines + progress bar
-3. **preview** — compliance score (serif 48px), colored verdict pill, score bar, summary quote, 2 flagged clause cards with risk chips + DPDP section refs + excerpts + suggested fixes, email gate
-4. **full** (post-unlock) — all flagged clauses + tabbed DPDP 6-point checklist
-5. **error** — retry
+## What's Been Implemented
 
-## What's Been Implemented (Jan 2026)
-- [x] Inline hero "Try it now" widget replacing static terminal mockup
-- [x] Real-time Groq-powered DPDP 2023 analysis (< 2s)
-- [x] Compliance score 0-100 with LOW / MODERATE / HIGH RISK verdict
-- [x] 2-clause preview → email gate → full report unlock
-- [x] 6-focus-area DPDP checklist (Consent, Notice, Purpose Limitation, Data Minimization, Data Principal Rights, Breach Notification)
-- [x] MongoDB persistence (analyses + leads)
-- [x] Raw policy text NOT retained — ephemeral processing (matches "never used to train models" copy)
-- [x] Responsive design (mobile-friendly)
-- [x] Full test coverage: 15/15 backend pytest + full Playwright E2E (100% pass)
+### Iteration 1 (Jan 2026)
+- [x] Live hero widget replacing static terminal mockup
+- [x] `POST /api/analyze` — Groq DPDP audit, returns score + 2-clause preview
+- [x] `POST /api/unlock` — stores lead in MongoDB, returns full report (all clauses + 6-focus checklist)
+- [x] 5 widget states (input / loading / preview / full / error)
+- [x] MongoDB persistence (ephemeral text — raw policy never stored)
+- [x] 15/15 backend pytest + full Playwright E2E (100% pass)
+
+### Iteration 2 (Jan 2026)
+- [x] **Bug fix**: Hero "Try a Live Audit" CTA now scrolls, focuses the textarea, and flashes the widget border (visible feedback even when widget already in view)
+- [x] **Rate limiting** on `/api/analyze` (5/min, 30/hour per IP), `/api/unlock` (20/min), `/api/admin/login` (10/min). Proxy-aware using X-Forwarded-For.
+- [x] **MongoDB indexes** — `analyses.analysis_id` (unique), `analyses.created_at`, `leads.email`, `leads.lead_id` (unique), `leads.created_at`, `leads.analysis_id`. Auto-created on startup.
+- [x] **Admin API**: `/api/admin/login`, `/api/admin/stats`, `/api/admin/leads`, `/api/admin/lead/{id}` — protected by `X-Admin-Token` header.
+- [x] **Admin SPA** at `/admin.html` — token login, live stats dashboard (total leads, audits, conversion rate, 24h counters), leads table with click-to-detail modal.
 
 ## P1 / Backlog
-- Rate limiting on /api/analyze (prevent Groq abuse)
-- MongoDB indexes on analyses.analysis_id + leads.email
-- SSE streaming of Groq output for token-by-token display
-- Admin dashboard to view captured leads
-- Email delivery of full report (Resend/SendGrid)
-- PDF export of unlocked report
-- Migrate deprecated @app.on_event('shutdown') → lifespan handler
+- Migrate deprecated `@app.on_event` → FastAPI lifespan context
+- Token-level SSE streaming of Groq output (replace fake log lines)
+- Email delivery of unlocked reports (Resend)
+- PDF export of full report
+- Drip email sequence to captured leads
+- CSV export of leads from admin page
 
-## P2 / Future
-- Multi-document batch analysis
-- Client-side SSE progress instead of fake log lines
-- Paywall tiers (free audits/month → paid enterprise)
-- A/B test email gate copy
-- Analytics on conversion rate (paste → analyze → unlock)
+## User Personas
+- **End user (landing visitor)**: Indian founder/legal counsel pasting privacy policy for a quick DPDP check
+- **Admin (Sujal)**: Sole product owner monitoring lead flow + conversion
+
+## Credentials
+- `GROQ_API_KEY`, `ADMIN_TOKEN=lexguard-admin-2026` in `/app/backend/.env`
+- Admin login: `${REACT_APP_BACKEND_URL}/admin.html` → token `lexguard-admin-2026`
