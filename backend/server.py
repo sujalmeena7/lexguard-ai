@@ -50,6 +50,10 @@ app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+@app.get("/")
+async def health_check():
+    return {"service": "LexGuard AI", "status": "ok", "version": "1.0.0"}
+
 api_router = APIRouter(prefix="/api")
 
 logger = logging.getLogger(__name__)
