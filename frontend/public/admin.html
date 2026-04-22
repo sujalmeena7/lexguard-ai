@@ -240,9 +240,14 @@
         <!-- leads -->
         <div class="a-section-head">
             <h2>Captured leads</h2>
-            <button type="button" class="a-refresh" id="admin-refresh-btn" data-testid="admin-refresh-btn">
-                <i class="ph ph-arrow-clockwise"></i> Refresh
-            </button>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="a-refresh" id="admin-export-btn" data-testid="admin-export-btn" style="background:rgba(240,201,58,0.14); border-color:rgba(240,201,58,0.4); color:#f0c93a;">
+                    <i class="ph ph-file-csv"></i> Export CSV
+                </button>
+                <button type="button" class="a-refresh" id="admin-refresh-btn" data-testid="admin-refresh-btn">
+                    <i class="ph ph-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
         </div>
 
         <div class="a-table-wrap">
@@ -426,6 +431,15 @@
             tokenInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
             logoutBtn.addEventListener('click', logout);
             refreshBtn.addEventListener('click', () => { loadStats(); loadLeads(); });
+
+            // CSV export — open the streaming endpoint with token in query param
+            const exportBtn = document.getElementById('admin-export-btn');
+            exportBtn.addEventListener('click', () => {
+                const token = sessionStorage.getItem(TOKEN_KEY);
+                if (!token) return;
+                const url = `${API}/admin/leads.csv?token=${encodeURIComponent(token)}`;
+                window.open(url, '_blank');
+            });
 
             // Auto-login if token stored
             if (sessionStorage.getItem(TOKEN_KEY)) {
