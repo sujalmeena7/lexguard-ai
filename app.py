@@ -32,46 +32,120 @@ def clear_session_cache():
 
 # Configure Streamlit page
 st.set_page_config(
-    page_title="LexGuard AI - DPDP Auditor",
+    page_title="LexGuard AI | DPDP Compliance",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# Custom Styling (CSS)
+# Custom Styling (LexGuard Pro Theme)
 st.markdown("""
 <style>
-    .reportview-container {
-        background: #f0f2f6;
+    @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400&f[]=satoshi@400,500,700,900&display=swap');
+
+    :root {
+        --primary: #002FA7;
+        --primary-hover: #0040d9;
+        --bg-dark: #09090b;
+        --card-bg: rgba(255, 255, 255, 0.03);
+        --border: rgba(255, 255, 255, 0.1);
+        --zinc-400: #a1a1aa;
     }
-    .main .block-container {
+
+    /* Global Overrides */
+    .stApp {
+        background-color: var(--bg-dark);
+        color: #ffffff;
+        font-family: 'Satoshi', sans-serif;
+    }
+
+    /* Hide Streamlit UI elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stHeader"] {background: rgba(0,0,0,0); height: 0;}
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #0f1115;
+        border-right: 1px solid var(--border);
         padding-top: 2rem;
     }
+    
+    /* Buttons */
+    .stButton > button {
+        background-color: transparent;
+        color: white;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        width: 100%;
+    }
+    .stButton > button:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(0, 47, 167, 0.05);
+    }
+    
+    /* Primary Action Buttons */
+    div.stButton > button[kind="primary"] {
+        background-color: var(--primary);
+        border: none;
+        color: white !important;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background-color: var(--primary-hover);
+        color: white !important;
+    }
+
+    /* Cards */
+    .lg-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        backdrop-filter: blur(12px);
+    }
+
+    /* Metrics */
+    [data-testid="stMetricValue"] {
+        font-family: 'Cabinet Grotesk', sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    
+    /* File Uploader */
+    [data-testid="stFileUploader"] {
+        background: var(--card-bg);
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    /* Headings */
+    h1, h2, h3 {
+        font-family: 'Cabinet Grotesk', sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
     .paywall-box {
-        background: linear-gradient(135deg, #0f2044 0%, #1a3a6b 60%, #0d1f42 100%);
-        border: 1.5px solid #4a7fd4;
-        padding: 28px 32px;
-        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(0, 47, 167, 0.1) 0%, rgba(0, 20, 80, 0.2) 100%);
+        border: 1px solid rgba(0, 47, 167, 0.3);
+        padding: 24px;
+        border-radius: 12px;
         text-align: center;
-        margin-top: 30px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 24px rgba(10, 30, 80, 0.45);
+        margin: 20px 0;
     }
     .paywall-box h4 {
-        color: #f0c93a !important;
-        font-size: 1.2rem;
-        font-weight: 700;
-        margin-bottom: 10px;
-        letter-spacing: 0.03em;
+        color: #ffffff !important;
+        margin-bottom: 8px;
     }
     .paywall-box p {
-        color: #d0dff8 !important;
-        font-size: 0.97rem;
-        margin: 0;
-        line-height: 1.6;
-    }
-    .sidebar .stButton>button {
-        text-align: left;
+        color: var(--zinc-400) !important;
+        font-size: 0.9rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -133,8 +207,12 @@ def load_retriever():
 
 # ---- Sidebar ----
 with st.sidebar:
-    st.title("⚖️ LexGuard AI")
-    st.markdown("---")
+    st.markdown("""
+    <div style='text-align: center; padding-bottom: 20px;'>
+        <h2 style='color: #002FA7; margin-bottom: 0;'>LexGuard/AI</h2>
+        <p style='color: #a1a1aa; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase;'>Audit Engine v2.1</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Navigation Buttons
     if st.button("📊 Run Audit", use_container_width=True):
@@ -192,8 +270,13 @@ with st.sidebar:
 
 # ---- Page Routing ----
 if st.session_state.current_page == "audit":
-    st.header("📄 DPDP Compliance Auditor")
-    st.markdown("Upload a contract or policy document to automatically audit it against the **DPDP Act 2023**.")
+    st.markdown("""
+    <div style='margin-bottom: 30px;'>
+        <p style='color: #002FA7; font-family: monospace; font-size: 0.8rem; letter-spacing: 0.2em; margin-bottom: 8px;'>§ 01 — LIVE AUDIT</p>
+        <h1 style='margin-top: 0;'>DPDP Compliance Auditor</h1>
+        <p style='color: #a1a1aa; font-size: 1.1rem; max-width: 600px;'>Upload a contract or policy document to automatically audit it against the <strong>DPDP Act 2023</strong>.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Persistent Rendering Logic
     if st.session_state.audit_complete and st.session_state.audit_results is not None:
@@ -211,10 +294,22 @@ if st.session_state.current_page == "audit":
         m = st.session_state.metrics
         st.markdown("### Findings Summary")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Clauses", m["total_clauses"])
-        c2.metric("High Risk", f"{m['high_risk']} 🔴")
-        c3.metric("Medium Risk", f"{m['medium_risk']} 🟠")
-        c4.metric("Compliant", f"{m['compliant']} 🟢")
+        with c1:
+            st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
+            st.metric("Total Clauses", m["total_clauses"])
+            st.markdown("</div>", unsafe_allow_html=True)
+        with c2:
+            st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
+            st.metric("High Risk", f"{m['high_risk']} 🔴")
+            st.markdown("</div>", unsafe_allow_html=True)
+        with c3:
+            st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
+            st.metric("Medium Risk", f"{m['medium_risk']} 🟠")
+            st.markdown("</div>", unsafe_allow_html=True)
+        with c4:
+            st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
+            st.metric("Compliant", f"{m['compliant']} 🟢")
+            st.markdown("</div>", unsafe_allow_html=True)
         
         # --- Compliance Gauge Chart ---
         import plotly.graph_objects as go
@@ -229,17 +324,21 @@ if st.session_state.current_page == "audit":
             mode = "gauge+number",
             value = score,
             domain = {'x': [0, 1], 'y': [0, 1]},
-            title = {'text': "Compliance Health Score", 'font': {'size': 20}},
+            title = {'text': "Compliance Health Score", 'font': {'size': 24, 'color': 'white', 'family': 'Cabinet Grotesk'}},
             gauge = {
-                'axis': {'range': [0, 100]},
-                'bar': {'color': "black"},
+                'axis': {'range': [0, 100], 'tickcolor': "white"},
+                'bar': {'color': "#002FA7"},
+                'bgcolor': "rgba(255,255,255,0.05)",
+                'borderwidth': 2,
+                'bordercolor': "rgba(255,255,255,0.1)",
                 'steps': [
-                    {'range': [0, 50], 'color': "red"},
-                    {'range': [50, 80], 'color': "orange"},
-                    {'range': [80, 100], 'color': "green"}
+                    {'range': [0, 50], 'color': "rgba(185, 28, 28, 0.3)"},
+                    {'range': [50, 80], 'color': "rgba(180, 83, 9, 0.3)"},
+                    {'range': [80, 100], 'color': "rgba(22, 101, 52, 0.3)"}
                 ]
             }
         ))
+        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'color': "white"})
         st.plotly_chart(fig, use_container_width=True)
         
         report_data = st.session_state.audit_results
@@ -249,11 +348,13 @@ if st.session_state.current_page == "audit":
         for i in range(preview_count):
             item = report_data[i]
             is_high = "High" in item.get("status", "")
-            with st.expander(f"Clause #{item.get('clause_id')} (Page {item.get('page_num')}) - {'🔴 HIGH RISK' if is_high else '🟢 COMPLIANT'}", expanded=True):
-                st.markdown("**Original Clause:**")
+            with st.expander(f"Clause #{item.get('clause_id')} (Page {item.get('page_num')}) — {'🔴 CRITICAL RISK' if is_high else '🟢 VERIFIED COMPLIANT'}", expanded=True):
+                st.markdown("<div style='padding: 10px;'>", unsafe_allow_html=True)
+                st.markdown("**ORIGINAL DOCUMENT EXCERPT:**")
                 st.info(item.get("clause_text"))
-                st.markdown("**AI Audit Result:**")
-                st.warning(item.get("audit_result"))
+                st.markdown("**AUDIT VERDICT:**")
+                st.markdown(f"<div style='background: rgba(0,0,0,0.2); padding: 15px; border-left: 4px solid {'#b91c1c' if is_high else '#166534'};'>{item.get('audit_result')}</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
         
         viewed_findings = preview_count
         total_findings = len(report_data)

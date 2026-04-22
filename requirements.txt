@@ -8,3 +8,4 @@ streamlit==1.46.1
 fpdf2==2.8.7
 plotly==6.2.0
 langchain-groq==1.1.2
+tenacity>=8.0.0
