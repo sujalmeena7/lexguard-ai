@@ -1,7 +1,10 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Header
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import os
 import json
 import logging
@@ -24,9 +27,16 @@ db = client[os.environ['DB_NAME']]
 # Groq client
 GROQ_API_KEY = os.environ['GROQ_API_KEY']
 GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'lexguard-admin-2026')
 groq_client = AsyncGroq(api_key=GROQ_API_KEY)
 
+# Rate limiter (per client IP)
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 api_router = APIRouter(prefix="/api")
 
 logger = logging.getLogger(__name__)
@@ -47,7 +57,7 @@ class UnlockRequest(BaseModel):
 
 class FlaggedClause(BaseModel):
     clause_id: str
-    risk_level: str  # High | Medium | Low
+    risk_level: str
     dpdp_section: str
     clause_excerpt: str
     issue: str
@@ -56,19 +66,29 @@ class FlaggedClause(BaseModel):
 
 class ChecklistItem(BaseModel):
     focus_area: str
-    status: str  # Compliant | Partial | Non-Compliant | Not Addressed
+    status: str
     note: str
 
 
 class AnalysisResult(BaseModel):
     analysis_id: str
     compliance_score: int
-    verdict: str  # LOW RISK | MODERATE RISK | HIGH RISK
+    verdict: str
     summary: str
     total_clauses_flagged: int
     flagged_clauses: List[FlaggedClause]
     checklist: List[ChecklistItem]
     created_at: str
+
+
+class Lead(BaseModel):
+    lead_id: str
+    email: str
+    name: Optional[str] = None
+    company: Optional[str] = None
+    analysis_id: str
+    created_at: str
+    source: str
 
 
 # ====================== Groq Prompt ======================
@@ -114,6 +134,14 @@ You MUST respond with ONLY a valid JSON object, no markdown fences, no prose. Us
 Return at minimum 4 flagged_clauses if any risks exist, up to 8. All 6 checklist items are mandatory. Be decisive, specific, and cite DPDP sections where possible."""
 
 
+# ====================== Admin auth ======================
+
+def require_admin(x_admin_token: Optional[str] = Header(None)):
+    if x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    return True
+
+
 # ====================== Routes ======================
 
 @api_router.get("/")
@@ -122,8 +150,9 @@ async def root():
 
 
 @api_router.post("/analyze", response_model=AnalysisResult)
-async def analyze_policy(req: AnalyzeRequest):
-    """Analyze privacy policy against DPDP Act 2023. Returns PREVIEW (2 clauses visible)."""
+@limiter.limit("5/minute;30/hour")
+async def analyze_policy(request: Request, req: AnalyzeRequest):
+    """Analyze privacy policy against DPDP Act 2023. Rate limited: 5/min, 30/hour per IP."""
     try:
         completion = await groq_client.chat.completions.create(
             model=GROQ_MODEL,
@@ -162,10 +191,8 @@ async def analyze_policy(req: AnalyzeRequest):
         "unlocked": False,
     }
 
-    # Persist analysis for email-gate unlock later (raw policy text is NOT retained — ephemeral processing only)
     await db.analyses.insert_one({**result})
 
-    # Return PREVIEW: only first 2 flagged clauses
     preview = AnalysisResult(
         analysis_id=analysis_id,
         compliance_score=result["compliance_score"],
@@ -173,20 +200,20 @@ async def analyze_policy(req: AnalyzeRequest):
         summary=result["summary"],
         total_clauses_flagged=len(flagged),
         flagged_clauses=[FlaggedClause(**c) for c in flagged[:2]],
-        checklist=[],  # checklist is part of full report
+        checklist=[],
         created_at=created_at,
     )
     return preview
 
 
 @api_router.post("/unlock", response_model=AnalysisResult)
-async def unlock_full_report(req: UnlockRequest):
-    """Capture email → store in leads collection → return FULL analysis (all clauses + checklist)."""
+@limiter.limit("20/minute")
+async def unlock_full_report(request: Request, req: UnlockRequest):
+    """Capture email → store in leads collection → return FULL analysis."""
     doc = await db.analyses.find_one({"analysis_id": req.analysis_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Analysis not found. Please re-run analysis.")
 
-    # Store lead
     lead = {
         "lead_id": str(uuid.uuid4()),
         "email": req.email,
@@ -216,9 +243,62 @@ async def unlock_full_report(req: UnlockRequest):
 
 @api_router.get("/leads/count")
 async def leads_count():
-    """Simple stat for admin."""
     count = await db.leads.count_documents({})
     return {"total_leads": count}
+
+
+# ====================== Admin routes ======================
+
+@api_router.post("/admin/login")
+async def admin_login(payload: dict):
+    """Validate admin token. Returns {ok: true} or 401."""
+    token = (payload or {}).get("token", "")
+    if token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return {"ok": True}
+
+
+@api_router.get("/admin/leads", response_model=List[Lead])
+async def admin_list_leads(
+    _: bool = Depends(require_admin),
+    limit: int = 200,
+    skip: int = 0,
+):
+    """List captured leads (most recent first)."""
+    cursor = db.leads.find({}, {"_id": 0}).sort("created_at", -1).skip(skip).limit(min(limit, 500))
+    leads = await cursor.to_list(length=min(limit, 500))
+    return [Lead(**l) for l in leads]
+
+
+@api_router.get("/admin/stats")
+async def admin_stats(_: bool = Depends(require_admin)):
+    """Admin dashboard stats."""
+    total_leads = await db.leads.count_documents({})
+    total_analyses = await db.analyses.count_documents({})
+    unlocked_analyses = await db.analyses.count_documents({"unlocked": True})
+    # Last 24h
+    from datetime import timedelta
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    leads_24h = await db.leads.count_documents({"created_at": {"$gte": since}})
+    analyses_24h = await db.analyses.count_documents({"created_at": {"$gte": since}})
+    return {
+        "total_leads": total_leads,
+        "total_analyses": total_analyses,
+        "unlocked_analyses": unlocked_analyses,
+        "conversion_rate": round((unlocked_analyses / total_analyses * 100), 1) if total_analyses else 0,
+        "leads_last_24h": leads_24h,
+        "analyses_last_24h": analyses_24h,
+    }
+
+
+@api_router.get("/admin/lead/{lead_id}")
+async def admin_lead_detail(lead_id: str, _: bool = Depends(require_admin)):
+    """Get a single lead + the audit they unlocked."""
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    analysis = await db.analyses.find_one({"analysis_id": lead["analysis_id"]}, {"_id": 0})
+    return {"lead": lead, "analysis": analysis}
 
 
 app.include_router(api_router)
@@ -235,6 +315,21 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
+
+@app.on_event("startup")
+async def startup_indexes():
+    """Create MongoDB indexes for performance at scale."""
+    try:
+        await db.analyses.create_index("analysis_id", unique=True)
+        await db.analyses.create_index("created_at")
+        await db.leads.create_index("email")
+        await db.leads.create_index("lead_id", unique=True)
+        await db.leads.create_index("created_at")
+        await db.leads.create_index("analysis_id")
+        logger.info("MongoDB indexes created/verified")
+    except Exception as e:
+        logger.error(f"Index creation failed: {e}")
 
 
 @app.on_event("shutdown")

@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 2 — tested hero CTA bug-fix, rate limiting, Mongo indexes, admin API + admin.html SPA. Backend: 12/13 tests pass (1 xfail by design). Frontend: hero CTA behavior + admin SPA full flow verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/analyze + /api/unlock", "issue": "slowapi uses get_remote_address() which returns the K8s ingress proxy pod IP behind Cloudflare. Ingress rotates requests across multiple proxy pods (observed 10.64.129.166 and 10.64.130.9), so each pod has its own bucket and the effective per-user rate limit is ~2x the configured cap. Rate limit DOES fire (backend log shows 429 after 7 sequential same-proxy requests), but not reliably from external testers. For production accuracy, derive the limiter key from X-Forwarded-For[0] instead of request.client.host."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_lexguard.py",
+    "/app/backend/tests/test_admin_and_limits.py",
+    "/app/test_reports/pytest/admin_and_limits.xml"
+  ],
+  "action_items": [
+    "Consider switching slowapi key_func from get_remote_address to a wrapper that prefers X-Forwarded-For[0] so per-user rate limits are enforced correctly behind ingress. Current behaviour gives roughly 2× the advertised budget before 429.",
+    "Migrate deprecated @app.on_event('startup'/'shutdown') to FastAPI lifespan context (non-blocking)."
+  ],
+  "critical_code_review_comments": [
+    "server.py get_remote_address behind proxy: returns pod IP, not client IP → limits are per-proxy, effectively multiplied. Not a functional bug but a security/quota concern.",
+    "admin.html: admin token is stored in sessionStorage (acceptable for a simple internal tool) but is sent over TLS as X-Admin-Token. Fine for internal use; for multi-admin setups move to JWT/session cookies with expiry.",
+    "admin endpoints (/api/admin/leads, /api/admin/stats, /api/admin/lead/{id}) are NOT rate-limited — token brute-force protection absent. Consider adding @limiter.limit to /api/admin/login.",
+    "Landing page still persists truncated policy_text while UI claims 'never used to train models' (carry-over from iteration 1)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_and_limits.py (new)",
+    "/app/memory/test_credentials.md (ADMIN_TOKEN documented)"
+  ],
+  "success_rate": {"backend": "92% (12/13, 1 xfail env-limit)", "frontend": "100%"},
+  "test_credentials": "ADMIN_TOKEN=lexguard-admin-2026 (backend/.env), documented in /app/memory/test_credentials.md",
+  "seed_data_creation": "No new seed data. Existing leads: meenasujal60@gmail.com, TEST_e2e@example.com, TEST_qa@example.com, test@example.com (4 leads, 41 analyses).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Mongo indexes verified: analyses {_id, analysis_id unique, created_at}; leads {_id, email, lead_id unique, created_at, analysis_id}. Admin SPA is at /admin.html (NOT /admin). Hero CTA data-testid=hero-primary-cta href=#try-it-widget. main.js handler focuses #lg-input via setTimeout(400ms) then adds .lg-widget-flash for 900ms. Rate-limit test marked xfail due to K8s ingress proxy-IP rotation — limiter itself is verified working in backend logs.",
+  "rca of the issue": {
+    "bug reported": "Hero 'Try a Live Audit' CTA did nothing on click.",
+    "rca": "Native anchor click worked for scroll only. Users on desktop (widget already in viewport) saw no visible change.",
+    "fix verified": "main.js smooth-anchor handler now (a) preventDefault + smooth scroll, (b) after 400ms focuses #lg-input and adds .lg-widget-flash class, (c) removes the class after 900ms. CTA href=#try-it-widget is correctly wired to trigger the special branch. Verified via Playwright: activeElement.id becomes 'lg-input' and widget has 'lg-widget-flash' class during the flash window."
+  }
+}

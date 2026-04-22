@@ -652,6 +652,15 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Flash the widget border when user clicks the hero CTA to draw attention */
+.lg-widget-flash {
+    animation: lg-widget-flash .9s ease;
+}
+@keyframes lg-widget-flash {
+    0%, 100% { box-shadow: 0 30px 80px -20px rgba(8, 15, 40, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.02) inset; }
+    40% { box-shadow: 0 30px 80px -20px rgba(8, 15, 40, 0.55), 0 0 0 4px rgba(240, 201, 58, 0.55); }
+}
+
 /* ========== MOBILE ========== */
 @media (max-width: 640px) {
     .lg-widget { border-radius: 14px; }
