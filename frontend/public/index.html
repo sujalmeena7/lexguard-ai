@@ -242,46 +242,28 @@
                         </div>
                     </div>
 
-                    <!-- ============ STATE: REDIRECT (after email capture → Streamlit) ============ -->
+                    <!-- ============ STATE: FULL REPORT (after email capture) ============ -->
                     <div class="lg-state lg-state-full" data-lg-state="full" hidden>
                         <div class="lg-head">
                             <span class="lg-head-dot lg-head-dot-ok"></span>
-                            <span class="lg-head-title">audit.captured — <span class="lg-head-pill lg-head-pill-unlocked">EMAIL SAVED</span></span>
+                            <span class="lg-head-title">audit.full_report — <span class="lg-head-pill lg-head-pill-unlocked">EMAIL SAVED</span></span>
                             <button type="button" class="lg-reset" id="lg-reset-btn-2" data-testid="lg-reset-btn-2">
                                 <i class="ph ph-arrow-counter-clockwise"></i> New audit
                             </button>
                         </div>
-
-                        <div class="lg-redirect-body">
-                            <div class="lg-redirect-icon">
-                                <i class="ph-bold ph-rocket-launch"></i>
+                        <div class="lg-preview-body">
+                            <!-- All flagged clauses -->
+                            <div class="lg-clauses-head">
+                                <span class="lg-clauses-title">ALL FLAGGED CLAUSES</span>
                             </div>
-                            <h3 class="lg-redirect-title">Opening the full dashboard…</h3>
+                            <div class="lg-clauses" id="lg-clauses-full"></div>
 
-                            <!-- Credit reward badge (makes email capture feel like a gain, not a give) -->
-                            <div class="lg-credit-badge" data-testid="lg-credit-badge">
-                                <div class="lg-credit-badge-icon"><i class="ph-fill ph-gift"></i></div>
-                                <div class="lg-credit-badge-body">
-                                    <div class="lg-credit-badge-title">+1 free audit credit granted</div>
-                                    <div class="lg-credit-badge-sub">We've applied a 1-free-audit credit to your Streamlit account — check your dashboard.</div>
-                                </div>
+                            <!-- Readiness Checklist -->
+                            <div class="lg-clauses-head" style="margin-top: 24px;">
+                                <span class="lg-clauses-title">DPDP COMPLIANCE CHECKLIST</span>
+                                <span class="lg-clauses-meta">Key Focus Areas</span>
                             </div>
-
-                            <p class="lg-redirect-sub" id="lg-redirect-sub">
-                                We've opened the LexGuard Streamlit dashboard in a new tab. Upload full PDFs, export branded reports, and audit 100+ documents.
-                            </p>
-                            <div class="lg-redirect-actions">
-                                <a
-                                    href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app"
-                                    target="_blank"
-                                    rel="noopener"
-                                    class="lg-btn lg-btn-primary lg-btn-redirect"
-                                    data-testid="lg-redirect-cta"
-                                >
-                                    <span class="lg-btn-label"><i class="ph-bold ph-arrow-up-right"></i> Open Dashboard &amp; claim credit</span>
-                                </a>
-                                <p class="lg-redirect-hint">Didn't open? <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
-                            </div>
+                            <div class="lg-checklist" id="lg-checklist"></div>
                         </div>
                     </div>
 
