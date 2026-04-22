@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LexGuard AI — DPDP 2023 Compliance Engine</title>
+    <meta name="description" content="Enterprise-grade AI auditor that transforms dense legal agreements into actionable DPDP 2023 risk scores in seconds. Powered by Llama 3 on Groq LPUs." />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/widget.css" />
+
+    <!-- Backend URL exposed for widget JS (replaces build-time token) -->
+    <script>window.__LEXGUARD_BACKEND__ = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8000" : "https://lexguard-backend-3mmj.onrender.com";</script>
+    <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+    <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
+</head>
+<body data-testid="landing-page">
+
+    <!-- Hidden React mount (unused, but CRA requires it) -->
+    <div id="root" style="display:none"></div>
+
+    <!-- NAV -->
+    <header class="nav" data-testid="site-nav">
+        <div class="nav-inner">
+            <a href="#" class="brand" data-testid="brand-logo">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square" stroke-linejoin="miter">
+                        <path d="M12 3 L21 7 V13 C21 17.5 17 20.5 12 21 C7 20.5 3 17.5 3 13 V7 Z" />
+                        <path d="M8 12 L11 15 L16 10" />
+                    </svg>
+                </span>
+                <span class="brand-word">LexGuard<span class="brand-slash">/</span><span class="brand-ai">AI</span></span>
+            </a>
+
+            <nav class="nav-links" aria-label="Primary">
+                <a href="#try-it">Try it Now</a>
+                <a href="#features">Features</a>
+                <a href="#process">Process</a>
+                <a href="#enterprise">Enterprise</a>
+            </nav>
+
+            <div class="nav-actions">
+                <button type="button" id="theme-toggle" class="btn btn-secondary" style="padding: 0 12px;" data-testid="theme-toggle" aria-label="Toggle dark mode">
+                    <i class="ph-bold ph-moon"></i>
+                </button>
+                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="nav-demo" data-testid="nav-demo-link">Launch Dashboard <i class="ph ph-arrow-up-right"></i></a>
+                <button type="button" class="btn btn-primary" data-open-modal="pilot" data-testid="nav-enterprise-cta">Enterprise Access</button>
+            </div>
+
+            <button class="menu-btn" aria-label="Open menu" data-testid="mobile-menu-btn">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero" data-testid="hero-section" id="try-it">
+        <div class="hero-bg" aria-hidden="true"></div>
+
+        <div class="hero-rule"><span class="hero-rule-tag">§ 01 — LIVE AUDIT</span><span class="hero-rule-line"></span></div>
+
+        <div class="hero-inner">
+            <div class="hero-left">
+                <p class="overline" data-testid="hero-overline">
+                    <span class="dot"></span> DPDP 2023 / Compliance Engine / v2.1
+                </p>
+
+                <h1 class="hero-title" data-testid="hero-title">
+                    Audit every clause.
+                    <br />
+                    <span class="hero-title-alt">Defend every <em>byte</em>.</span>
+                </h1>
+
+                <p class="hero-sub" data-testid="hero-subtitle">
+                    Paste any privacy policy → receive a real DPDP 2023 verdict in under <strong>2 seconds</strong>. Live, audit-grade — not a preview video.
+                </p>
+
+                <div class="hero-ctas">
+                    <a href="#try-it-widget" class="btn btn-primary btn-lg" data-testid="hero-primary-cta">
+                        Try a Live Audit <i class="ph-bold ph-arrow-right"></i>
+                    </a>
+                    <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="btn btn-secondary btn-lg" data-testid="hero-dashboard-cta">
+                        Launch Dashboard <i class="ph-bold ph-arrow-up-right"></i>
+                    </a>
+                </div>
+
+                <div class="hero-meta">
+                    <div class="meta-item">
+                        <span class="meta-k">&lt; 2s</span>
+                        <span class="meta-v">Avg. audit latency</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-k">DPDP '23</span>
+                        <span class="meta-v">India-first clause map</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-k">Llama 3.3 · 70B</span>
+                        <span class="meta-v">on Groq LPU™</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= LIVE AUDIT WIDGET (replaces terminal mockup) ================= -->
+            <div class="hero-right" data-testid="hero-widget" id="try-it-widget">
+                <div class="lg-widget" id="lg-widget">
+
+                    <!-- ============ STATE: INPUT ============ -->
+                    <div class="lg-state lg-state-input" data-lg-state="input">
+                        <div class="lg-head">
+                            <span class="lg-head-dot"></span>
+                            <span class="lg-head-title">audit.live — paste-to-analyze</span>
+                            <span class="lg-head-pill">LLAMA 3.3 · GROQ</span>
+                        </div>
+
+                        <div class="lg-body">
+                            <label class="lg-label" for="lg-input">
+                                <i class="ph-bold ph-file-text"></i>
+                                Paste a privacy policy, T&amp;C or DPA clause
+                            </label>
+                            <textarea
+                                id="lg-input"
+                                class="lg-textarea"
+                                data-testid="lg-input"
+                                placeholder="Paste any paragraph — we'll return a DPDP 2023 verdict, compliance score, and the top flagged clauses in under 2 seconds.&#10;&#10;Example: 'We may collect, process and share your personal data with our partners and affiliates for purposes we deem necessary. By using this service you consent to all current and future data usage…'"
+                                rows="9"
+                                maxlength="25000"
+                            ></textarea>
+
+                            <div class="lg-meta-row">
+                                <div class="lg-chars" data-testid="lg-char-count">
+                                    <span id="lg-char-count">0</span> / 25,000 chars
+                                </div>
+                                <button type="button" class="lg-sample" id="lg-sample-btn" data-testid="lg-sample-btn">
+                                    <i class="ph ph-lightning"></i> Try a sample clause
+                                </button>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="lg-btn lg-btn-primary"
+                                id="lg-analyze-btn"
+                                data-testid="lg-analyze-btn"
+                            >
+                                <span class="lg-btn-label">
+                                    <i class="ph-bold ph-gavel"></i> Run DPDP Audit
+                                </span>
+                                <span class="lg-btn-meta">&lt; 2s</span>
+                            </button>
+
+                            <p class="lg-foot">
+                                <i class="ph ph-shield-check"></i>
+                                Processed ephemerally. Your text is never used to train models.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- ============ STATE: LOADING ============ -->
+                    <div class="lg-state lg-state-loading" data-lg-state="loading" hidden>
+                        <div class="lg-head">
+                            <span class="lg-head-dot lg-head-dot-live"></span>
+                            <span class="lg-head-title">audit.live — in progress</span>
+                            <span class="lg-head-pill">LLAMA 3.3 · GROQ</span>
+                        </div>
+                        <div class="lg-loading-body">
+                            <ul class="lg-log" id="lg-log"></ul>
+                            <div class="lg-progress"><div class="lg-progress-bar" id="lg-progress-bar"></div></div>
+                            <p class="lg-loading-note">Routing to Llama 3.3 · 70B on Groq LPU™…</p>
+                        </div>
+                    </div>
+
+                    <!-- ============ STATE: PREVIEW (post-analysis, pre-email) ============ -->
+                    <div class="lg-state lg-state-preview" data-lg-state="preview" hidden>
+                        <div class="lg-head">
+                            <span class="lg-head-dot lg-head-dot-ok"></span>
+                            <span class="lg-head-title">audit.report — <span id="lg-latency">1.84s</span></span>
+                            <button type="button" class="lg-reset" id="lg-reset-btn" data-testid="lg-reset-btn">
+                                <i class="ph ph-arrow-counter-clockwise"></i> New audit
+                            </button>
+                        </div>
+
+                        <div class="lg-preview-body">
+                            <!-- Score -->
+                            <div class="lg-score-row">
+                                <div class="lg-score" data-testid="lg-score">
+                                    <div class="lg-score-num"><span id="lg-score-num">--</span><span class="lg-score-max">/100</span></div>
+                                    <div class="lg-score-label" id="lg-score-label">COMPLIANCE SCORE</div>
+                                </div>
+                                <div class="lg-verdict" id="lg-verdict" data-testid="lg-verdict">
+                                    <span class="lg-verdict-dot"></span>
+                                    <span class="lg-verdict-text">—</span>
+                                </div>
+                            </div>
+
+                            <div class="lg-score-bar">
+                                <div class="lg-score-bar-fill" id="lg-score-bar-fill"></div>
+                                <div class="lg-score-bar-ticks">
+                                    <span>0</span><span>50</span><span>80</span><span>100</span>
+                                </div>
+                            </div>
+
+                            <p class="lg-summary" id="lg-summary" data-testid="lg-summary">—</p>
+
+                            <!-- Top 2 flagged clauses -->
+                            <div class="lg-clauses-head">
+                                <span class="lg-clauses-title">TOP FLAGGED CLAUSES</span>
+                                <span class="lg-clauses-meta"><span id="lg-preview-count">2</span> of <span id="lg-total-count">—</span> shown</span>
+                            </div>
+                            <div class="lg-clauses" id="lg-clauses" data-testid="lg-clauses"></div>
+
+                            <!-- Email gate -->
+                            <div class="lg-gate" data-testid="lg-gate">
+                                <div class="lg-gate-head">
+                                    <i class="ph-bold ph-rocket-launch"></i>
+                                    <div>
+                                        <div class="lg-gate-title">Launch the full LexGuard Dashboard</div>
+                                        <div class="lg-gate-sub">Upload full PDFs · 10-page audit report · PDF export · clause-level fixes</div>
+                                    </div>
+                                </div>
+                                <form class="lg-gate-form" id="lg-gate-form" novalidate>
+                                    <input
+                                        type="email"
+                                        class="lg-gate-input"
+                                        id="lg-gate-email"
+                                        data-testid="lg-gate-email"
+                                        placeholder="work@company.in"
+                                        required
+                                        autocomplete="email"
+                                    />
+                                    <button type="submit" class="lg-btn lg-btn-primary lg-btn-gate" data-testid="lg-gate-submit">
+                                        <i class="ph-bold ph-arrow-up-right"></i> Launch Dashboard
+                                    </button>
+                                </form>
+                                <p class="lg-gate-legal">You'll be redirected to the LexGuard Streamlit dashboard in a new tab. No spam.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============ STATE: REDIRECT (after email capture → Streamlit) ============ -->
+                    <div class="lg-state lg-state-full" data-lg-state="full" hidden>
+                        <div class="lg-head">
+                            <span class="lg-head-dot lg-head-dot-ok"></span>
+                            <span class="lg-head-title">audit.captured — <span class="lg-head-pill lg-head-pill-unlocked">EMAIL SAVED</span></span>
+                            <button type="button" class="lg-reset" id="lg-reset-btn-2" data-testid="lg-reset-btn-2">
+                                <i class="ph ph-arrow-counter-clockwise"></i> New audit
+                            </button>
+                        </div>
+
+                        <div class="lg-redirect-body">
+                            <div class="lg-redirect-icon">
+                                <i class="ph-bold ph-rocket-launch"></i>
+                            </div>
+                            <h3 class="lg-redirect-title">Opening the full dashboard…</h3>
+
+                            <div class="lg-credit-badge" data-testid="lg-credit-badge">
+                                <div class="lg-credit-badge-icon"><i class="ph-fill ph-gift"></i></div>
+                                <div class="lg-credit-badge-body">
+                                    <div class="lg-credit-badge-title">+1 free audit credit granted</div>
+                                    <div class="lg-credit-badge-sub">We've applied a 1-free-audit credit to your Streamlit account — check your dashboard.</div>
+                                </div>
+                            </div>
+
+                            <p class="lg-redirect-sub" id="lg-redirect-sub">
+                                We've opened the LexGuard Streamlit dashboard in a new tab. Upload full PDFs, export branded reports, and audit 100+ documents.
+                            </p>
+                            <div class="lg-redirect-actions">
+                                <a
+                                    href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="lg-btn lg-btn-primary lg-btn-redirect"
+                                    data-testid="lg-redirect-cta"
+                                >
+                                    <span class="lg-btn-label"><i class="ph-bold ph-arrow-up-right"></i> Open Dashboard &amp; claim credit</span>
+                                </a>
+                                <p class="lg-redirect-hint">Didn't open? <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============ STATE: ERROR ============ -->
+                    <div class="lg-state lg-state-error" data-lg-state="error" hidden>
+                        <div class="lg-head">
+                            <span class="lg-head-dot lg-head-dot-err"></span>
+                            <span class="lg-head-title">audit.failed</span>
+                        </div>
+                        <div class="lg-error-body">
+                            <i class="ph-bold ph-warning"></i>
+                            <p id="lg-error-msg">Something went wrong.</p>
+                            <button type="button" class="lg-btn lg-btn-secondary" id="lg-error-retry" data-testid="lg-error-retry">Try again</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TRUST / STACK RIBBON -->
+    <section id="stack" class="ribbon" data-testid="trust-ribbon">
+        <div class="ribbon-inner">
+            <span class="ribbon-label">Engineered on</span>
+            <div class="ribbon-logos">
+                <span class="logo-word">LLAMA 3</span>
+                <span class="logo-word">GROQ<sup>™</sup></span>
+                <span class="logo-word">CHROMA DB</span>
+                <span class="logo-word">LANG CHAIN</span>
+                <span class="logo-word">PLOTLY</span>
+                <span class="logo-word">FPDF</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES (BENTO) -->
+    <section id="features" class="features" data-testid="features-section">
+        <div class="section-head">
+            <p class="overline"><span class="dot"></span> § 02 — CAPABILITIES</p>
+            <h2>Built for the people<br/>who <em>own</em> the risk.</h2>
+            <p class="section-sub">Every feature was engineered for compliance officers, legal counsels, and founders who treat the DPDP Act as a board-level liability.</p>
+        </div>
+
+        <div class="bento">
+            <article class="bento-card bento-wide" data-testid="feature-card-audits">
+                <div class="card-num">01</div>
+                <div class="card-body">
+                    <h3>Instant legal audits.</h3>
+                    <p>Drop in any privacy policy, data-sharing agreement, or T&amp;C. LexGuard deep-scans every clause against DPDP 2023 obligations and returns a verdict-grade summary — not a vague chatbot reply.</p>
+                    <ul class="card-bullets">
+                        <li><i class="ph-bold ph-check"></i> PDF, DOCX, plain-text ingestion</li>
+                        <li><i class="ph-bold ph-check"></i> Clause-level citation in every finding</li>
+                        <li><i class="ph-bold ph-check"></i> Sub-2-second latency via Groq LPU™</li>
+                    </ul>
+                </div>
+                <div class="card-visual">
+                    <div class="visual-meter">
+                        <span class="tick" style="--h:22%"></span>
+                        <span class="tick" style="--h:55%"></span>
+                        <span class="tick" style="--h:38%"></span>
+                        <span class="tick" style="--h:78%"></span>
+                        <span class="tick" style="--h:60%"></span>
+                        <span class="tick" style="--h:92%"></span>
+                        <span class="tick" style="--h:44%"></span>
+                        <span class="tick" style="--h:66%"></span>
+                        <span class="tick" style="--h:30%"></span>
+                        <span class="tick" style="--h:82%"></span>
+                    </div>
+                </div>
+            </article>
+
+            <article class="bento-card" data-testid="feature-card-health">
+                <div class="card-num">02</div>
+                <h3>Compliance health score.</h3>
+                <p>A single, defensible number. Plotly-powered gauges turn 40-page agreements into a red / amber / green verdict your board will actually read.</p>
+                <div class="score-pill">
+                    <span class="score-num">87</span>
+                    <span class="score-meta">/100 · LOW RISK</span>
+                </div>
+            </article>
+
+            <article class="bento-card bento-dark" data-testid="feature-card-privacy">
+                <div class="card-num card-num-light">03</div>
+                <h3>Privacy-first architecture.</h3>
+                <p>Your documents never train a third-party model. An ephemeral ChromaDB vector store lives inside your session — and is shredded the moment you close it.</p>
+                <div class="privacy-grid">
+                    <div class="pg-cell"><i class="ph-bold ph-lock-key"></i><span>Local DB</span></div>
+                    <div class="pg-cell"><i class="ph-bold ph-hard-drives"></i><span>Ephemeral</span></div>
+                    <div class="pg-cell"><i class="ph-bold ph-shield-check"></i><span>No training</span></div>
+                    <div class="pg-cell"><i class="ph-bold ph-fingerprint"></i><span>Session-scoped</span></div>
+                </div>
+            </article>
+
+            <article class="bento-card bento-wide" data-testid="feature-card-reports">
+                <div class="card-num">04</div>
+                <div class="card-body">
+                    <h3>Board-ready reports.</h3>
+                    <p>Export a branded, footnoted, FPDF-generated compliance dossier with one click. Ready to drop into a board pack, a vendor due-diligence folder, or a regulator submission.</p>
+                    <ul class="card-bullets">
+                        <li><i class="ph-bold ph-check"></i> White-labelled PDFs with your brand</li>
+                        <li><i class="ph-bold ph-check"></i> Clause-to-finding traceability matrix</li>
+                        <li><i class="ph-bold ph-check"></i> Executive summary + technical appendix</li>
+                    </ul>
+                </div>
+                <div class="card-visual card-visual-doc">
+                    <div class="doc-stack">
+                        <div class="doc-page doc-p1"></div>
+                        <div class="doc-page doc-p2"></div>
+                        <div class="doc-page doc-p3">
+                            <div class="doc-line w-70"></div>
+                            <div class="doc-line w-50"></div>
+                            <div class="doc-line w-85"></div>
+                            <div class="doc-badge">DPDP COMPLIANT</div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- PROCESS -->
+    <section id="process" class="process" data-testid="process-section">
+        <div class="section-head">
+            <p class="overline"><span class="dot"></span> § 03 — HOW IT WORKS</p>
+            <h2>Three steps.<br/>Zero legalese.</h2>
+        </div>
+
+        <ol class="steps">
+            <li class="step" data-testid="step-01">
+                <div class="step-num">01</div>
+                <div class="step-body">
+                    <h3>Ingest the agreement.</h3>
+                    <p>Drop a PDF, DOCX, or paste raw text. A custom pipeline normalises structure, strips boilerplate, and preserves clause numbering.</p>
+                </div>
+                <div class="step-tag">INGESTION</div>
+            </li>
+            <li class="step" data-testid="step-02">
+                <div class="step-num">02</div>
+                <div class="step-body">
+                    <h3>Vectorise &amp; retrieve.</h3>
+                    <p>Chunks are embedded into an ephemeral ChromaDB index. Semantic retrieval pairs every clause with the relevant DPDP 2023 section.</p>
+                </div>
+                <div class="step-tag">RAG · CHROMA DB</div>
+            </li>
+            <li class="step" data-testid="step-03">
+                <div class="step-num">03</div>
+                <div class="step-body">
+                    <h3>Verdict, scored.</h3>
+                    <p>Llama 3 70B on Groq LPU™ generates clause-level findings, a 0–100 health score, and a branded PDF dossier — all in under two seconds.</p>
+                </div>
+                <div class="step-tag">LLAMA 3 · GROQ</div>
+            </li>
+        </ol>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section id="voices" class="voices" data-testid="voices-section">
+        <div class="section-head">
+            <p class="overline"><span class="dot"></span> § 04 — VOICES FROM THE FIELD</p>
+            <h2>Built alongside the people<br/>drafting India's compliance <em>playbooks</em>.</h2>
+            <p class="section-sub">Early signals from pilots with legal, compliance, and vendor-risk teams across the Indian startup ecosystem.</p>
+        </div>
+
+        <div class="voices-grid">
+            <figure class="voice-card voice-feature" data-testid="voice-card-1">
+                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
+                <blockquote>
+                    LexGuard turned a <em>two-week</em> DPDP review into a 40-minute exercise. The clause-level citations are what sold our legal counsel — every flag is defensible, not just a black-box verdict.
+                </blockquote>
+                <figcaption>
+                    <div class="voice-who">
+                        <span class="voice-name">Priya S.</span>
+                        <span class="voice-role">VP Legal · Series B FinTech</span>
+                    </div>
+                    <div class="voice-kpi">
+                        <span class="kpi-num">14d → 40m</span>
+                        <span class="kpi-label">Review cycle</span>
+                    </div>
+                </figcaption>
+            </figure>
+
+            <figure class="voice-card" data-testid="voice-card-2">
+                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
+                <blockquote>
+                    The privacy-first architecture was non-negotiable for us. Ephemeral Chroma + no third-party training meant our CISO signed off in a single call.
+                </blockquote>
+                <figcaption>
+                    <span class="voice-name">Karthik R.</span>
+                    <span class="voice-role">Chief Compliance Officer · HealthTech</span>
+                </figcaption>
+            </figure>
+
+            <figure class="voice-card" data-testid="voice-card-3">
+                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
+                <blockquote>
+                    Finally — a DPDP tool written for India, not a retrofitted GDPR wrapper. The clause library matches the 2023 Act verbatim.
+                </blockquote>
+                <figcaption>
+                    <span class="voice-name">Nandita V.</span>
+                    <span class="voice-role">Head of Privacy · B2B SaaS</span>
+                </figcaption>
+            </figure>
+
+            <figure class="voice-card voice-dark" data-testid="voice-card-4">
+                <div class="voice-mark voice-mark-light" aria-hidden="true">&ldquo;</div>
+                <blockquote>
+                    The board-ready PDF is the real unlock. We drop it straight into the quarterly risk pack — no editorial layer needed.
+                </blockquote>
+                <figcaption>
+                    <span class="voice-name">Ashwin M.</span>
+                    <span class="voice-role voice-role-light">GC · Climate-Tech, Series A</span>
+                </figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- STATS / QUOTE -->
+    <section class="stats" data-testid="stats-section">
+        <div class="stats-grid">
+            <div class="stat">
+                <div class="stat-num">&lt;2<span class="unit">s</span></div>
+                <div class="stat-label">Median end-to-end audit</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">70<span class="unit">B</span></div>
+                <div class="stat-label">Llama 3 parameters, served via Groq LPU™</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">0<span class="unit"></span></div>
+                <div class="stat-label">Documents retained after your session</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">1-click</div>
+                <div class="stat-label">Board-ready PDF export</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section id="enterprise" class="final-cta" data-testid="final-cta">
+        <div class="final-inner">
+            <p class="overline overline-light"><span class="dot"></span> § 04 — GET STARTED</p>
+            <h2>Stop reading agreements.<br/>Start <em>auditing</em> them.</h2>
+            <p class="final-sub">Bring LexGuard AI to your legal, compliance, or vendor-risk team. Enterprise pilots include a custom DPDP clause library and white-labelled reports.</p>
+            <div class="final-ctas">
+                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="btn btn-invert btn-lg" data-testid="final-demo-cta">
+                    Launch Dashboard <i class="ph-bold ph-arrow-up-right"></i>
+                </a>
+                <button type="button" class="btn btn-ghost btn-lg" data-open-modal="pilot" data-testid="final-enterprise-cta">
+                    Book an enterprise call
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer" data-testid="site-footer">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <p class="overline overline-light"><span class="dot"></span> LEXGUARD / AI</p>
+                <p class="footer-desc">Enterprise DPDP 2023 compliance auditor. Built in India, for the Indian startup ecosystem.</p>
+                <p class="footer-dev">Designed &amp; engineered by <strong>Sujal Meena</strong>.</p>
+            </div>
+
+            <div class="footer-cols">
+                <div>
+                    <h4>Product</h4>
+                    <a href="#try-it">Try it Now</a>
+                    <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener">Launch Dashboard</a>
+                    <a href="#features">Features</a>
+                    <a href="#process">Process</a>
+                </div>
+                <div>
+                    <h4>Enterprise</h4>
+                    <a href="mailto:meenasujal60@gmail.com">Contact Sales</a>
+                    <a href="mailto:meenasujal60@gmail.com">Pilot Program</a>
+                    <a href="mailto:meenasujal60@gmail.com">Partnerships</a>
+                </div>
+                <div>
+                    <h4>Legal</h4>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Security</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-mega" aria-hidden="true">LEXGUARD</div>
+
+        <div class="footer-bottom">
+            <span>© 2026 LexGuard AI. All rights reserved.</span>
+            <span class="footer-status"><span class="pulse"></span> Live audit online</span>
+        </div>
+    </footer>
+
+    <!-- ============ PILOT REQUEST MODAL ============ -->
+    <div class="modal" id="pilot-modal" role="dialog" aria-modal="true" aria-labelledby="pilot-title" aria-hidden="true" data-testid="pilot-modal">
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-panel" role="document">
+            <button type="button" class="modal-close" data-close-modal aria-label="Close" data-testid="pilot-modal-close">
+                <i class="ph ph-x"></i>
+            </button>
+
+            <div class="modal-head">
+                <p class="overline"><span class="dot"></span> ENTERPRISE PILOT</p>
+                <h3 id="pilot-title">Let's scope your<br/>DPDP rollout.</h3>
+                <p class="modal-sub">A 15-minute call. We'll share the clause library, pilot scope, and timeline — no sales deck.</p>
+            </div>
+
+            <form id="pilot-form" class="pilot-form" novalidate data-testid="pilot-form">
+                <div class="field">
+                    <label for="pilot-name">Name</label>
+                    <input type="text" id="pilot-name" name="name" required autocomplete="name" placeholder="Priya Sharma" data-testid="pilot-input-name" />
+                </div>
+
+                <div class="field">
+                    <label for="pilot-email">Work email</label>
+                    <input type="email" id="pilot-email" name="email" required autocomplete="email" placeholder="priya@company.in" data-testid="pilot-input-email" />
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="pilot-company">Company</label>
+                        <input type="text" id="pilot-company" name="company" required autocomplete="organization" placeholder="Acme Legal" data-testid="pilot-input-company" />
+                    </div>
+                    <div class="field">
+                        <label for="pilot-role">Role / team</label>
+                        <select id="pilot-role" name="role" required data-testid="pilot-input-role">
+                            <option value="">Select a role…</option>
+                            <option>Legal / General Counsel</option>
+                            <option>Compliance / Privacy</option>
+                            <option>CISO / Security</option>
+                            <option>Founder / Executive</option>
+                            <option>Vendor Risk / Procurement</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="pilot-size">Company size</label>
+                    <div class="chip-group" role="radiogroup" aria-labelledby="pilot-size">
+                        <label class="chip-radio"><input type="radio" name="size" value="1–10" />1–10</label>
+                        <label class="chip-radio"><input type="radio" name="size" value="11–50" />11–50</label>
+                        <label class="chip-radio"><input type="radio" name="size" value="51–200" checked />51–200</label>
+                        <label class="chip-radio"><input type="radio" name="size" value="201–1000" />201–1000</label>
+                        <label class="chip-radio"><input type="radio" name="size" value="1000+" />1000+</label>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="pilot-message">What agreement(s) do you want to audit first? <span class="field-opt">(optional)</span></label>
+                    <textarea id="pilot-message" name="message" rows="3" placeholder="e.g. Our vendor DPA, SaaS T&Cs, customer-facing privacy policy…" data-testid="pilot-input-message"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg" data-testid="pilot-submit">
+                        Request Pilot <i class="ph-bold ph-arrow-right"></i>
+                    </button>
+                    <a href="mailto:meenasujal60@gmail.com" class="form-fallback" data-testid="pilot-mailto-fallback">Prefer email? <strong>meenasujal60@gmail.com</strong></a>
+                </div>
+
+                <p class="form-legal">By submitting, you agree to be contacted about LexGuard enterprise pilots. We will never share your details.</p>
+            </form>
+
+            <div class="modal-success" aria-hidden="true" data-testid="pilot-success">
+                <div class="success-icon"><i class="ph-bold ph-check-circle"></i></div>
+                <h3>Your request is on its way.</h3>
+                <p>Your email client just opened with a pre-filled note to <strong>Sujal Meena</strong>. Hit send and you'll hear back within <strong>2 hours</strong>.</p>
+                <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LIVE ACTIVITY TICKER -->
+    <div id="live-ticker" class="live-ticker" data-testid="live-ticker">
+        <div class="ticker-content">
+            <span class="ticker-icon">⚡</span>
+            <span class="ticker-text">
+                <strong id="ticker-agreements">147</strong> agreements audited today · 
+                <strong id="ticker-flags">42</strong> high-risk clauses flagged
+            </span>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/widget.js"></script>
+</body>
+</html>
