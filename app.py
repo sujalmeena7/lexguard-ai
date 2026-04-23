@@ -380,27 +380,50 @@ if st.session_state.current_page == "audit":
 
     else:
         # ---- Main Page: Upload Zone ----
-        uploaded_file = st.file_uploader("Upload Document (.pdf, .txt)", type=["pdf", "txt"])
+        tab1, tab2 = st.tabs(["📂 Upload Document", "📝 Paste Clause"])
+        
+        uploaded_file = None
+        pasted_text = ""
+        is_pasted = False
+        
+        with tab1:
+            uploaded_file = st.file_uploader("Drag and drop PDF or TXT", type=["pdf", "txt"])
 
-        if uploaded_file is not None:
-            if uploaded_file.name != st.session_state.last_filename:
+        with tab2:
+            pasted_text = st.text_area("Paste your clause or policy here to audit:")
+            if st.button("Run Audit on Pasted Text"):
+                if pasted_text.strip():
+                    is_pasted = True
+                else:
+                    st.warning("Please paste some text first.")
+
+        if uploaded_file is not None or is_pasted:
+            filename = uploaded_file.name if uploaded_file else "pasted_clause.txt"
+            
+            if filename != st.session_state.last_filename:
                 # Purge session on a new file to enforce full security
                 clear_session_cache()
                 st.session_state.audit_complete = False
                 st.session_state.audit_results = None
                 st.session_state.pdf_bytes = None
-                st.session_state.last_filename = uploaded_file.name
+                st.session_state.last_filename = filename
                 st.session_state.metrics = {"total_clauses": 0, "high_risk": 0, "medium_risk": 0, "compliant": 0}
                 
-            st.success(f"File '{uploaded_file.name}' loaded successfully!")
+            st.success(f"Document '{filename}' ready to analyze!")
             
             if st.session_state.credits > 0:
-                if st.button("🚀 Run Full Audit", type="primary"):
+                if is_pasted or st.button("🚀 Run Full Audit", type="primary"):
                     # Run Logic
-                    file_ext = "." + uploaded_file.name.split('.')[-1] if '.' in uploaded_file.name else ".pdf"
-                    fd, temp_path = tempfile.mkstemp(suffix=file_ext)
-                    with os.fdopen(fd, 'wb') as f:
-                        f.write(uploaded_file.getbuffer())
+                    if is_pasted:
+                        file_ext = ".txt"
+                        fd, temp_path = tempfile.mkstemp(suffix=file_ext)
+                        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                            f.write(pasted_text)
+                    else:
+                        file_ext = "." + uploaded_file.name.split('.')[-1] if '.' in uploaded_file.name else ".pdf"
+                        fd, temp_path = tempfile.mkstemp(suffix=file_ext)
+                        with os.fdopen(fd, 'wb') as f:
+                            f.write(uploaded_file.getbuffer())
 
                     try:
                         with st.spinner("Analyzing against DPDP Act 2023..."):
