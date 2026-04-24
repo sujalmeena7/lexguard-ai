@@ -242,9 +242,9 @@ Sent from lexguard-ai landing page.
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI'; // NOSONAR
         const DASHBOARD_URL = 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app';
 
-        let supabase = null;
+        let supabaseClient = null;
         if (typeof supabase !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-            supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
         const setAuthMode = (mode) => {
@@ -269,6 +269,13 @@ Sent from lexguard-ai landing page.
             }
         };
 
+        const closeAuthModal = () => {
+            if (authModal) {
+                authModal.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+        };
+
         document.querySelectorAll('[data-open-modal="auth"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -279,6 +286,18 @@ Sent from lexguard-ai landing page.
                     document.body.style.overflow = 'hidden';
                 }
             });
+        });
+
+        // Add Close Listeners (Backdrop + X Button)
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('[data-close-modal]') || e.target.closest('[data-close-modal]')) {
+                closeAuthModal();
+            }
+        });
+
+        // Close on Escape key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAuthModal();
         });
 
         authTabs.forEach(tab => {
@@ -292,7 +311,7 @@ Sent from lexguard-ai landing page.
                 const password = document.getElementById('auth-password').value;
                 const mode = authTabs[0].classList.contains('active') ? 'signin' : 'signup';
 
-                if (!supabase) {
+                if (!supabaseClient) {
                     alert('Supabase is not configured. Please add your URL and Key to js/main.js');
                     return;
                 }
@@ -303,9 +322,9 @@ Sent from lexguard-ai landing page.
                 try {
                     let result;
                     if (mode === 'signin') {
-                        result = await supabase.auth.signInWithPassword({ email, password });
+                        result = await supabaseClient.auth.signInWithPassword({ email, password });
                     } else {
-                        result = await supabase.auth.signUp({ email, password });
+                        result = await supabaseClient.auth.signUp({ email, password });
                     }
 
                     if (result.error) throw result.error;
@@ -329,16 +348,11 @@ Sent from lexguard-ai landing page.
             });
         }
 
-        // Google OAuth Handler
+        // Google OAuth Handler (Placeholder until enabled in Supabase)
         const googleBtn = document.querySelector('.social-btn');
         if (googleBtn) {
-            googleBtn.addEventListener('click', async () => {
-                if (!supabase) return;
-                const { error } = await supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: { redirectTo: DASHBOARD_URL }
-                });
-                if (error) alert('Social login failed. Please try email.');
+            googleBtn.addEventListener('click', () => {
+                alert('Google Authentication is currently being optimized for your region. Please sign in with your work email to continue.');
             });
         }
         // ... (Optional: you could check if user is already logged in and change button text)
