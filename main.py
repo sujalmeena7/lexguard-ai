@@ -12,6 +12,7 @@ import glob
 import json
 import textwrap
 import streamlit as st
+from typing import Optional
 
 # ── LangChain core
 from langchain_community.document_loaders import PyPDFLoader
@@ -32,6 +33,8 @@ BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR   = os.path.join(BASE_DIR, "data")
 DB_DIR     = os.path.join(BASE_DIR, "db")
 STORE_PATH = os.path.join(BASE_DIR, "docstore.json")
+WORKSPACE_DB_DIR = os.path.join(BASE_DIR, "db_workspace")
+WORKSPACE_COLLECTION = "user_workspace_chunks"
 
 # ── Configuration ───────────────────────────────────────────────────
 EMBED_MODEL   = "all-MiniLM-L6-v2"
@@ -149,6 +152,56 @@ def get_retriever(ingest: bool = False) -> ParentDocumentRetriever:
     return retriever
 
 
+def _load_user_document(user_doc_path: str):
+    """Load a user-provided PDF or TXT into LangChain documents."""
+    if user_doc_path.lower().endswith(".txt"):
+        from langchain_community.document_loaders import TextLoader
+
+        loader = TextLoader(user_doc_path, encoding="utf-8")
+    else:
+        loader = PyPDFLoader(user_doc_path)
+
+    return loader.load()
+
+
+def index_user_document(user_id: str, user_doc_path: str) -> int:
+    """Index user document chunks with user_id metadata for isolated retrieval."""
+    user_docs = _load_user_document(user_doc_path)
+    if not user_docs:
+        return 0
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=80)
+    user_chunks = splitter.split_documents(user_docs)
+    for chunk in user_chunks:
+        chunk.metadata = {
+            **chunk.metadata,
+            "user_id": user_id,
+            "source_path": os.path.basename(user_doc_path),
+        }
+
+    embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+    vectorstore = Chroma(
+        persist_directory=WORKSPACE_DB_DIR,
+        embedding_function=embeddings,
+        collection_name=WORKSPACE_COLLECTION,
+    )
+    vectorstore.add_documents(user_chunks)
+    return len(user_chunks)
+
+
+def get_user_workspace_retriever(user_id: str, k: int = 4):
+    """Create a user-scoped retriever that filters vectors by user_id."""
+    embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+    vectorstore = Chroma(
+        persist_directory=WORKSPACE_DB_DIR,
+        embedding_function=embeddings,
+        collection_name=WORKSPACE_COLLECTION,
+    )
+    return vectorstore.as_retriever(
+        search_kwargs={"k": k, "filter": {"user_id": user_id}}
+    )
+
+
 # =====================================================================
 # 2.  Retrieval-QA Chain (Interactive)
 # =====================================================================
@@ -189,7 +242,13 @@ def interactive_loop(chain: RetrievalQA) -> None:
 # =====================================================================
 # 3.  Compliance Audit Engine
 # =====================================================================
-def run_compliance_audit(retriever: ParentDocumentRetriever, user_doc_path: str = None, progress_callback=None):
+def run_compliance_audit(
+    retriever: ParentDocumentRetriever,
+    user_doc_path: str = None,
+    progress_callback=None,
+    user_workspace_retriever=None,
+    report_output_path: Optional[str] = None,
+):
     print("\n-- Compliance Audit Mode --")
     if user_doc_path is None:
         user_doc_path = input("📂 Enter the path to the PDF or TXT document to audit: ").strip()
@@ -199,12 +258,7 @@ def run_compliance_audit(retriever: ParentDocumentRetriever, user_doc_path: str 
         return
 
     try:
-        if user_doc_path.lower().endswith(".txt"):
-            from langchain_community.document_loaders import TextLoader
-            loader = TextLoader(user_doc_path, encoding='utf-8')
-        else:
-            loader = PyPDFLoader(user_doc_path)
-        user_docs = loader.load()
+        user_docs = _load_user_document(user_doc_path)
     except Exception as e:
         print(f"❌ Failed to read document: {e}")
         return
@@ -235,6 +289,15 @@ def run_compliance_audit(retriever: ParentDocumentRetriever, user_doc_path: str 
         # 1. Retrieve legal context
         legal_docs = retriever.invoke(chunk.page_content)
         context_str = "\n\n".join([d.page_content for d in legal_docs])
+
+        # Optional: retrieve user workspace context strictly scoped to this user.
+        if user_workspace_retriever is not None:
+            user_workspace_docs = user_workspace_retriever.invoke(chunk.page_content)
+            if user_workspace_docs:
+                workspace_context = "\n\n".join(d.page_content for d in user_workspace_docs)
+                context_str = (
+                    f"{context_str}\n\nUser Workspace Context (isolated):\n{workspace_context}"
+                )
         
         # 2. Predict Compliance with Retry Logic
         try:
@@ -261,7 +324,7 @@ def run_compliance_audit(retriever: ParentDocumentRetriever, user_doc_path: str 
             progress_callback(idx + 1, len(audit_chunks), record, is_high_risk)
             
     # Save Report
-    report_file = "audit_report.json"
+    report_file = report_output_path or "audit_report.json"
     with open(report_file, 'w', encoding='utf-8') as f:
         json.dump(report, f, indent=4)
         
