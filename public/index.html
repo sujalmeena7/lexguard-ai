@@ -29,8 +29,7 @@
 </head>
 <body data-testid="landing-page">
 
-    <!-- Hidden React mount (unused, but CRA requires it) -->
-    <div id="root" style="display:none"></div>
+
 
     <!-- NAV -->
     <header class="nav" data-testid="site-nav">
@@ -443,66 +442,7 @@
         </ol>
     </section>
 
-    <!-- TESTIMONIALS -->
-    <section id="voices" class="voices" data-testid="voices-section">
-        <div class="section-head">
-            <p class="overline"><span class="dot"></span> § 04 — VOICES FROM THE FIELD</p>
-            <h2>Built alongside the people<br/>drafting India's compliance <em>playbooks</em>.</h2>
-            <p class="section-sub">Early signals from pilots with legal, compliance, and vendor-risk teams across the Indian startup ecosystem.</p>
-        </div>
 
-        <div class="voices-grid">
-            <figure class="voice-card voice-feature" data-testid="voice-card-1">
-                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
-                <blockquote>
-                    LexGuard turned a <em>two-week</em> DPDP review into a 40-minute exercise. The clause-level citations are what sold our legal counsel — every flag is defensible, not just a black-box verdict.
-                </blockquote>
-                <figcaption>
-                    <div class="voice-who">
-                        <span class="voice-name">Priya S.</span>
-                        <span class="voice-role">VP Legal · Series B FinTech</span>
-                    </div>
-                    <div class="voice-kpi">
-                        <span class="kpi-num">14d → 40m</span>
-                        <span class="kpi-label">Review cycle</span>
-                    </div>
-                </figcaption>
-            </figure>
-
-            <figure class="voice-card" data-testid="voice-card-2">
-                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
-                <blockquote>
-                    The privacy-first architecture was non-negotiable for us. Ephemeral Chroma + no third-party training meant our CISO signed off in a single call.
-                </blockquote>
-                <figcaption>
-                    <span class="voice-name">Karthik R.</span>
-                    <span class="voice-role">Chief Compliance Officer · HealthTech</span>
-                </figcaption>
-            </figure>
-
-            <figure class="voice-card" data-testid="voice-card-3">
-                <div class="voice-mark" aria-hidden="true">&ldquo;</div>
-                <blockquote>
-                    Finally — a DPDP tool written for India, not a retrofitted GDPR wrapper. The clause library matches the 2023 Act verbatim.
-                </blockquote>
-                <figcaption>
-                    <span class="voice-name">Nandita V.</span>
-                    <span class="voice-role">Head of Privacy · B2B SaaS</span>
-                </figcaption>
-            </figure>
-
-            <figure class="voice-card voice-dark" data-testid="voice-card-4">
-                <div class="voice-mark voice-mark-light" aria-hidden="true">&ldquo;</div>
-                <blockquote>
-                    The board-ready PDF is the real unlock. We drop it straight into the quarterly risk pack — no editorial layer needed.
-                </blockquote>
-                <figcaption>
-                    <span class="voice-name">Ashwin M.</span>
-                    <span class="voice-role voice-role-light">GC · Climate-Tech, Series A</span>
-                </figcaption>
-            </figure>
-        </div>
-    </section>
 
     <!-- STATS / QUOTE -->
     <section class="stats" data-testid="stats-section">
@@ -543,37 +483,7 @@
         </div>
     </section>
 
-    <!-- CASE STUDY -->
-    <section class="case-study" id="case-study">
-        <div class="case-study-inner">
-            <div class="case-study-content">
-                <div class="case-study-badge">Customer Success</div>
-                <img src="/nexus-logo.png" alt="Nexus Legal Logo" class="partner-logo">
-                <h2 class="case-study-title">Nexus Legal Partners achieved 85% faster compliance throughput with LexGuard AI.</h2>
-                <p class="case-study-quote">"LexGuard has completely transformed our DPDP 2023 auditing workflow. What used to take days now takes minutes, allowing our senior counsel to focus on strategy rather than clause extraction."</p>
-                
-                <div class="case-study-kpis">
-                    <div class="kpi-item">
-                        <span class="kpi-val">85%</span>
-                        <span class="kpi-label">Hours Saved / Week</span>
-                    </div>
-                    <div class="kpi-item">
-                        <span class="kpi-val">1,200+</span>
-                        <span class="kpi-label">Clauses Audited</span>
-                    </div>
-                    <div class="kpi-item">
-                        <span class="kpi-val">60%</span>
-                        <span class="kpi-label">Risk Reduction</span>
-                    </div>
-                </div>
-            </div>
-            <div class="case-study-visual">
-                <div class="case-study-screen">
-                    <img src="/case-study.png" alt="LexGuard Dashboard Interface">
-                </div>
-            </div>
-        </div>
-    </section>
+
 
     <!-- FOOTER -->
     <footer class="footer" data-testid="site-footer">
@@ -694,16 +604,7 @@
         </div>
     </div>
 
-    <!-- LIVE ACTIVITY TICKER -->
-    <div id="live-ticker" class="live-ticker" data-testid="live-ticker">
-        <div class="ticker-content">
-            <span class="ticker-icon">⚡</span>
-            <span class="ticker-text">
-                <strong id="ticker-agreements">147</strong> agreements audited today · 
-                <strong id="ticker-flags">42</strong> high-risk clauses flagged
-            </span>
-        </div>
-    </div>
+
 
     <!-- ============ AUTH MODAL ============ -->
     <div class="modal" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-hidden="true">

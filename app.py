@@ -1,5 +1,6 @@
 import hmac
 import json
+import logging
 import os
 import re
 import uuid
@@ -35,6 +36,7 @@ from report_gen import generate_report
 ACCESS_KEY = st.secrets.get("ACCESS_KEY")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USER_DATA_ROOT = os.path.join(BASE_DIR, "data")
+logger = logging.getLogger(__name__)
 
 
 def utc_now_slug() -> str:
@@ -85,8 +87,8 @@ def clear_user_cache(paths: Dict[str, str]) -> None:
         if os.path.exists(target):
             try:
                 os.remove(target)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Failed to remove cache file %s: %s", target, exc)
 
 
 def load_user_cache(paths: Dict[str, str]) -> None:
@@ -134,8 +136,8 @@ def save_user_cache(paths: Dict[str, str]) -> None:
     try:
         with open(paths["session_cache"], "w", encoding="utf-8") as cache_file:
             json.dump(cache_payload, cache_file, indent=2)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Failed to write session cache to %s: %s", paths["session_cache"], exc)
 
 
 def ensure_user_session_defaults() -> None:
