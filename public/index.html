@@ -24,6 +24,8 @@
     <script>window.__LEXGUARD_BACKEND__ = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8000" : "https://lexguard-backend-3mmj.onrender.com";</script>
     <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
     <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body data-testid="landing-page">
 
@@ -54,8 +56,8 @@
                 <button type="button" id="theme-toggle" class="btn btn-secondary" style="padding: 0 12px;" data-testid="theme-toggle" aria-label="Toggle dark mode">
                     <i class="ph-bold ph-moon"></i>
                 </button>
-                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="nav-demo" data-testid="nav-demo-link">Launch Dashboard <i class="ph ph-arrow-up-right"></i></a>
-                <button type="button" class="btn btn-primary" data-open-modal="pilot" data-testid="nav-enterprise-cta">Enterprise Access</button>
+                <button type="button" class="btn btn-secondary" data-open-modal="auth" data-auth-mode="signin">Sign In</button>
+                <button type="button" class="btn btn-primary" data-open-modal="auth" data-auth-mode="signup">Sign Up</button>
             </div>
 
             <button class="menu-btn" aria-label="Open menu" data-testid="mobile-menu-btn">
@@ -90,9 +92,9 @@
                     <a href="#try-it-widget" class="btn btn-primary btn-lg" data-testid="hero-primary-cta">
                         Try a Live Audit <i class="ph-bold ph-arrow-right"></i>
                     </a>
-                    <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="btn btn-secondary btn-lg" data-testid="hero-dashboard-cta">
+                    <button type="button" class="btn btn-secondary btn-lg" data-open-modal="auth" data-auth-mode="signin" data-testid="hero-dashboard-cta">
                         Launch Dashboard <i class="ph-bold ph-arrow-up-right"></i>
-                    </a>
+                    </button>
                 </div>
 
                 <div class="hero-meta">
@@ -531,9 +533,9 @@
             <h2>Stop reading agreements.<br/>Start <em>auditing</em> them.</h2>
             <p class="final-sub">Bring LexGuard AI to your legal, compliance, or vendor-risk team. Enterprise pilots include a custom DPDP clause library and white-labelled reports.</p>
             <div class="final-ctas">
-                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="btn btn-invert btn-lg" data-testid="final-demo-cta">
+                <button type="button" class="btn btn-invert btn-lg" data-open-modal="auth" data-auth-mode="signin" data-testid="final-demo-cta">
                     Launch Dashboard <i class="ph-bold ph-arrow-up-right"></i>
-                </a>
+                </button>
                 <button type="button" class="btn btn-ghost btn-lg" data-open-modal="pilot" data-testid="final-enterprise-cta">
                     Book an enterprise call
                 </button>
@@ -586,7 +588,7 @@
                 <div>
                     <h4>Product</h4>
                     <a href="#try-it">Try it Now</a>
-                    <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener">Launch Dashboard</a>
+                    <a href="#" data-open-modal="auth" data-auth-mode="signin">Launch Dashboard</a>
                     <a href="#features">Features</a>
                     <a href="#process">Process</a>
                 </div>
@@ -700,6 +702,58 @@
                 <strong id="ticker-agreements">147</strong> agreements audited today · 
                 <strong id="ticker-flags">42</strong> high-risk clauses flagged
             </span>
+        </div>
+    </div>
+
+    <!-- ============ AUTH MODAL ============ -->
+    <div class="modal" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" aria-hidden="true">
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-panel auth-panel">
+            <button type="button" class="modal-close" data-close-modal aria-label="Close">
+                <i class="ph ph-x"></i>
+            </button>
+
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" data-auth-tab="signin">Sign In</button>
+                <button type="button" class="auth-tab" data-auth-tab="signup">Sign Up</button>
+            </div>
+
+            <div class="modal-head">
+                <h3 id="auth-title">Welcome to LexGuard</h3>
+                <p class="modal-sub" id="auth-subtitle">Sign in to your secure workspace.</p>
+            </div>
+
+            <form id="auth-form" class="pilot-form" novalidate>
+                <div class="field">
+                    <label for="auth-email">Email</label>
+                    <input type="email" id="auth-email" name="email" required autocomplete="email" placeholder="work@company.in" />
+                </div>
+
+                <div class="field">
+                    <label for="auth-password">Password</label>
+                    <input type="password" id="auth-password" name="password" required autocomplete="password" placeholder="••••••••" />
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg" id="auth-submit-btn">
+                        <span>Sign In</span> <i class="ph-bold ph-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+
+            <div class="auth-divider">
+                <span>OR</span>
+            </div>
+
+            <div class="social-auth">
+                <button type="button" class="btn btn-secondary social-btn">
+                    <i class="ph-bold ph-google-logo"></i> Continue with Google
+                </button>
+            </div>
+
+            <div class="auth-footer">
+                <p id="auth-switch-text">Don't have an account? <a href="#" id="auth-switch-link">Sign Up</a></p>
+            </div>
         </div>
     </div>
 
