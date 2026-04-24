@@ -2,6 +2,19 @@
 (() => {
     'use strict';
 
+    // --- Nav dark state (over hero constellation) ---------------
+    // Runs immediately — this script is loaded at end of <body>,
+    // so all DOM elements above are already available.
+    const navEl  = document.querySelector('.nav');
+    const heroEl = document.querySelector('.hero');
+    if (navEl && heroEl) {
+        navEl.classList.add('nav--dark');
+        const navObs = new IntersectionObserver(([e]) => {
+            navEl.classList.toggle('nav--dark', e.isIntersecting);
+        }, { threshold: 0.05 });
+        navObs.observe(heroEl);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
 
         // --- Scroll reveal -----------------------------------------

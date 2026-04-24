@@ -90,6 +90,7 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
     backdrop-filter: saturate(180%) blur(14px);
     -webkit-backdrop-filter: saturate(180%) blur(14px);
     border-bottom: 1px solid var(--nav-border);
+    transition: background .35s ease-out, border-color .35s ease-out;
 }
 
 .nav-inner {
@@ -254,31 +255,112 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
     background: rgba(255,255,255,0.06);
 }
 
-/* ============ HERO ============ */
+/* ============ HERO (always dark — constellation canvas) ============ */
 .hero {
     position: relative;
     padding: 72px var(--gutter) 96px;
-    border-bottom: 1px solid rgba(0,0,0,0.08);
     overflow: hidden;
+    background: #06060e;
+    border-bottom: none;
 }
 
+/* layered bg: solid dark + subtle top-edge light bleed */
 .hero-bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, var(--white) 0%, var(--zinc-50) 100%);
-    z-index: -2;
+    background:
+      radial-gradient(ellipse 90% 45% at 50% 0%, rgba(0,47,167,0.10), transparent 65%),
+      linear-gradient(180deg, #08081a 0%, #06060e 100%);
+    z-index: 0;
 }
 .hero-bg::before {
     content: "";
     position: absolute; inset: 0;
     background-image:
-      linear-gradient(var(--grid-line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
     background-size: 64px 64px;
-    mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 40%, transparent 85%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 40%, transparent 85%);
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 85%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 85%);
+}
+/* vignette overlay */
+.hero-bg::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 70% 55% at 50% 50%, transparent 40%, rgba(6,6,14,0.7) 100%);
+    pointer-events: none;
 }
 
+/* canvas: above bg, below content */
+#constellation-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+/* hero content sits above the canvas */
+.hero .hero-rule,
+.hero .hero-inner {
+    position: relative;
+    z-index: 2;
+}
+/* re-enable pointer events on interactive areas */
+.hero .hero-inner { pointer-events: auto; }
+
+/* ── Dark-theme overrides for hero text ── */
+.hero--dark .hero-rule-tag { color: rgba(255,255,255,0.45); }
+.hero--dark .hero-rule-line { background: rgba(255,255,255,0.12); }
+
+.hero--dark .overline      { color: rgba(255,255,255,0.5); }
+.hero--dark .overline .dot { background: #4d7fff; }
+
+.hero--dark .hero-title     { color: #ffffff; }
+.hero--dark .hero-title em  { color: #5b8aff; }
+
+.hero--dark .hero-sub       { color: rgba(255,255,255,0.65); }
+.hero--dark .hero-sub strong { color: #ffffff; border-bottom-color: #5b8aff; }
+
+.hero--dark .hero-meta      { border-top-color: rgba(255,255,255,0.1); }
+.hero--dark .meta-k         { color: #ffffff; }
+.hero--dark .meta-v         { color: rgba(255,255,255,0.45); }
+
+/* CTA buttons on dark hero */
+.hero--dark .btn-primary {
+    background: #ffffff;
+    color: #06060e;
+    border-color: #ffffff;
+}
+.hero--dark .btn-primary:hover {
+    background: #5b8aff;
+    color: #ffffff;
+    border-color: #5b8aff;
+    box-shadow: 4px 4px 0 0 rgba(255,255,255,0.25);
+}
+.hero--dark .btn-secondary {
+    background: transparent;
+    color: #ffffff;
+    border-color: rgba(255,255,255,0.3);
+}
+.hero--dark .btn-secondary:hover {
+    background: rgba(255,255,255,0.08);
+    color: #ffffff;
+    border-color: rgba(255,255,255,0.6);
+    box-shadow: 4px 4px 0 0 rgba(91,138,255,0.25);
+}
+
+/* smooth dark-to-light edge at bottom of hero */
+.hero::after {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 120px;
+    background: linear-gradient(to bottom, transparent, var(--zinc-50));
+    z-index: 3;
+    pointer-events: none;
+}
+
+.hero-right { position: relative; }
+
+/* ── Hero layout (structural — not colour) ── */
 .hero-rule {
     max-width: var(--max);
     margin: 0 auto 56px;
@@ -290,13 +372,11 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
     font-family: var(--f-mono);
     font-size: 11px;
     letter-spacing: 0.22em;
-    color: var(--zinc-500);
     text-transform: uppercase;
 }
 .hero-rule-line {
     flex: 1;
     height: 1px;
-    background: rgba(0,0,0,0.15);
 }
 
 .hero-inner {
@@ -317,27 +397,23 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
     line-height: 0.94;
     letter-spacing: -0.035em;
     margin-bottom: 28px;
-    color: var(--black);
 }
 .hero-title-alt { display: block; }
 .hero-title em {
     font-family: var(--f-head);
     font-style: italic;
     font-weight: 800;
-    color: var(--ikb);
 }
 
 .hero-sub {
     font-size: 19px;
     max-width: 560px;
-    color: var(--zinc-700);
     line-height: 1.55;
     margin-bottom: 40px;
 }
 .hero-sub strong {
-    color: var(--black);
     font-weight: 700;
-    border-bottom: 2px solid var(--ikb);
+    border-bottom: 2px solid currentColor;
 }
 
 .hero-ctas {
@@ -351,7 +427,6 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
     display: grid;
     grid-template-columns: repeat(3, minmax(0,1fr));
     gap: 0;
-    border-top: 1px solid rgba(0,0,0,0.12);
     padding-top: 24px;
     max-width: 560px;
 }
@@ -361,17 +436,13 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
     font-size: 26px;
     font-weight: 800;
     letter-spacing: -0.02em;
-    color: var(--black);
 }
 .meta-v {
     font-family: var(--f-mono);
     font-size: 11px;
     letter-spacing: 0.08em;
-    color: var(--zinc-500);
     text-transform: uppercase;
 }
-
-
 
 /* ============ RIBBON ============ */
 .ribbon {
@@ -1145,12 +1216,46 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
 /* ============ RESPONSIVE ============ */
 @media (max-width: 1024px) {
     .hero-inner { grid-template-columns: 1fr; gap: 64px; }
-    .terminal { transform: none; box-shadow: 8px 8px 0 0 var(--ikb); }
     .footer-grid { grid-template-columns: 1fr; gap: 48px; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .stat:nth-child(n+3) { border-top: none; }
     .bento-wide { grid-template-columns: 1fr; }
 }
+
+/* ── Nav dark state (over hero constellation) ── */
+.nav--dark {
+    background: rgba(6, 6, 14, 0.75);
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+.nav--dark .brand       { color: #ffffff; }
+.nav--dark .brand-mark  { background: #ffffff; color: #06060e; }
+.nav--dark .brand-slash { color: rgba(255,255,255,0.4); }
+.nav--dark .brand-ai    { color: #5b8aff; }
+.nav--dark .nav-links   { color: rgba(255,255,255,0.7); }
+.nav--dark .nav-links a:hover { color: #ffffff; }
+.nav--dark .nav-links a::after { background: #ffffff; }
+.nav--dark .btn-secondary {
+    background: transparent;
+    color: #ffffff;
+    border-color: rgba(255,255,255,0.25);
+}
+.nav--dark .btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    color: #ffffff;
+    border-color: rgba(255,255,255,0.5);
+}
+.nav--dark .btn-primary {
+    background: #ffffff;
+    color: #06060e;
+    border-color: #ffffff;
+}
+.nav--dark .btn-primary:hover {
+    background: #5b8aff;
+    color: #ffffff;
+    border-color: #5b8aff;
+}
+.nav--dark .menu-btn span { background: #ffffff; }
+
 
 @media (max-width: 768px) {
     :root { --gutter: 20px; }
