@@ -35,7 +35,12 @@ db = client[os.environ['DB_NAME']]
 # Groq client
 GROQ_API_KEY = os.environ['GROQ_API_KEY']
 GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
-ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'lexguard-admin-2026')
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
+if not ADMIN_TOKEN:
+    raise RuntimeError(
+        "ADMIN_TOKEN environment variable is required but not set. "
+        "The application cannot start without a secure admin token."
+    )
 groq_client = AsyncGroq(api_key=GROQ_API_KEY)
 
 # Rate limiter (per client IP, proxy-aware: honors X-Forwarded-For)
@@ -382,16 +387,20 @@ async def admin_leads_csv(token: str = ""):
 
 app.include_router(api_router)
 
-cors_origins = os.environ.get('CORS_ORIGINS', '*').split(',')
+cors_origins = [
+    origin.strip()
+    for origin in os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
+    if origin.strip()
+]
 if "http://localhost:3000" not in cors_origins:
     cors_origins.append("http://localhost:3000")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
 )
 
 logging.basicConfig(

@@ -1,9 +1,11 @@
+import logging
 import os
 from typing import Optional, Tuple
 
 import streamlit as st
 from supabase import Client, create_client
 
+logger = logging.getLogger(__name__)
 
 AUTH_STATE_DEFAULTS = {
     "authenticated": False,
@@ -116,8 +118,8 @@ def sign_out() -> None:
     if client is not None:
         try:
             client.auth.sign_out()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Supabase sign-out request failed: %s", exc)
 
     for key in list(st.session_state.keys()):
         del st.session_state[key]
