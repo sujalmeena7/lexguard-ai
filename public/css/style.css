@@ -1633,3 +1633,71 @@ html.dark {
     }
 }
 
+
+/* --- Auth Specific Panel --- */
+.auth-panel {
+    padding-top: 20px;
+}
+.auth-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 32px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.auth-tab {
+    flex: 1;
+    padding: 14px;
+    background: transparent;
+    border: none;
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--zinc-400);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .15s ease-out;
+}
+.auth-tab.active {
+    color: var(--black);
+    border-bottom-color: var(--black);
+    font-weight: 700;
+}
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0;
+    font-family: var(--f-mono);
+    font-size: 10px;
+    color: var(--zinc-400);
+}
+.auth-divider::before, .auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(0,0,0,0.08);
+}
+.social-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.social-btn {
+    font-weight: 500;
+    padding: 12px;
+}
+.auth-footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--zinc-600);
+}
+.auth-footer a {
+    color: var(--black);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+}
+

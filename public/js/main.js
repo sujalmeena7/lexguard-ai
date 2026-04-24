@@ -189,7 +189,7 @@
 
                 const subject = `LexGuard AI — Pilot Request from ${name} (${company})`;
                 const body =
-`Hi Sujal,
+                    `Hi Sujal,
 
 I'd like to explore a LexGuard AI pilot.
 
@@ -227,15 +227,130 @@ Sent from lexguard-ai landing page.
                 }
             }
         });
-        
+
+        // --- Auth Modal + Supabase Logic ---------------------------
+        const authModal = document.getElementById('auth-modal');
+        const authForm = document.getElementById('auth-form');
+        const authTabs = document.querySelectorAll('[data-auth-tab]');
+        const authTitle = document.getElementById('auth-title');
+        const authSubtitle = document.getElementById('auth-subtitle');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const authSwitchLink = document.getElementById('auth-switch-link');
+
+        // Public-safe Supabase credentials for client-side use
+        const SUPABASE_URL = 'https://corbyaeuxflemgilgcom.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI'; // NOSONAR
+        const DASHBOARD_URL = 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app';
+
+        let supabase = null;
+        if (typeof supabase !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+            supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        const setAuthMode = (mode) => {
+            const isSignIn = mode === 'signin';
+            authTabs.forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.authTab === mode);
+            });
+            authTitle.textContent = isSignIn ? 'Welcome to LexGuard' : 'Create an Account';
+            authSubtitle.textContent = isSignIn ? 'Sign in to your secure workspace.' : 'Join the enterprise compliance engine.';
+            authSubmitBtn.querySelector('span').textContent = isSignIn ? 'Sign In' : 'Sign Up';
+            document.getElementById('auth-switch-text').innerHTML = isSignIn
+                ? 'Don\'t have an account? <a href="#" id="auth-switch-link">Sign Up</a>'
+                : 'Already have an account? <a href="#" id="auth-switch-link">Sign In</a>';
+
+            // Re-attach listener to the new link
+            const newLink = document.getElementById('auth-switch-link');
+            if (newLink) {
+                newLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setAuthMode(isSignIn ? 'signup' : 'signin');
+                });
+            }
+        };
+
+        document.querySelectorAll('[data-open-modal="auth"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const mode = btn.dataset.authMode || 'signin';
+                if (authModal) {
+                    authModal.classList.add('open');
+                    setAuthMode(mode);
+                    document.body.style.overflow = 'hidden';
+                }
+            });
+        });
+
+        authTabs.forEach(tab => {
+            tab.addEventListener('click', () => setAuthMode(tab.dataset.authTab));
+        });
+
+        if (authForm) {
+            authForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('auth-email').value;
+                const password = document.getElementById('auth-password').value;
+                const mode = authTabs[0].classList.contains('active') ? 'signin' : 'signup';
+
+                if (!supabase) {
+                    alert('Supabase is not configured. Please add your URL and Key to js/main.js');
+                    return;
+                }
+
+                authSubmitBtn.disabled = true;
+                authSubmitBtn.querySelector('span').textContent = 'Processing...';
+
+                try {
+                    let result;
+                    if (mode === 'signin') {
+                        result = await supabase.auth.signInWithPassword({ email, password });
+                    } else {
+                        result = await supabase.auth.signUp({ email, password });
+                    }
+
+                    if (result.error) throw result.error;
+
+                    if (mode === 'signup' && !result.data.session) {
+                        alert('Signup successful! Please check your email for verification.');
+                    } else {
+                        // Redirect to dashboard
+                        window.location.href = DASHBOARD_URL;
+                    }
+                } catch (error) {
+                    console.error('Auth Error:', error);
+                    let userFriendlyMsg = 'Authentication failed. Please check your credentials.';
+                    if (error.message.includes('Invalid login credentials')) userFriendlyMsg = 'Invalid email or password.';
+                    if (error.message.includes('Email not confirmed')) userFriendlyMsg = 'Please verify your email address.';
+                    alert(userFriendlyMsg);
+                } finally {
+                    authSubmitBtn.disabled = false;
+                    authSubmitBtn.querySelector('span').textContent = mode === 'signin' ? 'Sign In' : 'Sign Up';
+                }
+            });
+        }
+
+        // Google OAuth Handler
+        const googleBtn = document.querySelector('.social-btn');
+        if (googleBtn) {
+            googleBtn.addEventListener('click', async () => {
+                if (!supabase) return;
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { redirectTo: DASHBOARD_URL }
+                });
+                if (error) alert('Social login failed. Please try email.');
+            });
+        }
+        // ... (Optional: you could check if user is already logged in and change button text)
+
         // --- Live Activity Ticker ----------------------------------
         const tickerAgreements = document.getElementById('ticker-agreements');
         const tickerFlags = document.getElementById('ticker-flags');
-        
+
         if (tickerAgreements && tickerFlags) {
             let agreements = 147;
             let flags = 42;
-            
+
             const updateTicker = () => {
                 // Randomly decide which number to increment
                 if (Math.random() > 0.4) {
@@ -244,18 +359,18 @@ Sent from lexguard-ai landing page.
                     tickerAgreements.style.color = '#fff';
                     setTimeout(() => tickerAgreements.style.color = '', 300);
                 }
-                
+
                 if (Math.random() > 0.7) {
                     flags += Math.floor(Math.random() * 2);
                     tickerFlags.textContent = flags;
                     tickerFlags.style.color = '#fff';
                     setTimeout(() => tickerFlags.style.color = '', 300);
                 }
-                
+
                 // Schedule next update between 3 and 8 seconds
                 setTimeout(updateTicker, 3000 + Math.random() * 5000);
             };
-            
+
             // Start the ticker after a short delay
             setTimeout(updateTicker, 4000);
         }
@@ -264,28 +379,28 @@ Sent from lexguard-ai landing page.
 
 
 document.addEventListener('DOMContentLoaded', () => {
-  const themeBtn = document.getElementById('theme-toggle');
-  if (!themeBtn) return;
-  themeBtn.addEventListener('click', (e) => {
-    if (!document.startViewTransition) {
-      document.documentElement.classList.toggle('dark');
-      return;
-    }
-    const transition = document.startViewTransition(() => {
-      document.documentElement.classList.toggle('dark');
+    const themeBtn = document.getElementById('theme-toggle');
+    if (!themeBtn) return;
+    themeBtn.addEventListener('click', (e) => {
+        if (!document.startViewTransition) {
+            document.documentElement.classList.toggle('dark');
+            return;
+        }
+        const transition = document.startViewTransition(() => {
+            document.documentElement.classList.toggle('dark');
+        });
+        transition.ready.then(() => {
+            const r = Math.hypot(Math.max(e.clientX, innerWidth - e.clientX), Math.max(e.clientY, innerHeight - e.clientY));
+            document.documentElement.animate({
+                clipPath: [
+                    `circle(0px at ${e.clientX}px ${e.clientY}px)`,
+                    `circle(${r}px at ${e.clientX}px ${e.clientY}px)`
+                ]
+            }, {
+                duration: 500,
+                easing: 'ease-in-out',
+                pseudoElement: '::view-transition-new(root)'
+            });
+        });
     });
-    transition.ready.then(() => {
-      const r = Math.hypot(Math.max(e.clientX, innerWidth - e.clientX), Math.max(e.clientY, innerHeight - e.clientY));
-      document.documentElement.animate({
-        clipPath: [
-          `circle(0px at ${e.clientX}px ${e.clientY}px)`,
-          `circle(${r}px at ${e.clientX}px ${e.clientY}px)`
-        ]
-      }, {
-        duration: 500,
-        easing: 'ease-in-out',
-        pseudoElement: '::view-transition-new(root)'
-      });
-    });
-  });
 });
