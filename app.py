@@ -1,3 +1,4 @@
+import hmac
 import json
 import os
 import re
@@ -31,7 +32,7 @@ from main import (
 from report_gen import generate_report
 
 
-ACCESS_KEY = "EM84vz81##"
+ACCESS_KEY = st.secrets.get("ACCESS_KEY")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USER_DATA_ROOT = os.path.join(BASE_DIR, "data")
 
@@ -200,7 +201,8 @@ def render_auth_controls() -> None:
                 if ok:
                     st.success(msg)
                     st.rerun()
-                st.error(msg)
+                else:
+                    st.error(msg)
 
         with sign_up_tab:
             with st.form("sign_up_form", clear_on_submit=False):
@@ -527,9 +529,7 @@ if st.session_state.get("active_user_id") != current_user_id:
     st.session_state.active_user_id = current_user_id
     load_user_cache(workspace_paths)
 
-query_params = st.query_params
-if query_params.get("admin", "").lower() == "true":
-    st.session_state.is_premium = True
+# Removed trivial admin bypass via query parameter
 
 
 # Sidebar content for authenticated users
@@ -566,7 +566,7 @@ with st.sidebar:
             )
 
             if access_input:
-                if access_input == ACCESS_KEY:
+                if ACCESS_KEY and hmac.compare_digest(access_input, ACCESS_KEY):
                     st.session_state.is_premium = True
                     st.session_state.show_key_input = False
                     st.success("Premium unlocked.")
