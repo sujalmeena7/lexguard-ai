@@ -163,3 +163,7 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# ── User Data Workspace
+data/
+
