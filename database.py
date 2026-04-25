@@ -283,5 +283,5 @@ def check_rate_limit(event_type: str, user_id: Optional[str] = None, limit: int 
         count = response.count if hasattr(response, 'count') else len(response.data or [])
         return count < limit
     except Exception as exc:
-        print(f"Rate limit check failed: {exc}")
-        return True
+        print(f"Rate limit check failed (Fail-closed for security): {exc}")
+        return False

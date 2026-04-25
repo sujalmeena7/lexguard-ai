@@ -16,7 +16,8 @@ def _log_event(*args, **kwargs):
             if "email" in kwargs["metadata"]:
                 email = str(kwargs["metadata"]["email"])
                 if "@" in email:
-                    parts = email.split("@")
+                    # Use rsplit to correctly handle multiple '@' (split on the last one)
+                    parts = email.rsplit("@", 1)
                     local_part = parts[0]
                     # Securely handle short or empty local parts
                     masked_local = (local_part[0] if local_part else "") + "***"
@@ -32,7 +33,8 @@ def _check_limit(*args, **kwargs):
         from database import check_rate_limit
         return check_rate_limit(*args, **kwargs)
     except Exception:
-        return True
+        # Fail-closed for security: if we can't check the limit, assume it's reached
+        return False
  
  
  AUTH_STATE_DEFAULTS = {
