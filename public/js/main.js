@@ -298,8 +298,13 @@ Sent from lexguard-ai landing page.
             }
         };
 
-        document.querySelectorAll('[data-open-modal="auth"]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+        // --- Unified Modal Trigger (Event Delegation) ---
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-open-modal]');
+            if (!btn) return;
+
+            const modalId = btn.dataset.openModal;
+            if (modalId === 'auth') {
                 e.preventDefault();
                 const mode = btn.dataset.authMode || 'signin';
                 if (authModal) {
@@ -307,7 +312,14 @@ Sent from lexguard-ai landing page.
                     setAuthMode(mode);
                     document.body.style.overflow = 'hidden';
                 }
-            });
+            } else if (modalId === 'pilot') {
+                e.preventDefault();
+                const pilotModal = document.getElementById('pilot-modal');
+                if (pilotModal) {
+                    pilotModal.classList.add('open');
+                    document.body.style.overflow = 'hidden';
+                }
+            }
         });
 
         // Add Close Listeners (Backdrop + X Button)
