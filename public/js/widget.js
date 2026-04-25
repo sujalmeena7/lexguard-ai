@@ -58,11 +58,23 @@
         // ---------- helpers ----------
         const getAuthHeader = async () => {
             try {
-                const client = window.__LG_SUPABASE__;
+                let client = window.__LG_SUPABASE__;
+                
+                // Wait up to 2s for client to initialize if missing
                 if (!client) {
-                    console.warn('[LexGuard] Supabase client not initialized yet.');
+                    console.log('[LexGuard] Waiting for Supabase init...');
+                    for (let i = 0; i < 20; i++) {
+                        await new Promise(r => setTimeout(r, 100));
+                        client = window.__LG_SUPABASE__;
+                        if (client) break;
+                    }
+                }
+
+                if (!client) {
+                    console.warn('[LexGuard] Supabase client initialization timed out.');
                     return {};
                 }
+
                 const { data: { session }, error } = await client.auth.getSession();
                 if (error) {
                     console.error('[LexGuard] Session check error:', error);
@@ -191,6 +203,10 @@
                 els.progressBar.style.width = Math.min(90, progressIdx * 18) + '%';
             }, 280);
 
+            const originalBtnHtml = els.analyzeBtn.innerHTML;
+            els.analyzeBtn.disabled = true;
+            els.analyzeBtn.innerHTML = '<i class="ph-spinner-gap ph-bold lg-spin"></i> Checking security...';
+
             try {
                 console.log('[LexGuard] Starting analysis...');
                 const authHeader = await getAuthHeader();
@@ -205,8 +221,14 @@
                         alert('Please sign in to run audits.');
                     }
                     showState('input');
+                    els.analyzeBtn.disabled = false;
+                    els.analyzeBtn.innerHTML = originalBtnHtml;
                     return;
                 }
+                
+                // Revert button for the actual analysis phase which has its own loader
+                els.analyzeBtn.disabled = false;
+                els.analyzeBtn.innerHTML = originalBtnHtml;
 
                 console.log('[LexGuard] Token found. Calling backend...');
                 const resp = await fetch(`${API}/analyze`, {
