@@ -16,6 +16,8 @@ from auth_utils import (
     sign_in_with_email,
     sign_out,
     sign_up_with_email,
+    reset_password_request,
+    update_password,
 )
 from database import (
     SCHEMA_REFERENCE_SQL,
@@ -211,6 +213,27 @@ def render_auth_controls() -> None:
                 st.rerun()
             return
 
+        if st.session_state.get("forgot_password_mode"):
+            st.markdown("### Reset Password")
+            with st.form("forgot_password_form"):
+                email = st.text_input("Enter your email")
+                submitted = st.form_submit_button("Send Reset Link", use_container_width=True)
+            
+            if submitted:
+                if email.strip():
+                    ok, msg = reset_password_request(email.strip())
+                    if ok:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
+                else:
+                    st.warning("Please enter your email address.")
+            
+            if st.button("Back to Login", use_container_width=True):
+                st.session_state.forgot_password_mode = False
+                st.rerun()
+            return
+
         st.markdown("### Sign In / Sign Up")
 
         sign_in_tab, sign_up_tab = st.tabs(["Sign In", "Sign Up"])
@@ -228,6 +251,10 @@ def render_auth_controls() -> None:
                     st.rerun()
                 else:
                     st.error(msg)
+            
+            if st.button("Forgot Password?", use_container_width=True):
+                st.session_state.forgot_password_mode = True
+                st.rerun()
 
         with sign_up_tab:
             with st.form("sign_up_form", clear_on_submit=False):
@@ -854,6 +881,28 @@ elif st.session_state.current_page == "settings":
             value=False,
             help="Enable deeper semantic indexing for complex legal constructs.",
         )
+        
+        st.markdown("---")
+        st.subheader("Security")
+        with st.form("change_password_form"):
+            st.markdown("#### Change Password")
+            new_pwd = st.text_input("New Password", type="password")
+            conf_pwd = st.text_input("Confirm New Password", type="password")
+            pwd_submitted = st.form_submit_button("Update Password", use_container_width=True)
+            
+            if pwd_submitted:
+                if not new_pwd:
+                    st.error("Please enter a new password.")
+                elif new_pwd != conf_pwd:
+                    st.error("Passwords do not match.")
+                elif len(new_pwd) < 8 or not any(c.isdigit() for c in new_pwd) or not any(c.isupper() for c in new_pwd):
+                    st.error("Password must be at least 8 characters long, contain a number and an uppercase letter.")
+                else:
+                    ok, msg = update_password(new_pwd)
+                    if ok:
+                        st.success(msg)
+                    else:
+                        st.error(msg)
 
     with c2:
         st.subheader("Data and Privacy")
