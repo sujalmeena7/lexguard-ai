@@ -62,7 +62,7 @@ else:
 
 # ── Gemini client ──
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
-GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-1.5-pro')
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'dev-token-local')
 if not GOOGLE_API_KEY:
     raise RuntimeError("GOOGLE_API_KEY environment variable is required but not set.")
