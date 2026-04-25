@@ -2,6 +2,17 @@
 (() => {
     'use strict';
 
+    // --- Supabase Early Init ---------------------------------------
+    const SUPABASE_URL = window.ENV_SUPABASE_URL || '';
+    const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY || '';
+    let supabaseClient = null;
+
+    if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL !== '') {
+        console.log('[LexGuard] Initializing Supabase client early...');
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.__LG_SUPABASE__ = supabaseClient;
+    }
+
     // --- Nav dark state (over hero constellation) ---------------
     // Runs immediately — this script is loaded at end of <body>,
     // so all DOM elements above are already available.
@@ -14,6 +25,92 @@
         }, { threshold: 0.05 });
         navObs.observe(heroEl);
     }
+
+    // --- Modal & Auth Logic (Immediate) ----------------------------
+    const authModal = document.getElementById('auth-modal');
+    const authForm = document.getElementById('auth-form');
+    const authTabs = document.querySelectorAll('[data-auth-tab]');
+    const authTitle = document.getElementById('auth-title');
+    const authSubtitle = document.getElementById('auth-subtitle');
+    const authSubmitBtn = document.getElementById('auth-submit-btn');
+    const DASHBOARD_URL = window.ENV_DASHBOARD_URL || 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/';
+
+    const setAuthMode = (mode) => {
+        if (!authModal) return;
+        const isSignIn = mode === 'signin';
+        authTabs.forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.authTab === mode);
+        });
+        if (authTitle) authTitle.textContent = isSignIn ? 'Welcome to LexGuard' : 'Create an Account';
+        if (authSubtitle) authSubtitle.textContent = isSignIn ? 'Sign in to your secure workspace.' : 'Join the enterprise compliance engine.';
+        if (authSubmitBtn) authSubmitBtn.querySelector('span').textContent = isSignIn ? 'Sign In' : 'Sign Up';
+        
+        const switchText = document.getElementById('auth-switch-text');
+        if (switchText) {
+            switchText.innerHTML = isSignIn
+                ? 'Don\'t have an account? <a href="#" id="auth-switch-link">Sign Up</a>'
+                : 'Already have an account? <a href="#" id="auth-switch-link">Sign In</a>';
+            
+            const newLink = document.getElementById('auth-switch-link');
+            if (newLink) {
+                newLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setAuthMode(isSignIn ? 'signup' : 'signin');
+                });
+            }
+        }
+    };
+
+    const closeAuthModal = () => {
+        if (authModal) {
+            authModal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    };
+
+    // --- Unified Modal Trigger (Immediate) ---
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-open-modal]');
+        if (!btn) return;
+
+        const modalId = btn.dataset.openModal;
+        if (modalId === 'auth') {
+            e.preventDefault();
+            const mode = btn.dataset.authMode || 'signin';
+            if (authModal) {
+                authModal.classList.add('open');
+                setAuthMode(mode);
+                document.body.style.overflow = 'hidden';
+            }
+        } else if (modalId === 'pilot') {
+            e.preventDefault();
+            const pilotModal = document.getElementById('pilot-modal');
+            if (pilotModal) {
+                pilotModal.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+    });
+
+    // Close on backdrop
+    document.addEventListener('click', (e) => {
+        if (e.target.matches('[data-close-modal]') || e.target.closest('[data-close-modal]')) {
+            closeAuthModal();
+            const pilotModal = document.getElementById('pilot-modal');
+            if (pilotModal) pilotModal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    });
+
+    // Close on Escape
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeAuthModal();
+            const pilotModal = document.getElementById('pilot-modal');
+            if (pilotModal) pilotModal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
 
@@ -249,153 +346,60 @@ Sent from lexguard-ai landing page.
             }
         });
 
-        // --- Auth Modal + Supabase Logic ---------------------------
-        const authModal = document.getElementById('auth-modal');
-        const authForm = document.getElementById('auth-form');
-        const authTabs = document.querySelectorAll('[data-auth-tab]');
-        const authTitle = document.getElementById('auth-title');
-        const authSubtitle = document.getElementById('auth-subtitle');
-        const authSubmitBtn = document.getElementById('auth-submit-btn');
-        const authSwitchLink = document.getElementById('auth-switch-link');
+    // --- Auth Form Submit Logic (Immediate) ---
+    if (authForm) {
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const mode = authTabs[0].classList.contains('active') ? 'signin' : 'signup';
 
-        // Public-safe Supabase credentials for client-side use
-        // Supabase configuration (Injected via build-time env vars or secure config)
-        const SUPABASE_URL = window.ENV_SUPABASE_URL || '';
-        const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY || '';
-        const DASHBOARD_URL = window.ENV_DASHBOARD_URL || 'https://lexguard-ai.streamlit.app';
-
-        if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL !== '') {
-            console.log('[LexGuard] Initializing Supabase client...');
-            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            window.__LG_SUPABASE__ = supabaseClient;
-            console.log('[LexGuard] Supabase client ready.');
-        } else {
-            console.warn('[LexGuard] Supabase script or configuration missing.');
-        }
-
-        const setAuthMode = (mode) => {
-            const isSignIn = mode === 'signin';
-            authTabs.forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.authTab === mode);
-            });
-            authTitle.textContent = isSignIn ? 'Welcome to LexGuard' : 'Create an Account';
-            authSubtitle.textContent = isSignIn ? 'Sign in to your secure workspace.' : 'Join the enterprise compliance engine.';
-            authSubmitBtn.querySelector('span').textContent = isSignIn ? 'Sign In' : 'Sign Up';
-            document.getElementById('auth-switch-text').innerHTML = isSignIn
-                ? 'Don\'t have an account? <a href="#" id="auth-switch-link">Sign Up</a>'
-                : 'Already have an account? <a href="#" id="auth-switch-link">Sign In</a>';
-
-            // Re-attach listener to the new link
-            const newLink = document.getElementById('auth-switch-link');
-            if (newLink) {
-                newLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    setAuthMode(isSignIn ? 'signup' : 'signin');
-                });
+            if (!supabaseClient) {
+                alert('Supabase is not configured. Please add your URL and Key to js/main.js');
+                return;
             }
-        };
 
-        const closeAuthModal = () => {
-            if (authModal) {
-                authModal.classList.remove('open');
-                document.body.style.overflow = '';
-            }
-        };
-
-        // --- Unified Modal Trigger (Event Delegation) ---
-        document.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-open-modal]');
-            if (!btn) return;
-
-            const modalId = btn.dataset.openModal;
-            if (modalId === 'auth') {
-                e.preventDefault();
-                const mode = btn.dataset.authMode || 'signin';
-                if (authModal) {
-                    authModal.classList.add('open');
-                    setAuthMode(mode);
-                    document.body.style.overflow = 'hidden';
-                }
-            } else if (modalId === 'pilot') {
-                e.preventDefault();
-                const pilotModal = document.getElementById('pilot-modal');
-                if (pilotModal) {
-                    pilotModal.classList.add('open');
-                    document.body.style.overflow = 'hidden';
-                }
-            }
-        });
-
-        // Add Close Listeners (Backdrop + X Button)
-        document.addEventListener('click', (e) => {
-            if (e.target.matches('[data-close-modal]') || e.target.closest('[data-close-modal]')) {
-                closeAuthModal();
-            }
-        });
-
-        // Close on Escape key
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeAuthModal();
-        });
-
-        authTabs.forEach(tab => {
-            tab.addEventListener('click', () => setAuthMode(tab.dataset.authTab));
-        });
-
-        if (authForm) {
-            authForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = document.getElementById('auth-email').value;
-                const password = document.getElementById('auth-password').value;
-                const mode = authTabs[0].classList.contains('active') ? 'signin' : 'signup';
-
-                if (!supabaseClient) {
-                    alert('Supabase is not configured. Please add your URL and Key to js/main.js');
-                    return;
-                }
-
+            if (authSubmitBtn) {
                 authSubmitBtn.disabled = true;
                 authSubmitBtn.querySelector('span').textContent = 'Processing...';
+            }
 
-                try {
-                    let result;
-                    if (mode === 'signin') {
-                        result = await supabaseClient.auth.signInWithPassword({ email, password });
-                    } else {
-                        result = await supabaseClient.auth.signUp({ email, password });
-                    }
+            try {
+                let result;
+                if (mode === 'signin') {
+                    result = await supabaseClient.auth.signInWithPassword({ email, password });
+                } else {
+                    result = await supabaseClient.auth.signUp({ email, password });
+                }
 
-                    if (result.error) throw result.error;
+                if (result.error) throw result.error;
 
-                    if (mode === 'signup' && !result.data.session) {
-                        alert('Signup successful! Please check your email for verification.');
-                    } else {
-                        // Redirect to dashboard
-                        window.location.href = DASHBOARD_URL;
-                    }
-                } catch (error) {
-                    console.error('Auth Error:', error);
-                    let userFriendlyMsg = 'Authentication failed. Please check your credentials.';
-                    const errorMsg = error?.message || '';
-                    if (errorMsg.includes('Invalid login credentials')) userFriendlyMsg = 'Invalid email or password.';
-                    if (errorMsg.includes('Email not confirmed')) userFriendlyMsg = 'Please verify your email address.';
-                    alert(userFriendlyMsg);
-                } finally {
+                if (mode === 'signup' && !result.data.session) {
+                    alert('Signup successful! Please check your email for verification.');
+                } else {
+                    window.location.href = DASHBOARD_URL;
+                }
+            } catch (error) {
+                console.error('Auth Error:', error);
+                let userFriendlyMsg = 'Authentication failed. Please check your credentials.';
+                const errorMsg = error?.message || '';
+                if (errorMsg.includes('Invalid login credentials')) userFriendlyMsg = 'Invalid email or password.';
+                if (errorMsg.includes('Email not confirmed')) userFriendlyMsg = 'Please verify your email address.';
+                alert(userFriendlyMsg);
+            } finally {
+                if (authSubmitBtn) {
                     authSubmitBtn.disabled = false;
                     authSubmitBtn.querySelector('span').textContent = mode === 'signin' ? 'Sign In' : 'Sign Up';
                 }
-            });
-        }
+            }
+        });
+    }
 
-        // Google OAuth Handler (Placeholder until enabled in Supabase)
-        const googleBtn = document.querySelector('.social-btn');
-        if (googleBtn) {
-            googleBtn.addEventListener('click', () => {
-                alert('Google Authentication is currently being optimized for your region. Please sign in with your work email to continue.');
-            });
-        }
-        // ... (Optional: you could check if user is already logged in and change button text)
-
+    if (authTabs) {
+        authTabs.forEach(tab => {
+            tab.addEventListener('click', () => setAuthMode(tab.dataset.authTab));
+        });
+    }
 
     });
 })();
