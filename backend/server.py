@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
-from groq import AsyncGroq
+import google.generativeai as genai
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 
@@ -32,16 +32,20 @@ client = AsyncIOMotorClient(
 )
 db = client[os.environ['DB_NAME']]
 
-# Groq client
-GROQ_API_KEY = os.environ['GROQ_API_KEY']
-GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+# Gemini client
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-1.5-pro')
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
 if not ADMIN_TOKEN:
     raise RuntimeError(
         "ADMIN_TOKEN environment variable is required but not set. "
         "The application cannot start without a secure admin token."
     )
-groq_client = AsyncGroq(api_key=GROQ_API_KEY)
+if not GOOGLE_API_KEY:
+    raise RuntimeError("GOOGLE_API_KEY environment variable is required but not set.")
+
+genai.configure(api_key=GOOGLE_API_KEY)
+model = genai.GenerativeModel(GEMINI_MODEL)
 
 # Rate limiter (per client IP, proxy-aware: honors X-Forwarded-For)
 def _client_ip(request: Request) -> str:
@@ -182,27 +186,26 @@ async def analyze_policy(request: Request, req: AnalyzeRequest):
         retry=retry_if_exception_type(Exception),
         reraise=True
     )
-    async def get_groq_completion(text: str):
-        return await groq_client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Audit this document against DPDP Act 2023:\n\n---\n{text}\n---"},
-            ],
-            temperature=0.2,
-            max_completion_tokens=2048,
-            response_format={"type": "json_object"},
+    async def get_gemini_completion(text: str):
+        prompt = f"{SYSTEM_PROMPT}\n\nAudit this document against DPDP Act 2023:\n\n---\n{text}\n---"
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.2,
+                max_output_tokens=2048,
+                response_mime_type="application/json",
+            )
         )
+        return response.text
 
     try:
-        completion = await get_groq_completion(req.policy_text)
-        raw = completion.choices[0].message.content
+        raw = await get_gemini_completion(req.policy_text)
         data = json.loads(raw)
     except json.JSONDecodeError as e:
-        logger.error(f"Groq returned invalid JSON after retries: {e}")
+        logger.error(f"Gemini returned invalid JSON after retries: {e}")
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
     except Exception as e:
-        logger.error(f"Groq error after multiple attempts: {e}")
+        logger.error(f"Gemini error after multiple attempts: {e}")
         raise HTTPException(status_code=502, detail=f"Analysis failed after multiple attempts: {str(e)[:120]}")
 
     analysis_id = str(uuid.uuid4())
