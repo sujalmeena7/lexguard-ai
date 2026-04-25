@@ -19,11 +19,11 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain.chains import RetrievalQA
+from langchain_classic.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-from langchain.retrievers import ParentDocumentRetriever
+from langchain_classic.retrievers import ParentDocumentRetriever
 from langchain_core.stores import InMemoryStore
 from langchain_core.documents import Document
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -38,7 +38,7 @@ WORKSPACE_COLLECTION = "user_workspace_chunks"
 
 # ── Configuration ───────────────────────────────────────────────────
 EMBED_MODEL   = "all-MiniLM-L6-v2"
-OLLAMA_MODEL  = "llama3"
+GEMINI_MODEL  = "gemini-1.5-pro"
 COLLECTION    = "dpdp_parent_child"
 
 # ── Prompts ─────────────────────────────────────────────────────────────
@@ -206,11 +206,11 @@ def get_user_workspace_retriever(user_id: str, k: int = 4):
 # 2.  Retrieval-QA Chain (Interactive)
 # =====================================================================
 def build_chain(retriever: ParentDocumentRetriever) -> RetrievalQA:
-    groq_key = st.secrets.get('GROQ_API_KEY')
-    if not groq_key:
-        raise ValueError("GROQ_API_KEY not found in Streamlit secrets.")
+    google_key = st.secrets.get('GOOGLE_API_KEY')
+    if not google_key:
+        raise ValueError("GOOGLE_API_KEY not found in Streamlit secrets.")
 
-    llm = ChatGroq(temperature=0, model_name='llama-3.3-70b-versatile', groq_api_key=groq_key)
+    llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=google_key, temperature=0)
     chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
@@ -275,12 +275,12 @@ def run_compliance_audit(
     audit_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
     audit_chunks = audit_splitter.split_documents(user_docs)
     
-    groq_key = st.secrets.get('GROQ_API_KEY')
-    if not groq_key:
-        print("❌ Error: GROQ_API_KEY not found in Streamlit secrets.")
+    google_key = st.secrets.get('GOOGLE_API_KEY')
+    if not google_key:
+        print("❌ Error: GOOGLE_API_KEY not found in Streamlit secrets.")
         return []
 
-    llm = ChatGroq(temperature=0, model_name='llama-3.3-70b-versatile', groq_api_key=groq_key)
+    llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=google_key, temperature=0)
     
     print(f"\n🔍 Analyzing {len(audit_chunks)} sections of the document...\n")
     report = []

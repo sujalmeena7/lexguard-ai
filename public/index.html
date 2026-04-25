@@ -22,6 +22,13 @@
 
     <!-- Backend URL exposed for widget JS (replaces build-time token) -->
     <script>window.__LEXGUARD_BACKEND__ = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8000" : "https://lexguard-backend-3mmj.onrender.com";</script>
+    
+    <!-- Environment Config (Fill these with your actual credentials) -->
+    <script>
+      window.ENV_SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+      window.ENV_SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+      window.ENV_DASHBOARD_URL = "YOUR_RENDER_DASHBOARD_URL";
+    </script>
     <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
     <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
     <!-- Supabase JS Client -->

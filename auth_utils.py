@@ -37,7 +37,7 @@ def _check_limit(*args, **kwargs):
         return False
  
  
- AUTH_STATE_DEFAULTS = {
+AUTH_STATE_DEFAULTS = {
     "authenticated": False,
     "user_id": None,
     "user_email": None,
@@ -171,3 +171,36 @@ def sign_out() -> None:
 
     for key in list(st.session_state.keys()):
         del st.session_state[key]
+
+
+def reset_password_request(email: str) -> Tuple[bool, str]:
+    """Send a password reset email to the user."""
+    client = get_supabase_client()
+    if client is None:
+        return False, get_supabase_client_error() or "Missing Supabase configuration."
+
+    if not _check_limit("PASSWORD_RESET_REQUEST", limit=3, window_minutes=60):
+        return False, "Too many password reset requests. Please try again later."
+
+    try:
+        _log_event("PASSWORD_RESET_REQUEST", metadata={"email": email})
+        client.auth.reset_password_for_email(email)
+        return True, "Password reset email sent. Please check your inbox."
+    except Exception as exc:
+        _log_event("PASSWORD_RESET_FAILURE", severity="WARNING", description=str(exc), metadata={"email": email})
+        return False, f"Failed to send reset email: {exc}"
+
+
+def update_password(new_password: str) -> Tuple[bool, str]:
+    """Update the password for the currently authenticated user (used during reset flow)."""
+    client = get_supabase_client()
+    if client is None:
+        return False, "Missing Supabase configuration."
+
+    try:
+        client.auth.update_user({"password": new_password})
+        _log_event("PASSWORD_UPDATE_SUCCESS", user_id=st.session_state.get("user_id"))
+        return True, "Password updated successfully."
+    except Exception as exc:
+        _log_event("PASSWORD_UPDATE_FAILURE", severity="WARNING", description=str(exc))
+        return False, f"Failed to update password: {exc}"
