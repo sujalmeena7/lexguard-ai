@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from auth_utils import get_supabase_client
@@ -6,6 +6,8 @@ from auth_utils import get_supabase_client
 
 AUDIT_LOGS_TABLE = "audit_logs"
 UPLOADED_FILES_TABLE = "uploaded_files"
+USER_PROFILES_TABLE = "user_profiles"
+SECURITY_LOGS_TABLE = "security_logs"
 
 
 SCHEMA_REFERENCE_SQL = """
@@ -31,23 +33,59 @@ create table if not exists public.uploaded_files (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.user_profiles (
+  id uuid primary key references auth.users on delete cascade,
+  email text,
+  credits int default 5,
+  is_premium boolean default false,
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.security_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  event_type text not null,
+  severity text default 'INFO',
+  description text,
+  ip_address text,
+  metadata jsonb,
+  created_at timestamptz default now()
+);
+
 -- Enable RLS and enforce per-user access.
 alter table public.audit_logs enable row level security;
 alter table public.uploaded_files enable row level security;
+alter table public.user_profiles enable row level security;
+alter table public.security_logs enable row level security;
 
-create policy "audit_logs_select_own" on public.audit_logs
-for select using (auth.uid() = user_id);
-create policy "audit_logs_insert_own" on public.audit_logs
-for insert with check (auth.uid() = user_id);
-create policy "audit_logs_delete_own" on public.audit_logs
-for delete using (auth.uid() = user_id);
+-- Policies
+create policy "audit_logs_select_own" on public.audit_logs for select using (auth.uid() = user_id);
+create policy "audit_logs_insert_own" on public.audit_logs for insert with check (auth.uid() = user_id);
+create policy "audit_logs_delete_own" on public.audit_logs for delete using (auth.uid() = user_id);
 
-create policy "uploaded_files_select_own" on public.uploaded_files
-for select using (auth.uid() = user_id);
-create policy "uploaded_files_insert_own" on public.uploaded_files
-for insert with check (auth.uid() = user_id);
-create policy "uploaded_files_delete_own" on public.uploaded_files
-for delete using (auth.uid() = user_id);
+create policy "uploaded_files_select_own" on public.uploaded_files for select using (auth.uid() = user_id);
+create policy "uploaded_files_insert_own" on public.uploaded_files for insert with check (auth.uid() = user_id);
+
+create policy "user_profiles_select_own" on public.user_profiles for select using (auth.uid() = id);
+create policy "user_profiles_update_own" on public.user_profiles for update using (auth.uid() = id);
+
+create policy "security_logs_insert_auth" on public.security_logs for insert with check (auth.role() = 'authenticated');
+create policy "security_logs_select_own" on public.security_logs for select using (auth.uid() = user_id);
+
+-- 7. Atomic Credit Deduction Function
+create or replace function deduct_credit_v1(target_user_id uuid)
+returns int as $$
+declare
+  updated_credits int;
+begin
+  update user_profiles
+  set credits = credits - 1
+  where id = target_user_id and credits > 0 and is_premium = false
+  returning credits into updated_credits;
+  
+  return updated_credits;
+end;
+$$ language plpgsql security definer;
 """.strip()
 
 
@@ -148,3 +186,102 @@ def delete_user_audit(user_id: str, audit_id: str) -> Tuple[bool, str]:
         return True, "Audit log deleted."
     except Exception as exc:
         return False, f"Failed to delete audit log: {exc}"
+ 
+ 
+def log_security_event(
+    event_type: str,
+    user_id: Optional[str] = None,
+    severity: str = "INFO",
+    description: Optional[str] = None,
+    metadata: Optional[Dict] = None,
+) -> None:
+    client = get_supabase_client()
+    if client is None:
+        return
+
+    payload = {
+        "event_type": event_type,
+        "user_id": user_id,
+        "severity": severity,
+        "description": description,
+        "metadata": metadata,
+        "created_at": _now_iso(),
+    }
+    try:
+        client.table(SECURITY_LOGS_TABLE).insert(payload).execute()
+    except Exception as exc:
+        print(f"Failed to log security event: {exc}")
+
+
+def get_or_create_user_profile(user_id: str, email: str) -> Dict:
+    client = get_supabase_client()
+    if client is None:
+        return {}
+
+    try:
+        # Construct payload dynamically to avoid overwriting email with empty strings
+        profile = {"id": user_id}
+        if email and email.strip():
+            profile["email"] = email.strip()
+
+        response = client.table(USER_PROFILES_TABLE).upsert(profile, on_conflict="id").execute()
+        return response.data[0] if response.data else {}
+    except Exception as exc:
+        print(f"Failed to get/create user profile: {exc}")
+        return {}
+
+
+def deduct_user_credit(user_id: str) -> Tuple[bool, int]:
+    client = get_supabase_client()
+    if client is None:
+        return False, 0
+
+    try:
+        # Use RPC for atomic decrement to prevent race conditions
+        response = client.rpc("deduct_credit_v1", {"target_user_id": user_id}).execute()
+        if response.data is not None:
+            return True, response.data
+        
+        # Fallback if credits were already 0 or user is premium (which is handled in RPC)
+        profile = get_or_create_user_profile(user_id, "")
+        if profile.get("is_premium"):
+            return True, profile.get("credits", 0)
+            
+        return False, 0
+    except Exception as exc:
+        # Fallback for if the RPC isn't installed yet
+        print(f"Atomic credit deduction failed (RPC might be missing): {exc}")
+        return False, 0
+
+
+def update_user_premium_status(user_id: str, is_premium: bool) -> bool:
+    client = get_supabase_client()
+    if client is None:
+        return False
+
+    try:
+        client.table(USER_PROFILES_TABLE).update({"is_premium": is_premium}).eq("id", user_id).execute()
+        return True
+    except Exception as exc:
+        print(f"Failed to update premium status: {exc}")
+        return False
+
+
+def check_rate_limit(event_type: str, user_id: Optional[str] = None, limit: int = 5, window_minutes: int = 15) -> bool:
+    """Returns True if the rate limit is NOT exceeded."""
+    client = get_supabase_client()
+    if client is None:
+        return True
+
+    since = (datetime.now(timezone.utc) - timedelta(minutes=window_minutes)).isoformat()
+    try:
+        query = client.table(SECURITY_LOGS_TABLE).select("id", count="exact").eq("event_type", event_type).gt("created_at", since)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        
+        response = query.execute()
+        count = response.count if hasattr(response, 'count') else len(response.data or [])
+        return count < limit
+    except Exception as exc:
+        print(f"Rate limit check failed: {exc}")
+        return True

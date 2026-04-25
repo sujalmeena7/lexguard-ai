@@ -7,7 +7,32 @@ from supabase import Client, create_client
 
 logger = logging.getLogger(__name__)
 
-AUTH_STATE_DEFAULTS = {
+def _log_event(*args, **kwargs):
+    try:
+        from database import log_security_event
+
+        # Mask email PII if present in metadata
+        if "metadata" in kwargs and isinstance(kwargs["metadata"], dict):
+            if "email" in kwargs["metadata"]:
+                email = kwargs["metadata"]["email"]
+                if "@" in email:
+                    parts = email.split("@")
+                    kwargs["metadata"]["email"] = parts[0][0] + "***@" + parts[1]
+
+        return log_security_event(*args, **kwargs)
+    except Exception:
+        pass
+ 
+ 
+ def _check_limit(*args, **kwargs):
+     try:
+         from database import check_rate_limit
+         return check_rate_limit(*args, **kwargs)
+     except Exception:
+         return True
+ 
+ 
+ AUTH_STATE_DEFAULTS = {
     "authenticated": False,
     "user_id": None,
     "user_email": None,
@@ -59,10 +84,15 @@ def sign_up_with_email(email: str, password: str) -> Tuple[bool, str]:
     if client is None:
         return False, get_supabase_client_error() or "Missing SUPABASE_URL or SUPABASE_ANON_KEY in Streamlit secrets."
 
+    if not _check_limit("SIGNUP_ATTEMPT", limit=3, window_minutes=60):
+        return False, "Too many signup attempts. Please try again later."
+
     try:
+        _log_event("SIGNUP_ATTEMPT", metadata={"email": email})
         client.auth.sign_up({"email": email, "password": password})
-        return True, "Account created. If email confirmation is enabled, verify your inbox before signing in."
+        return True, "Account created. Please verify your inbox before signing in."
     except Exception as exc:
+        _log_event("SIGNUP_FAILURE", severity="WARNING", description=str(exc), metadata={"email": email})
         return False, f"Sign up failed: {exc}"
 
 
@@ -71,19 +101,32 @@ def sign_in_with_email(email: str, password: str) -> Tuple[bool, str]:
     if client is None:
         return False, get_supabase_client_error() or "Missing SUPABASE_URL or SUPABASE_ANON_KEY in Streamlit secrets."
 
+    if not _check_limit("LOGIN_ATTEMPT", limit=5, window_minutes=15):
+        return False, "Too many login attempts. Please try again later."
+
     try:
+        _log_event("LOGIN_ATTEMPT", metadata={"email": email})
         auth_response = client.auth.sign_in_with_password({"email": email, "password": password})
         if not auth_response or not auth_response.user:
+            _log_event("LOGIN_FAILURE", severity="WARNING", description="No user in response", metadata={"email": email})
             return False, "Login failed. Please check your credentials."
 
+        user = auth_response.user
+        # Strict security: Check email verification
+        if not user.email_confirmed_at:
+            _log_event("LOGIN_FAILURE", severity="LOW", description="Email not verified", metadata={"email": email, "user_id": user.id})
+            return False, "Please verify your email address before signing in."
+
         st.session_state.authenticated = True
-        st.session_state.user_id = auth_response.user.id
-        st.session_state.user_email = auth_response.user.email
+        st.session_state.user_id = user.id
+        st.session_state.user_email = user.email
         st.session_state.auth_access_token = (
             auth_response.session.access_token if auth_response.session else None
         )
+        _log_event("LOGIN_SUCCESS", user_id=user.id, metadata={"email": email})
         return True, "Signed in successfully."
     except Exception as exc:
+        _log_event("LOGIN_FAILURE", severity="WARNING", description=str(exc), metadata={"email": email})
         return False, f"Sign in failed: {exc}"
 
 

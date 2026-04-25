@@ -23,6 +23,11 @@ from database import (
     fetch_user_audits,
     save_audit_log,
     save_uploaded_file,
+    deduct_user_credit,
+    get_or_create_user_profile,
+    update_user_premium_status,
+    log_security_event,
+    check_rate_limit,
 )
 from main import (
     get_retriever,
@@ -143,13 +148,20 @@ def save_user_cache(paths: Dict[str, str]) -> None:
 def ensure_user_session_defaults() -> None:
     defaults = {
         "current_page": "audit",
-        "credits": 5,
+        "credits": 0,
         "is_premium": False,
         "show_key_input": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+    if st.session_state.authenticated:
+        profile = get_or_create_user_profile(
+            str(st.session_state.user_id), str(st.session_state.user_email)
+        )
+        st.session_state.credits = profile.get("credits", 0)
+        st.session_state.is_premium = profile.get("is_premium", False)
 
     if "audit_complete" not in st.session_state:
         reset_audit_state()
@@ -216,8 +228,8 @@ def render_auth_controls() -> None:
             if submitted:
                 if password != confirm:
                     st.error("Passwords do not match.")
-                elif len(password) < 8:
-                    st.error("Use at least 8 characters for password security.")
+                elif len(password) < 8 or not any(c.isdigit() for c in password) or not any(c.isupper() for c in password):
+                    st.error("Password must be at least 8 characters long, contain a number and an uppercase letter.")
                 else:
                     ok, msg = sign_up_with_email(email.strip(), password)
                     if ok:
@@ -289,8 +301,12 @@ def run_user_audit(
     source_name: str,
     source_type: str,
 ) -> None:
-    if st.session_state.credits <= 0:
+    if st.session_state.credits <= 0 and not st.session_state.is_premium:
         st.warning("You do not have enough credits to run an audit.")
+        return
+
+    if not check_rate_limit("AUDIT_RUN", user_id=user_id, limit=3, window_minutes=10):
+        st.warning("Audit rate limit reached. Please wait a few minutes.")
         return
 
     clear_user_cache(workspace_paths)
@@ -369,6 +385,15 @@ def run_user_audit(
         summary=summary,
         findings_json=results,
         metrics_json=st.session_state.metrics,
+    )
+
+    # Deduct credit and log event
+    deduct_user_credit(user_id)
+    log_security_event(
+        "AUDIT_RUN",
+        user_id=user_id,
+        description=f"Ran audit on {source_name}",
+        metadata={"source_type": source_type, "total_clauses": st.session_state.metrics["total_clauses"]},
     )
 
     save_user_cache(workspace_paths)
@@ -569,11 +594,23 @@ with st.sidebar:
 
             if access_input:
                 if ACCESS_KEY and hmac.compare_digest(access_input, ACCESS_KEY):
+                    update_user_premium_status(current_user_id, True)
                     st.session_state.is_premium = True
                     st.session_state.show_key_input = False
+                    log_security_event(
+                        "PREMIUM_UPGRADE",
+                        user_id=current_user_id,
+                        description="User upgraded to premium using access key",
+                    )
                     st.success("Premium unlocked.")
                     st.rerun()
                 else:
+                    log_security_event(
+                        "INVALID_PREMIUM_KEY",
+                        user_id=current_user_id,
+                        severity="WARNING",
+                        description="Failed attempt to use premium key",
+                    )
                     st.error("Invalid key.")
     else:
         st.success("Premium active.")
