@@ -15,7 +15,7 @@
     const LOG_LINES = [
         'ingesting document · tokenizing…',
         'vectorising against DPDP §6 clause library',
-        'routing to llama-3.3-70b on Groq LPU™…',
+        'routing to gemini-1.5-pro for legal reasoning…',
         'cross-referencing DPDP Act 2023 obligations',
         'scoring compliance · ranking risks',
     ];
