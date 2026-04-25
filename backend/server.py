@@ -203,6 +203,34 @@ async def root():
 @limiter.limit("5/minute;30/hour")
 async def analyze_policy(request: Request, req: AnalyzeRequest):
     """Analyze privacy policy against DPDP Act 2023. Rate limited: 5/min, 30/hour per IP."""
+
+    def _extract_json(text: str) -> dict:
+        """Robustly extract JSON from model output."""
+        import re
+        # 1. Try raw JSON
+        try:
+            return json.loads(text.strip())
+        except:
+            pass
+        
+        # 2. Strip markdown fences and try again
+        cleaned = re.sub(r'```(?:json)?', '', text).strip()
+        try:
+            return json.loads(cleaned)
+        except:
+            pass
+            
+        # 3. Find the first '{' and last '}'
+        try:
+            start = text.find('{')
+            end = text.rfind('}')
+            if start != -1 and end != -1:
+                return json.loads(text[start:end+1])
+        except:
+            pass
+            
+        raise json.JSONDecodeError("Failed to find valid JSON in model output", text, 0)
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -215,7 +243,7 @@ async def analyze_policy(request: Request, req: AnalyzeRequest):
             prompt,
             generation_config=genai.types.GenerationConfig(
                 temperature=0.2,
-                max_output_tokens=2048,
+                max_output_tokens=4096,
                 response_mime_type="application/json",
             )
         )
@@ -223,12 +251,14 @@ async def analyze_policy(request: Request, req: AnalyzeRequest):
 
     try:
         raw = await get_gemini_completion(req.policy_text)
-        data = json.loads(raw)
+        logger.info(f"Gemini raw response (first 500 chars): {raw[:500]}")
+        data = _extract_json(raw)
     except json.JSONDecodeError as e:
-        logger.error(f"Gemini returned invalid JSON after retries: {e}")
+        logger.error(f"Gemini returned invalid JSON after retries: {e}\nRaw: {raw[:1000] if 'raw' in dir() else 'N/A'}")
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
     except Exception as e:
         logger.error(f"Gemini error after multiple attempts: {e}")
+
         raise HTTPException(status_code=502, detail=f"Analysis failed after multiple attempts: {str(e)[:120]}")
 
     analysis_id = str(uuid.uuid4())
