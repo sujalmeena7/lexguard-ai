@@ -264,9 +264,13 @@ Sent from lexguard-ai landing page.
         const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY || '';
         const DASHBOARD_URL = window.ENV_DASHBOARD_URL || 'https://lexguard-ai.streamlit.app';
 
-        let supabaseClient = null;
-        if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+        if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL !== '') {
+            console.log('[LexGuard] Initializing Supabase client...');
             supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            window.__LG_SUPABASE__ = supabaseClient;
+            console.log('[LexGuard] Supabase client ready.');
+        } else {
+            console.warn('[LexGuard] Supabase script or configuration missing.');
         }
 
         const setAuthMode = (mode) => {
