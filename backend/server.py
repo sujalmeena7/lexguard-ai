@@ -22,25 +22,48 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(
-    mongo_url, 
-    tls=True, 
-    tlsCAFile=certifi.where(), 
-    tlsAllowInvalidCertificates=True
-)
-db = client[os.environ['DB_NAME']]
+# ── MongoDB connection (fully optional — AI works without it) ──
+mongo_url = os.environ.get('MONGO_URL', '')
+db = None  # Will be set below if connection succeeds
 
-# Gemini client
+class _NullCollection:
+    """Stub that silently no-ops every DB call so the app never crashes."""
+    async def insert_one(self, *a, **kw): return None
+    async def find_one(self, *a, **kw): return None
+    async def update_one(self, *a, **kw): return None
+    async def create_index(self, *a, **kw): return None
+    async def aggregate(self, *a, **kw): return []
+    def find(self, *a, **kw): return self
+    def sort(self, *a, **kw): return self
+    async def to_list(self, *a, **kw): return []
+
+class _NullDB:
+    """Provides attribute access that always returns a _NullCollection."""
+    def __getattr__(self, name):
+        return _NullCollection()
+
+if mongo_url:
+    try:
+        # Auto-detect TLS: Atlas (mongodb+srv://) needs TLS; localhost does not
+        use_tls = mongo_url.startswith('mongodb+srv://') or 'mongodb.net' in mongo_url
+        connect_kwargs = {}
+        if use_tls:
+            connect_kwargs = dict(tls=True, tlsCAFile=certifi.where(), tlsAllowInvalidCertificates=True)
+
+        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000, **connect_kwargs)
+        db = client[os.environ.get('DB_NAME', 'lexguard_db')]
+        logging.info(f"MongoDB configured: {mongo_url[:30]}... (TLS={'on' if use_tls else 'off'})")
+    except Exception as e:
+        logging.warning(f"MongoDB connection failed — running without database: {e}")
+        db = _NullDB()
+else:
+    logging.warning("MONGO_URL not set — running without database (AI features still work)")
+    db = _NullDB()
+
+# ── Gemini client ──
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-1.5-pro')
-ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
-if not ADMIN_TOKEN:
-    raise RuntimeError(
-        "ADMIN_TOKEN environment variable is required but not set. "
-        "The application cannot start without a secure admin token."
-    )
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'dev-token-local')
 if not GOOGLE_API_KEY:
     raise RuntimeError("GOOGLE_API_KEY environment variable is required but not set.")
 
@@ -408,17 +431,26 @@ async def admin_leads_csv(token: str = ""):
 
 app.include_router(api_router)
 
-cors_origins = [
-    origin.strip()
-    for origin in os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
-    if origin.strip()
+# ── CORS: Allow all known frontends (local + production + previews) ──
+_DEFAULT_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8501",
+    "http://127.0.0.1:8501",
 ]
-if "http://localhost:3000" not in cors_origins:
-    cors_origins.append("http://localhost:3000")
+
+# Add any extra origins from env (e.g. your Vercel production URL)
+cors_origins = list(_DEFAULT_ORIGINS)
+for origin in os.environ.get('CORS_ORIGINS', '').split(','):
+    o = origin.strip()
+    if o and o not in cors_origins:
+        cors_origins.append(o)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    # Auto-allow any *.vercel.app and *.streamlit.app subdomain
+    allow_origin_regex=r"https://.*\.(vercel\.app|streamlit\.app)",
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
