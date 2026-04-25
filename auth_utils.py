@@ -14,22 +14,25 @@ def _log_event(*args, **kwargs):
         # Mask email PII if present in metadata
         if "metadata" in kwargs and isinstance(kwargs["metadata"], dict):
             if "email" in kwargs["metadata"]:
-                email = kwargs["metadata"]["email"]
+                email = str(kwargs["metadata"]["email"])
                 if "@" in email:
                     parts = email.split("@")
-                    kwargs["metadata"]["email"] = parts[0][0] + "***@" + parts[1]
+                    local_part = parts[0]
+                    # Securely handle short or empty local parts
+                    masked_local = (local_part[0] if local_part else "") + "***"
+                    kwargs["metadata"]["email"] = masked_local + "@" + parts[1]
 
         return log_security_event(*args, **kwargs)
     except Exception:
         pass
- 
- 
- def _check_limit(*args, **kwargs):
-     try:
-         from database import check_rate_limit
-         return check_rate_limit(*args, **kwargs)
-     except Exception:
-         return True
+
+
+def _check_limit(*args, **kwargs):
+    try:
+        from database import check_rate_limit
+        return check_rate_limit(*args, **kwargs)
+    except Exception:
+        return True
  
  
  AUTH_STATE_DEFAULTS = {
