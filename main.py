@@ -38,7 +38,7 @@ WORKSPACE_COLLECTION = "user_workspace_chunks"
 
 # ── Configuration ───────────────────────────────────────────────────
 EMBED_MODEL   = "all-MiniLM-L6-v2"
-GEMINI_MODEL  = "gemini-1.5-pro"
+GEMINI_MODEL  = "gemini-2.5-flash"
 COLLECTION    = "dpdp_parent_child"
 
 # ── Prompts ─────────────────────────────────────────────────────────────
