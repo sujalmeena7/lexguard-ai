@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from supabase import create_client, Client
 import certifi
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -17,6 +18,10 @@ import uuid
 from datetime import datetime, timezone
 import google.generativeai as genai
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+# Configure Logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("lexguard-backend")
 
 
 ROOT_DIR = Path(__file__).parent
@@ -70,6 +75,39 @@ if not GOOGLE_API_KEY:
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel(GEMINI_MODEL)
 
+# ── Supabase Auth Guard ──
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
+supabase_client: Optional[Client] = None
+
+if SUPABASE_URL and SUPABASE_ANON_KEY:
+    try:
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        logging.info("Supabase client configured for JWT verification")
+    except Exception as e:
+        logging.error(f"Supabase init failed: {e}")
+
+async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
+    """Verify Supabase JWT and return user data."""
+    if not authorization or not authorization.startswith("Bearer "):
+        # For local dev without auth, you can comment this out or use a bypass
+        # But for production, this is mandatory.
+        raise HTTPException(status_code=401, detail="Authentication required (Bearer token missing)")
+    
+    token = authorization.split(" ")[1]
+    if not supabase_client:
+        raise HTTPException(status_code=503, detail="Auth service unavailable")
+        
+    try:
+        # Validate token with Supabase (prevents forged/expired tokens)
+        res = supabase_client.auth.get_user(token)
+        if not res or not res.user:
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        return {"id": res.user.id, "email": res.user.email}
+    except Exception as e:
+        logger.error(f"Auth verification error: {e}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
 # Rate limiter (per client IP, proxy-aware: honors X-Forwarded-For)
 def _client_ip(request: Request) -> str:
     xff = request.headers.get("x-forwarded-for")
@@ -88,9 +126,6 @@ async def health_check():
     return {"service": "LexGuard AI", "status": "ok", "version": "1.0.0"}
 
 api_router = APIRouter(prefix="/api")
-
-logger = logging.getLogger(__name__)
-
 
 # ====================== Models ======================
 
@@ -200,9 +235,13 @@ async def root():
 
 
 @api_router.post("/analyze", response_model=AnalysisResult)
-@limiter.limit("5/minute;30/hour")
-async def analyze_policy(request: Request, req: AnalyzeRequest):
-    """Analyze privacy policy against DPDP Act 2023. Rate limited: 5/min, 30/hour per IP."""
+@limiter.limit("5/minute;50/day")
+async def analyze_policy(
+    request: Request, 
+    req: AnalyzeRequest,
+    user: dict = Depends(get_current_user)
+):
+    """Analyze privacy policy against DPDP Act 2023. Authenticated only."""
 
     def _extract_json(text: str) -> dict:
         """Robustly extract JSON from model output."""
@@ -279,9 +318,13 @@ async def analyze_policy(request: Request, req: AnalyzeRequest):
         "unlocked": False,
     }
 
-    # Save to DB (Optional - don't crash if DB is down)
+    # Save to DB (Tied to user_id for IDOR protection)
     try:
-        await db.analyses.insert_one({**result})
+        await db.analyses.insert_one({
+            **result,
+            "user_id": user["id"],
+            "user_email": user["email"]
+        })
     except Exception as db_err:
         logger.warning(f"Database insertion failed (is MongoDB running?): {db_err}")
 
@@ -300,7 +343,11 @@ async def analyze_policy(request: Request, req: AnalyzeRequest):
 
 @api_router.post("/unlock", response_model=AnalysisResult)
 @limiter.limit("20/minute")
-async def unlock_full_report(request: Request, req: UnlockRequest):
+async def unlock_full_report(
+    request: Request, 
+    req: UnlockRequest,
+    user: dict = Depends(get_current_user)
+):
     """Capture email → store in leads collection → return FULL analysis."""
     # Find in DB or fallback to a dummy if DB is down
     doc = None
@@ -313,6 +360,11 @@ async def unlock_full_report(request: Request, req: UnlockRequest):
         # If DB is down, we can't fetch the specific analysis, but we can tell the user why
         raise HTTPException(status_code=404, detail="Analysis not found or Database is offline.")
 
+    # Check ownership (IDOR Protection)
+    if doc.get("user_id") != user["id"]:
+        logger.warning(f"IDOR ATTEMPT: User {user['id']} tried to access analysis {req.analysis_id} owned by {doc.get('user_id')}")
+        raise HTTPException(status_code=403, detail="You do not have permission to access this report.")
+
     # Store lead
     try:
         await db.leads.insert_one({
@@ -323,6 +375,7 @@ async def unlock_full_report(request: Request, req: UnlockRequest):
             "analysis_id": req.analysis_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "source": "hero_try_it_now",
+            "user_id": user["id"]
         })
     except Exception as db_err:
         logger.warning(f"Lead storage failed: {db_err}")

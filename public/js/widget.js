@@ -56,7 +56,27 @@
         };
 
         // ---------- helpers ----------
+        const getAuthHeader = async () => {
+            try {
+                const client = window.__LG_SUPABASE__;
+                if (!client) {
+                    console.warn('[LexGuard] Supabase client not initialized yet.');
+                    return {};
+                }
+                const { data: { session }, error } = await client.auth.getSession();
+                if (error) {
+                    console.error('[LexGuard] Session check error:', error);
+                    return {};
+                }
+                return session ? { 'Authorization': `Bearer ${session.access_token}` } : {};
+            } catch (e) {
+                console.error('[LexGuard] Auth helper crashed:', e);
+                return {};
+            }
+        };
+
         const showState = (name) => {
+            console.log('[LexGuard] Switching state to:', name);
             widget.querySelectorAll('.lg-state').forEach(s => {
                 s.hidden = s.dataset.lgState !== name;
             });
@@ -172,9 +192,29 @@
             }, 280);
 
             try {
+                console.log('[LexGuard] Starting analysis...');
+                const authHeader = await getAuthHeader();
+                
+                if (!authHeader.Authorization) {
+                    console.log('[LexGuard] Unauthenticated attempt. Opening auth modal.');
+                    clearInterval(logInterval);
+                    const authBtn = document.querySelector('[data-open-modal="auth"]');
+                    if (authBtn) {
+                        authBtn.click();
+                    } else {
+                        alert('Please sign in to run audits.');
+                    }
+                    showState('input');
+                    return;
+                }
+
+                console.log('[LexGuard] Token found. Calling backend...');
                 const resp = await fetch(`${API}/analyze`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        ...authHeader
+                    },
                     body: JSON.stringify({ policy_text: policyText }),
                 });
 
@@ -248,9 +288,13 @@
             submitBtn.innerHTML = '<i class="ph ph-spinner-gap"></i> Unlocking…';
 
             try {
+                const authHeader = await getAuthHeader();
                 const resp = await fetch(`${API}/unlock`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        ...authHeader
+                    },
                     body: JSON.stringify({ analysis_id: state.analysisId, email }),
                 });
                 if (!resp.ok) {
