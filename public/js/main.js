@@ -66,18 +66,26 @@
             });
         });
 
-        // --- Mobile menu (lightweight dropdown) --------------------
-        const btn = document.querySelector('.menu-btn');
-        const nav = document.querySelector('.nav-links');
-        if (btn && nav) {
-            btn.addEventListener('click', () => {
-                const open = nav.classList.toggle('open');
-                Object.assign(nav.style, open ? {
-                    display: 'flex', flexDirection: 'column', gap: '16px',
-                    position: 'fixed', top: '64px', left: 0, right: 0,
-                    background: '#fff', padding: '24px',
-                    borderBottom: '1px solid rgba(0,0,0,0.08)', zIndex: 49,
-                } : { display: '', flexDirection: '', gap: '', position: '', top: '', left: '', right: '', background: '', padding: '', borderBottom: '', zIndex: '' });
+        // --- Mobile menu toggle ------------------------------------
+        const menuBtn = document.querySelector('.menu-btn');
+        const navLinks = document.querySelector('.nav-links');
+        if (menuBtn && navLinks) {
+            menuBtn.addEventListener('click', () => {
+                const isOpen = navLinks.classList.toggle('open');
+                menuBtn.classList.toggle('open', isOpen);
+                menuBtn.setAttribute('aria-expanded', isOpen);
+                // Prevent body scroll when menu is open
+                document.body.style.overflow = isOpen ? 'hidden' : '';
+            });
+
+            // Close menu when a link is clicked
+            navLinks.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    navLinks.classList.remove('open');
+                    menuBtn.classList.remove('open');
+                    menuBtn.setAttribute('aria-expanded', 'false');
+                    document.body.style.overflow = '';
+                });
             });
         }
 
@@ -257,7 +265,7 @@ Sent from lexguard-ai landing page.
         const DASHBOARD_URL = window.ENV_DASHBOARD_URL || 'https://lexguard-ai.streamlit.app';
 
         let supabaseClient = null;
-        if (typeof supabase !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+        if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
             supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
@@ -352,8 +360,9 @@ Sent from lexguard-ai landing page.
                 } catch (error) {
                     console.error('Auth Error:', error);
                     let userFriendlyMsg = 'Authentication failed. Please check your credentials.';
-                    if (error.message.includes('Invalid login credentials')) userFriendlyMsg = 'Invalid email or password.';
-                    if (error.message.includes('Email not confirmed')) userFriendlyMsg = 'Please verify your email address.';
+                    const errorMsg = error?.message || '';
+                    if (errorMsg.includes('Invalid login credentials')) userFriendlyMsg = 'Invalid email or password.';
+                    if (errorMsg.includes('Email not confirmed')) userFriendlyMsg = 'Please verify your email address.';
                     alert(userFriendlyMsg);
                 } finally {
                     authSubmitBtn.disabled = false;

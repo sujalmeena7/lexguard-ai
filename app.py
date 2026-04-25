@@ -52,6 +52,17 @@ def sanitize_user_id(user_id: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", user_id)
 
 
+def mask_pii(text: str) -> str:
+    """Simple regex to mask emails and phone numbers for extra privacy."""
+    if not text:
+        return text
+    # Mask emails: user@domain.com -> u***@domain.com
+    text = re.sub(r"([a-zA-Z0-9_.+-])[a-zA-Z0-9_.+-]*(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)", r"\1***\2", text)
+    # Mask potential phone numbers (simple 10 digit check)
+    text = re.sub(r"(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", "[REDACTED PHONE]", text)
+    return text
+
+
 def get_user_workspace_paths(user_id: str) -> Dict[str, str]:
     safe_user_id = sanitize_user_id(user_id)
     user_root = os.path.join(USER_DATA_ROOT, safe_user_id)
@@ -361,12 +372,15 @@ def run_user_audit(
             report_output_path=workspace_paths["audit_json"],
         )
 
+        if "summary" in results:
+            results["summary"] = mask_pii(results["summary"])
+
+        st.session_state.audit_results = results
+        st.session_state.audit_complete = True
+
     if not results:
         st.error("Audit failed. Please verify your input document and try again.")
         return
-
-    st.session_state.audit_results = results
-    st.session_state.audit_complete = True
     st.session_state.credits -= 1
 
     generated_pdf_path = generate_report(
