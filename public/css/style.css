@@ -247,9 +247,9 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
 }
 
 .btn-ghost {
-    background: var(--zinc-100);
+    background: transparent;
     color: var(--white);
-    border-color: rgba(255,255,255,0.35);
+    border: 1px solid rgba(255,255,255,0.3);
 }
 .btn-ghost:hover {
     border-color: var(--white);
