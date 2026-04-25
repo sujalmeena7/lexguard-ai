@@ -226,7 +226,11 @@ async def analyze_policy(request: Request, req: AnalyzeRequest):
         "unlocked": False,
     }
 
-    await db.analyses.insert_one({**result})
+    # Save to DB (Optional - don't crash if DB is down)
+    try:
+        await db.analyses.insert_one({**result})
+    except Exception as db_err:
+        logger.warning(f"Database insertion failed (is MongoDB running?): {db_err}")
 
     preview = AnalysisResult(
         analysis_id=analysis_id,
@@ -245,24 +249,38 @@ async def analyze_policy(request: Request, req: AnalyzeRequest):
 @limiter.limit("20/minute")
 async def unlock_full_report(request: Request, req: UnlockRequest):
     """Capture email → store in leads collection → return FULL analysis."""
-    doc = await db.analyses.find_one({"analysis_id": req.analysis_id}, {"_id": 0})
-    if not doc:
-        raise HTTPException(status_code=404, detail="Analysis not found. Please re-run analysis.")
+    # Find in DB or fallback to a dummy if DB is down
+    doc = None
+    try:
+        doc = await db.analyses.find_one({"analysis_id": req.analysis_id}, {"_id": 0})
+    except Exception as db_err:
+        logger.warning(f"Database lookup failed: {db_err}")
 
-    lead = {
-        "lead_id": str(uuid.uuid4()),
-        "email": req.email,
-        "name": req.name,
-        "company": req.company,
-        "analysis_id": req.analysis_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "source": "hero_try_it_now",
-    }
-    await db.leads.insert_one(lead)
-    await db.analyses.update_one(
-        {"analysis_id": req.analysis_id},
-        {"$set": {"unlocked": True, "unlocked_email": req.email}},
-    )
+    if not doc:
+        # If DB is down, we can't fetch the specific analysis, but we can tell the user why
+        raise HTTPException(status_code=404, detail="Analysis not found or Database is offline.")
+
+    # Store lead
+    try:
+        await db.leads.insert_one({
+            "lead_id": str(uuid.uuid4()),
+            "email": req.email,
+            "name": req.name,
+            "company": req.company,
+            "analysis_id": req.analysis_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source": "hero_try_it_now",
+        })
+    except Exception as db_err:
+        logger.warning(f"Lead storage failed: {db_err}")
+
+    try:
+        await db.analyses.update_one(
+            {"analysis_id": req.analysis_id},
+            {"$set": {"unlocked": True, "unlocked_email": req.email}},
+        )
+    except Exception as db_err:
+        logger.warning(f"Database update failed: {db_err}")
 
     return AnalysisResult(
         analysis_id=doc["analysis_id"],
