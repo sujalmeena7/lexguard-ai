@@ -1040,16 +1040,18 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
 
 .modal-close {
     position: absolute;
-    top: 28px; right: 28px;
-    width: 32px; height: 32px;
+    top: 16px; right: 16px;
+    width: 36px; height: 36px;
     display: grid; place-items: center;
-    background: var(--zinc-100);
+    background: var(--white);
     border: 1px solid rgba(0,0,0,0.1);
     border-radius: 50%;
     color: var(--zinc-700);
     cursor: pointer;
-    font-size: 18px;
-    transition: all .15s ease-out;
+    font-size: 20px;
+    z-index: 100;
+    transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 .modal-close:hover {
     background: var(--black);
