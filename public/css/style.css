@@ -221,6 +221,21 @@ em { font-style: italic; color: var(--ikb); font-family: var(--f-head); }
     box-shadow: 4px 4px 0 0 var(--black);
 }
 
+.btn-glow {
+    position: relative;
+    box-shadow: 0 0 0 0 rgba(0, 47, 167, 0);
+    animation: btn-breathing-glow 3s infinite;
+}
+@keyframes btn-breathing-glow {
+    0% { box-shadow: 0 0 0 0 rgba(0, 47, 167, 0.4); }
+    50% { box-shadow: 0 0 15px 4px rgba(0, 47, 167, 0.2); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 47, 167, 0.4); }
+}
+.btn-glow:hover {
+    animation: none;
+    box-shadow: 0 4px 12px rgba(0, 47, 167, 0.3);
+}
+
 .btn-secondary {
     background: var(--white);
     color: var(--black);
