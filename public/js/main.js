@@ -251,9 +251,10 @@ Sent from lexguard-ai landing page.
         const authSwitchLink = document.getElementById('auth-switch-link');
 
         // Public-safe Supabase credentials for client-side use
-        const SUPABASE_URL = 'https://corbyaeuxflemgilgcom.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI'; // NOSONAR
-        const DASHBOARD_URL = 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app';
+        // Supabase configuration (Injected via build-time env vars or secure config)
+        const SUPABASE_URL = window.ENV_SUPABASE_URL || '';
+        const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY || '';
+        const DASHBOARD_URL = window.ENV_DASHBOARD_URL || 'https://lexguard-ai.streamlit.app';
 
         let supabaseClient = null;
         if (typeof supabase !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
