@@ -24,7 +24,9 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from langchain.retrievers import ParentDocumentRetriever
+from langchain_classic.retrievers import ParentDocumentRetriever
+from langchain_classic.chains import create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.stores import InMemoryStore
 from langchain_core.documents import Document
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
