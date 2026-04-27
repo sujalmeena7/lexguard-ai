@@ -75,7 +75,7 @@ LexGuard AI utilizes a decoupled, high-performance architecture to ensure scalab
 4. **Run the Platform:**
    - **Launch Dashboard**: `streamlit run app.py`
    - **Launch API**: `python backend/server.py`
-   - **Launch Frontend**: `npx http-server public/`
+   - **Launch Frontend**: `cd dashboard && npm run dev`
 
 ---
 

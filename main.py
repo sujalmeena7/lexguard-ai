@@ -19,11 +19,11 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_classic.chains import RetrievalQA
+from langchain.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from langchain_classic.retrievers import ParentDocumentRetriever
+from langchain.retrievers import ParentDocumentRetriever
 from langchain_core.stores import InMemoryStore
 from langchain_core.documents import Document
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -38,7 +38,7 @@ WORKSPACE_COLLECTION = "user_workspace_chunks"
 
 # ── Configuration ───────────────────────────────────────────────────
 EMBED_MODEL   = "all-MiniLM-L6-v2"
-GEMINI_MODEL  = "gemini-2.5-flash"
+GEMINI_MODEL  = "gemini-1.5-pro"
 COLLECTION    = "dpdp_parent_child"
 
 # ── Prompts ─────────────────────────────────────────────────────────────

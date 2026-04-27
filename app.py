@@ -196,85 +196,7 @@ def summarize_results(metrics: Dict[str, int]) -> str:
 
 
 def render_auth_controls() -> None:
-    with st.sidebar:
-        st.markdown(
-            """
-            <div style='text-align: center; padding-bottom: 20px;'>
-                <h2 style='color: #002FA7; margin-bottom: 0;'>LexGuard/AI</h2>
-                <p style='color: #a1a1aa; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase;'>Secure Workspace</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        if st.session_state.authenticated:
-            st.success(f"Signed in as {st.session_state.user_email}")
-            if st.button("Sign Out", use_container_width=True, type="primary"):
-                sign_out()
-                st.rerun()
-            return
-
-        if st.session_state.get("forgot_password_mode"):
-            st.markdown("### Reset Password")
-            with st.form("forgot_password_form"):
-                email = st.text_input("Enter your email")
-                submitted = st.form_submit_button("Send Reset Link", use_container_width=True)
-            
-            if submitted:
-                if email.strip():
-                    ok, msg = reset_password_request(email.strip())
-                    if ok:
-                        st.success(msg)
-                    else:
-                        st.error(msg)
-                else:
-                    st.warning("Please enter your email address.")
-            
-            if st.button("Back to Login", use_container_width=True):
-                st.session_state.forgot_password_mode = False
-                st.rerun()
-            return
-
-        st.markdown("### Sign In / Sign Up")
-
-        sign_in_tab, sign_up_tab = st.tabs(["Sign In", "Sign Up"])
-
-        with sign_in_tab:
-            with st.form("sign_in_form", clear_on_submit=False):
-                email = st.text_input("Email", key="login_email")
-                password = st.text_input("Password", type="password", key="login_password")
-                submitted = st.form_submit_button("Sign In", use_container_width=True)
-
-            if submitted:
-                ok, msg = sign_in_with_email(email.strip(), password)
-                if ok:
-                    st.success(msg)
-                    st.rerun()
-                else:
-                    st.error(msg)
-            
-            if st.button("Forgot Password?", use_container_width=True):
-                st.session_state.forgot_password_mode = True
-                st.rerun()
-
-        with sign_up_tab:
-            with st.form("sign_up_form", clear_on_submit=False):
-                email = st.text_input("Email", key="signup_email")
-                password = st.text_input("Password", type="password", key="signup_password")
-                confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
-                submitted = st.form_submit_button("Create Account", use_container_width=True)
-
-            if submitted:
-                if password != confirm:
-                    st.error("Passwords do not match.")
-                elif len(password) < 8 or not any(c.isdigit() for c in password) or not any(c.isupper() for c in password):
-                    st.error("Password must be at least 8 characters long, contain a number and an uppercase letter.")
-                else:
-                    ok, msg = sign_up_with_email(email.strip(), password)
-                    if ok:
-                        st.success(msg)
-                    else:
-                        st.error(msg)
+    pass
 
 
 def persist_uploaded_input(
@@ -653,6 +575,19 @@ st.markdown(f"""
         width: 100%;
         padding: 0 20px;
     }}
+
+    /* Style the sign out button specifically (it's the 5th button in the sidebar) */
+    [data-testid="stSidebar"] .stButton:nth-of-type(5) > button {{
+        background: rgba(239, 68, 68, 0.1) !important;
+        border: 1px solid rgba(239, 68, 68, 0.2) !important;
+        color: #ef4444 !important;
+        justify-content: center !important;
+        padding-left: 0 !important;
+        margin-top: 8px;
+    }}
+    [data-testid="stSidebar"] .stButton:nth-of-type(5) > button:hover {{
+        background: rgba(239, 68, 68, 0.2) !important;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -685,12 +620,36 @@ with st.sidebar:
     st.markdown("<div style='flex-grow: 1;'></div>", unsafe_allow_html=True)
     st.markdown("---")
     if st.session_state.authenticated:
-        st.caption(f"👤 {st.session_state.user_email}")
-        if st.session_state.credits < 10:
-            st.caption(f"Credits: {st.session_state.credits}/10")
-            st.progress(st.session_state.credits / 10.0)
+        # Professional User Profile Card
+        credits_pct = (st.session_state.credits / 10.0) * 100
+        profile_html = f"""
+        <div style="background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <div style="background: #3b82f6; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+                    {st.session_state.user_email[0].upper() if st.session_state.user_email else 'U'}
+                </div>
+                <div style="overflow: hidden;">
+                    <div style="color: #f1f5f9; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {st.session_state.user_email}
+                    </div>
+                    <div style="color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Enterprise Plan
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="color: #94a3b8; font-size: 12px; font-weight: 500;">Audit Credits</span>
+                <span style="color: #e2e8f0; font-size: 12px; font-weight: 600;">{st.session_state.credits}/10</span>
+            </div>
+            <div style="background: rgba(0,0,0,0.3); border-radius: 4px; height: 6px; width: 100%; overflow: hidden;">
+                <div style="background: linear-gradient(90deg, #3b82f6, #60a5fa); width: {credits_pct}%; height: 100%; border-radius: 4px;"></div>
+            </div>
+        </div>
+        """
+        st.markdown(profile_html, unsafe_allow_html=True)
         
-        if st.button("Sign Out", use_container_width=True):
+        # We need a custom class for the sign-out button to make it look professional
+        if st.button("Sign Out", use_container_width=True, key="sign_out_btn"):
             from auth_utils import sign_out
             sign_out()
             st.rerun()
@@ -921,6 +880,65 @@ if st.session_state.current_page == "audit":
                             "sources": sources
                         })
                         st.rerun()
+
+elif st.session_state.current_page == "dashboard":
+    st.markdown("<h2 style='color: white; margin-top:0; font-family: Cabinet Grotesk, sans-serif;'>Dashboard Overview</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8;'>Metrics and quick actions for your LexGuard workspace.</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns(3)
+    ok_history, msg, history_records = fetch_user_audits(current_user_id, limit=100)
+    
+    total_audits = len(history_records) if history_records else 0
+    total_high_risk = sum(r.get("metrics_json", {}).get("high_risk", 0) for r in history_records) if history_records else 0
+    
+    with col1:
+        st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
+        st.metric("Total Documents Audited", total_audits)
+        st.markdown("</div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
+        st.metric("Total High Risks Found", total_high_risk)
+        st.markdown("</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
+        st.metric("Workspace Status", "Secure 🔒")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("### Recent Activity")
+    if history_records:
+        for r in history_records[:5]:
+            metrics = r.get("metrics_json") or {}
+            st.info(f"📄 **{r.get('source_name')}** audited recently. Found **{metrics.get('high_risk', 0)} High Risk** clauses.")
+    else:
+        st.caption("No recent activity. Go to Document Audit to scan your first file.")
+
+elif st.session_state.current_page == "library":
+    st.markdown("<h2 style='color: white; margin-top:0; font-family: Cabinet Grotesk, sans-serif;'>Compliance Library</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94a3b8;'>Your full history of audited documents and generated reports.</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    ok_history, msg, history_records = fetch_user_audits(current_user_id, limit=50)
+    if ok_history and history_records:
+        for r in history_records:
+            with st.expander(f"📄 {r.get('source_name')} - Risk Score: {r.get('metrics_json', {}).get('high_risk', 0)} High Risks"):
+                metrics = r.get("metrics_json") or {}
+                st.write(f"**High Risk:** {metrics.get('high_risk', 0)} | **Medium Risk:** {metrics.get('medium_risk', 0)} | **Compliant:** {metrics.get('compliant', 0)}")
+                
+                pdf_path = r.get("report_pdf_path")
+                if pdf_path and os.path.exists(pdf_path):
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            "⬇️ Download PDF Report", 
+                            data=f, 
+                            file_name=f"LexGuard_Audit_{r.get('source_name')}.pdf", 
+                            mime="application/pdf", 
+                            key=f"dl_{r.get('id')}"
+                        )
+                else:
+                    st.caption("PDF report not available for this legacy audit.")
+    else:
+        st.info("Your compliance library is currently empty. Run an audit to start building history.")
 
 elif st.session_state.current_page == "settings":
     st.header("System Configuration")
