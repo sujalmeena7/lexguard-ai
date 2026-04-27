@@ -13,9 +13,10 @@ import json
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional
+from typing import Dict, List, Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import secrets
 import google.generativeai as genai
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
@@ -30,6 +31,7 @@ load_dotenv(ROOT_DIR / '.env')
 # ── MongoDB connection (fully optional — AI works without it) ──
 mongo_url = os.environ.get('MONGO_URL', '')
 db = None  # Will be set below if connection succeeds
+client: Optional[AsyncIOMotorClient] = None
 
 class _NullCollection:
     """Stub that silently no-ops every DB call so the app never crashes."""
@@ -53,7 +55,7 @@ if mongo_url:
         use_tls = mongo_url.startswith('mongodb+srv://') or 'mongodb.net' in mongo_url
         connect_kwargs = {}
         if use_tls:
-            connect_kwargs = dict(tls=True, tlsCAFile=certifi.where(), tlsAllowInvalidCertificates=True)
+            connect_kwargs = dict(tls=True, tlsCAFile=certifi.where())
 
         client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000, **connect_kwargs)
         db = client[os.environ.get('DB_NAME', 'lexguard_db')]
@@ -86,6 +88,20 @@ if SUPABASE_URL and SUPABASE_ANON_KEY:
         logging.info("Supabase client configured for JWT verification")
     except Exception as e:
         logging.error(f"Supabase init failed: {e}")
+
+AUTH_HANDOFF_TTL_SECONDS = int(os.environ.get("AUTH_HANDOFF_TTL_SECONDS", "120"))
+_auth_handoff_store: Dict[str, Dict[str, str]] = {}
+
+
+def _cleanup_expired_handoffs() -> None:
+    now_iso = datetime.now(timezone.utc).isoformat()
+    expired_codes = [
+        code
+        for code, payload in _auth_handoff_store.items()
+        if payload.get("expires_at", "") <= now_iso
+    ]
+    for code in expired_codes:
+        _auth_handoff_store.pop(code, None)
 
 async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     """Verify Supabase JWT and return user data."""
@@ -121,20 +137,6 @@ app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 @app.get("/")
 async def health_check():
     return {"service": "LexGuard AI", "status": "ok", "version": "1.0.0"}
@@ -152,6 +154,10 @@ class UnlockRequest(BaseModel):
     email: EmailStr
     name: Optional[str] = None
     company: Optional[str] = None
+
+
+class HandoffExchangeRequest(BaseModel):
+    handoff_code: str
 
 
 class FlaggedClause(BaseModel):
@@ -248,6 +254,50 @@ async def root():
     return {"service": "LexGuard AI", "status": "ok"}
 
 
+@api_router.post("/auth/handoff")
+async def create_auth_handoff(
+    user: dict = Depends(get_current_user),
+    authorization: Optional[str] = Header(None),
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required (Bearer token missing)")
+
+    access_token = authorization.split(" ", 1)[1].strip()
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Invalid bearer token")
+
+    _cleanup_expired_handoffs()
+    handoff_code = secrets.token_urlsafe(32)
+    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=AUTH_HANDOFF_TTL_SECONDS)).isoformat()
+    _auth_handoff_store[handoff_code] = {
+        "access_token": access_token,
+        "user_id": user["id"],
+        "expires_at": expires_at,
+    }
+    return {"handoff_code": handoff_code, "expires_in": AUTH_HANDOFF_TTL_SECONDS}
+
+
+@api_router.post("/auth/handoff/exchange")
+async def exchange_auth_handoff(req: HandoffExchangeRequest):
+    handoff_code = req.handoff_code.strip()
+    if not handoff_code:
+        raise HTTPException(status_code=400, detail="handoff_code is required")
+
+    _cleanup_expired_handoffs()
+    payload = _auth_handoff_store.pop(handoff_code, None)
+    if not payload:
+        raise HTTPException(status_code=404, detail="Invalid or expired handoff code")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if payload.get("expires_at", "") <= now_iso:
+        raise HTTPException(status_code=410, detail="Handoff code expired")
+
+    access_token = payload.get("access_token", "")
+    if not access_token:
+        raise HTTPException(status_code=404, detail="Invalid handoff payload")
+    return {"access_token": access_token}
+
+
 @api_router.post("/analyze", response_model=AnalysisResult)
 @limiter.limit("5/minute;50/day")
 async def analyze_policy(
@@ -263,14 +313,14 @@ async def analyze_policy(
         # 1. Try raw JSON
         try:
             return json.loads(text.strip())
-        except:
+        except json.JSONDecodeError:
             pass
         
         # 2. Strip markdown fences and try again
         cleaned = re.sub(r'```(?:json)?', '', text).strip()
         try:
             return json.loads(cleaned)
-        except:
+        except json.JSONDecodeError:
             pass
             
         # 3. Find the first '{' and last '}'
@@ -279,7 +329,7 @@ async def analyze_policy(
             end = text.rfind('}')
             if start != -1 and end != -1:
                 return json.loads(text[start:end+1])
-        except:
+        except json.JSONDecodeError:
             pass
             
         raise json.JSONDecodeError("Failed to find valid JSON in model output", text, 0)
@@ -556,8 +606,8 @@ for origin in os.environ.get('CORS_ORIGINS', '').split(','):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    # Auto-allow any *.vercel.app and *.streamlit.app subdomain
-    allow_origin_regex=r"https://.*\.(vercel\.app|streamlit\.app)",
+    # Allow HTTPS origins for public web/preview deployments.
+    allow_origin_regex=r"https://.*",
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
@@ -586,4 +636,5 @@ async def startup_indexes():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client is not None:
+        client.close()

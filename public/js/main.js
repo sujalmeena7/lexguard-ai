@@ -33,7 +33,34 @@
     const authTitle = document.getElementById('auth-title');
     const authSubtitle = document.getElementById('auth-subtitle');
     const authSubmitBtn = document.getElementById('auth-submit-btn');
+    const BACKEND = (window.__LEXGUARD_BACKEND__ || '').replace(/\/+$/, '');
+    const API = (BACKEND ? BACKEND : '') + '/api';
     const DASHBOARD_URL = window.ENV_DASHBOARD_URL || 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/';
+    const createAuthHandoffCode = async (accessToken) => {
+        if (!accessToken) return null;
+        try {
+            const response = await fetch(`${API}/auth/handoff`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            if (!response.ok) return null;
+            const data = await response.json();
+            return data?.handoff_code || null;
+        } catch (_err) {
+            return null;
+        }
+    };
+    const buildDashboardUrl = async (session) => {
+        const url = new URL(DASHBOARD_URL);
+        url.searchParams.set('src', 'landing');
+        if (session && session.access_token) {
+            const handoffCode = await createAuthHandoffCode(session.access_token);
+            if (handoffCode) {
+                url.searchParams.set('handoff_code', handoffCode);
+            }
+        }
+        return url.toString();
+    };
 
     const setAuthMode = (mode) => {
         if (!authModal) return;
@@ -377,7 +404,7 @@ Sent from lexguard-ai landing page.
                 if (mode === 'signup' && !result.data.session) {
                     alert('Signup successful! Please check your email for verification.');
                 } else {
-                    window.location.href = DASHBOARD_URL;
+                    window.location.href = await buildDashboardUrl(result.data.session);
                 }
             } catch (error) {
                 console.error('Auth Error:', error);

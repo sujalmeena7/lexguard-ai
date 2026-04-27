@@ -56,35 +56,66 @@
         };
 
         // ---------- helpers ----------
-        const getAuthHeader = async () => {
+        const getSessionAccessToken = async () => {
             try {
                 let client = window.__LG_SUPABASE__;
-                
-                // Wait up to 2s for client to initialize if missing
+
                 if (!client) {
-                    console.log('[LexGuard] Waiting for Supabase init...');
                     for (let i = 0; i < 20; i++) {
                         await new Promise(r => setTimeout(r, 100));
                         client = window.__LG_SUPABASE__;
                         if (client) break;
                     }
                 }
-
-                if (!client) {
-                    console.warn('[LexGuard] Supabase client initialization timed out.');
-                    return {};
-                }
+                if (!client) return null;
 
                 const { data: { session }, error } = await client.auth.getSession();
-                if (error) {
-                    console.error('[LexGuard] Session check error:', error);
-                    return {};
-                }
-                return session ? { 'Authorization': `Bearer ${session.access_token}` } : {};
+                if (error || !session || !session.access_token) return null;
+                return session.access_token;
+            } catch (_e) {
+                return null;
+            }
+        };
+
+        const getAuthHeader = async () => {
+            try {
+                const accessToken = await getSessionAccessToken();
+                return accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {};
             } catch (e) {
                 console.error('[LexGuard] Auth helper crashed:', e);
                 return {};
             }
+        };
+
+        const createAuthHandoffCode = async (accessToken) => {
+            if (!accessToken) return null;
+            try {
+                const response = await fetch(`${API}/auth/handoff`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}` },
+                });
+                if (!response.ok) return null;
+                const data = await response.json();
+                return data?.handoff_code || null;
+            } catch (_err) {
+                return null;
+            }
+        };
+
+        const buildStreamlitUrl = async (email) => {
+            const url = new URL(`${STREAMLIT_URL}/`);
+            url.searchParams.set('lead', email);
+            url.searchParams.set('src', 'landing');
+            url.searchParams.set('analysis', state.analysisId || '');
+
+            const accessToken = await getSessionAccessToken();
+            if (accessToken) {
+                const handoffCode = await createAuthHandoffCode(accessToken);
+                if (handoffCode) {
+                    url.searchParams.set('handoff_code', handoffCode);
+                }
+            }
+            return url.toString();
         };
 
         const showState = (name) => {
@@ -326,7 +357,7 @@
                 
                 // Email saved — show redirect state and open Streamlit in new tab
                 // Pass lead email + analysis_id so Streamlit can auto-track conversion
-                const streamlitUrl = `${STREAMLIT_URL}/?lead=${encodeURIComponent(email)}&src=landing&analysis=${encodeURIComponent(state.analysisId)}`;
+                const streamlitUrl = await buildStreamlitUrl(email);
                 showState('full');
                 
                 // Update the fallback link href to also carry the lead param

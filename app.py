@@ -3,6 +3,9 @@ import json
 import logging
 import os
 import re
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
@@ -95,14 +98,25 @@ def resolve_user_storage_path(workspace_paths: Dict[str, str], storage_path: Opt
     if not storage_path:
         return None
 
+    def _is_within(candidate_path: str, root_path: str) -> bool:
+        candidate_abs = os.path.normcase(os.path.abspath(candidate_path))
+        root_abs = os.path.normcase(os.path.abspath(root_path))
+        return candidate_abs == root_abs or candidate_abs.startswith(root_abs + os.sep)
+
+    allowed_roots = (workspace_paths["uploads_dir"], workspace_paths["cache_dir"])
     normalized = storage_path.replace("\\", "/")
     for rel_prefix in (workspace_paths["uploads_rel_dir"], workspace_paths["cache_rel_dir"]):
         if normalized.startswith(rel_prefix):
             relative_fragment = normalized.replace("/", os.sep)
-            return os.path.normpath(os.path.join(BASE_DIR, relative_fragment))
+            resolved_path = os.path.normpath(os.path.join(BASE_DIR, relative_fragment))
+            if any(_is_within(resolved_path, root) for root in allowed_roots):
+                return resolved_path
+            return None
 
     if os.path.isabs(storage_path):
-        return storage_path
+        resolved_path = os.path.normpath(storage_path)
+        if any(_is_within(resolved_path, root) for root in allowed_roots):
+            return resolved_path
 
     return None
 
@@ -121,6 +135,110 @@ def refresh_user_metadata(user_id: str) -> None:
     ok_uploads, _, uploads = fetch_user_uploaded_files(user_id, limit=100)
     st.session_state.supabase_audits = audits if ok_audits else []
     st.session_state.supabase_uploads = uploads if ok_uploads else []
+
+
+def _query_param_str(key: str) -> Optional[str]:
+    value = st.query_params.get(key)
+    if isinstance(value, list):
+        value = value[0] if value else None
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _remove_query_param(key: str) -> None:
+    try:
+        del st.query_params[key]
+    except Exception as exc:
+        logger.warning("Failed to remove query param '%s': %s", key, exc)
+
+
+def get_validated_backend_url() -> Optional[str]:
+    default_backend_url = "https://lexguard-backend-3mmj.onrender.com"
+    raw_backend_url = st.secrets.get(
+        "BACKEND_URL",
+        os.environ.get("BACKEND_URL", default_backend_url),
+    )
+
+    if not isinstance(raw_backend_url, str):
+        logger.warning("Invalid BACKEND_URL type; expected string.")
+        return None
+
+    backend_url = raw_backend_url.strip()
+    if not backend_url:
+        logger.warning("BACKEND_URL is empty.")
+        return None
+
+    parsed = urllib.parse.urlparse(backend_url)
+    if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+        logger.warning("Rejected BACKEND_URL with invalid scheme/netloc: %s", backend_url)
+        return None
+
+    hostname = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" and hostname not in {"localhost", "127.0.0.1"}:
+        logger.warning("Rejected non-HTTPS BACKEND_URL for non-localhost host '%s'.", hostname)
+        return None
+
+    return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+
+
+def exchange_handoff_code_for_token(handoff_code: str) -> Optional[str]:
+    backend_url = get_validated_backend_url()
+    if not backend_url:
+        logger.warning("Auth handoff skipped because BACKEND_URL failed validation.")
+        return None
+
+    endpoint = f"{backend_url}/api/auth/handoff/exchange"
+    payload = json.dumps({"handoff_code": handoff_code}).encode("utf-8")
+    request = urllib.request.Request(
+        endpoint,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            body = response.read().decode("utf-8")
+    except (urllib.error.URLError, TimeoutError) as exc:
+        logger.warning("Auth handoff exchange request failed: %s", exc)
+        return None
+
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        logger.warning("Auth handoff exchange returned invalid JSON: %s", exc)
+        return None
+
+    token = data.get("access_token")
+    if not isinstance(token, str) or not token.strip():
+        logger.warning("Auth handoff exchange missing access_token in response.")
+        return None
+    return token
+
+
+def bootstrap_auth_from_query() -> None:
+    handoff_code = _query_param_str("handoff_code")
+    entry_source = _query_param_str("src")
+
+    if handoff_code:
+        exchanged_token = exchange_handoff_code_for_token(handoff_code)
+        if exchanged_token:
+            st.session_state.auth_access_token = exchanged_token
+            st.session_state.requested_page = "dashboard"
+            st.session_state.handoff_exchange_failed = False
+        else:
+            st.session_state.handoff_exchange_failed = True
+        _remove_query_param("handoff_code")
+
+    if entry_source:
+        st.session_state.entry_source = entry_source
+
+
+def render_redirect_fallback(landing_page_url: str) -> None:
+    st.caption("If automatic redirect does not work, use the button below.")
+    st.link_button("Go to Landing Page", landing_page_url, use_container_width=True)
 
 
 def ensure_workspace_dirs(paths: Dict[str, str]) -> None:
@@ -538,6 +656,7 @@ st.markdown(
 
 # Auth bootstrap and guardrails
 init_auth_state()
+bootstrap_auth_from_query()
 if not st.session_state.authenticated:
     restore_session_from_token()
 
@@ -545,22 +664,53 @@ render_auth_controls()
 
 if not st.session_state.authenticated:
     landing_page_url = st.secrets.get("LANDING_PAGE_URL", "/")
-    st.markdown(
-        f"<meta http-equiv='refresh' content='0;url={landing_page_url}'>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        """
-        <div style='padding: 2rem 0;'>
-            <h1 style='margin-top: 0;'>LexGuard Landing Redirect</h1>
-            <p style='color: #a1a1aa; font-size: 1.05rem; max-width: 700px;'>
-                Your session is not authenticated, so this workspace is redirecting to the landing page.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.info("Authentication required. Redirecting now.")
+    from_landing = st.session_state.get("entry_source") == "landing"
+    handoff_failed = st.session_state.get("handoff_exchange_failed", False)
+
+    if from_landing:
+        st.markdown(
+            """
+            <div style='padding: 2rem 0;'>
+                <h1 style='margin-top: 0;'>LexGuard Dashboard Sign-In</h1>
+                <p style='color: #a1a1aa; font-size: 1.05rem; max-width: 700px;'>
+                    We couldn’t auto-complete your landing-page sign-in handoff. Please sign in once here to open your dashboard session.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if handoff_failed:
+            st.warning("Automatic sign-in handoff failed. Use the form below to continue.")
+
+        with st.form("landing_handoff_signin_form"):
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Sign In", use_container_width=True)
+            if submitted:
+                ok, msg = sign_in_with_email(email, password)
+                if ok:
+                    st.success("Signed in successfully. Opening dashboard…")
+                    st.session_state.current_page = "dashboard"
+                    st.rerun()
+                st.error(msg)
+    else:
+        st.markdown(
+            f"<meta http-equiv='refresh' content='0;url={landing_page_url}'>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """
+            <div style='padding: 2rem 0;'>
+                <h1 style='margin-top: 0;'>LexGuard Landing Redirect</h1>
+                <p style='color: #a1a1aa; font-size: 1.05rem; max-width: 700px;'>
+                    Your session is not authenticated, so this workspace is redirecting to the landing page.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.info("Authentication required. Redirecting now.")
+    render_redirect_fallback(landing_page_url)
     st.stop()
 
 
@@ -574,12 +724,17 @@ if st.session_state.get("user_id") is None:
         unsafe_allow_html=True,
     )
     st.warning("No active user session found. Redirecting to the landing page.")
+    render_redirect_fallback(landing_page_url)
     st.stop()
 
 current_user_id = str(st.session_state.user_id)
 USER_PATH = f"data/{st.session_state.user_id}/"
 workspace_paths = get_user_workspace_paths(current_user_id)
 ensure_workspace_dirs(workspace_paths)
+
+if st.session_state.authenticated and st.session_state.get("requested_page"):
+    st.session_state.current_page = st.session_state.requested_page
+    del st.session_state["requested_page"]
 
 if st.session_state.get("active_user_id") != current_user_id:
     st.session_state.active_user_id = current_user_id

@@ -56,6 +56,48 @@
         };
 
         // ---------- helpers ----------
+        const getSessionAccessToken = async () => {
+            try {
+                const client = window.__LG_SUPABASE__;
+                if (!client) return null;
+                const { data: { session }, error } = await client.auth.getSession();
+                if (error || !session || !session.access_token) return null;
+                return session.access_token;
+            } catch (_e) {
+                return null;
+            }
+        };
+
+        const createAuthHandoffCode = async (accessToken) => {
+            if (!accessToken) return null;
+            try {
+                const response = await fetch(`${API}/auth/handoff`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}` },
+                });
+                if (!response.ok) return null;
+                const data = await response.json();
+                return data?.handoff_code || null;
+            } catch (_err) {
+                return null;
+            }
+        };
+
+        const buildStreamlitUrl = async (email) => {
+            const url = new URL(`${STREAMLIT_URL}/`);
+            url.searchParams.set('lead', email);
+            url.searchParams.set('src', 'landing');
+            url.searchParams.set('analysis', state.analysisId || '');
+            const accessToken = await getSessionAccessToken();
+            if (accessToken) {
+                const handoffCode = await createAuthHandoffCode(accessToken);
+                if (handoffCode) {
+                    url.searchParams.set('handoff_code', handoffCode);
+                }
+            }
+            return url.toString();
+        };
+
         const showState = (name) => {
             widget.querySelectorAll('.lg-state').forEach(s => {
                 s.hidden = s.dataset.lgState !== name;
@@ -260,7 +302,7 @@
                 
                 // Email saved — show redirect state and open Streamlit in new tab
                 // Pass lead email + analysis_id so Streamlit can auto-track conversion
-                const streamlitUrl = `${STREAMLIT_URL}/?lead=${encodeURIComponent(email)}&src=landing&analysis=${encodeURIComponent(state.analysisId)}`;
+                const streamlitUrl = await buildStreamlitUrl(email);
                 showState('full');
                 
                 // Update the fallback link href to also carry the lead param
