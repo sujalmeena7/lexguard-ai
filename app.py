@@ -857,10 +857,12 @@ if st.session_state.current_page == "audit":
                             chain = build_chain(retriever)
                             
                             user_query = st.session_state.chat_messages[-1]["content"]
-                            result = chain.invoke({"query": user_query})
+                            # Modern chain uses "input" instead of "query"
+                            result = chain.invoke({"input": user_query})
                             
-                            response = result.get("result", "I could not find a specific answer in the legal database.")
-                            docs = result.get("source_documents", [])
+                            # Modern chain uses "answer" instead of "result" and "context" instead of "source_documents"
+                            response = result.get("answer", "I could not find a specific answer in the legal database.")
+                            docs = result.get("context", [])
                             
                             reasoning = f"Context retrieval successful. Found {len(docs)} relevant chunks."
                             sources = []

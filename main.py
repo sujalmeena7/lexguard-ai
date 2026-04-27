@@ -19,8 +19,9 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain.chains import RetrievalQA
-from langchain_core.prompts import PromptTemplate
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from langchain.retrievers import ParentDocumentRetriever
@@ -205,22 +206,22 @@ def get_user_workspace_retriever(user_id: str, k: int = 4):
 # =====================================================================
 # 2.  Retrieval-QA Chain (Interactive)
 # =====================================================================
-def build_chain(retriever: ParentDocumentRetriever) -> RetrievalQA:
+def build_chain(retriever: ParentDocumentRetriever):
     google_key = st.secrets.get('GOOGLE_API_KEY')
     if not google_key:
         raise ValueError("GOOGLE_API_KEY not found in Streamlit secrets.")
 
     llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=google_key, temperature=0)
-    chain = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=retriever,
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": PROMPT},
-    )
+    
+    # Modern approach: create_stuff_documents_chain expects "context" and "question"
+    # We use a ChatPromptTemplate to wrap our SYSTEM_PROMPT
+    prompt = ChatPromptTemplate.from_template(SYSTEM_PROMPT)
+    
+    combine_docs_chain = create_stuff_documents_chain(llm, prompt)
+    chain = create_retrieval_chain(retriever, combine_docs_chain)
     return chain
 
-def interactive_loop(chain: RetrievalQA) -> None:
+def interactive_loop(chain) -> None:
     print("\n-- Interactive RAG Mode --")
     while True:
         try:
@@ -234,11 +235,12 @@ def interactive_loop(chain: RetrievalQA) -> None:
 
         print("\n⏳  Thinking …\n")
         try:
-            result = chain.invoke({"query": question})
+            # create_retrieval_chain uses "input" instead of "query" by default
+            result = chain.invoke({"input": question})
             print("=" * 64)
             print("📝  ANSWER")
             print("=" * 64)
-            print(result["result"])
+            print(result["answer"])
         except Exception as e:
             print(f"❌ Error invoking model: {e}")
 
