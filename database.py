@@ -171,6 +171,25 @@ def fetch_user_audits(user_id: str, limit: int = 50) -> Tuple[bool, str, List[Di
         return False, f"Failed to fetch audit history: {exc}", []
 
 
+def fetch_user_uploaded_files(user_id: str, limit: int = 50) -> Tuple[bool, str, List[Dict]]:
+    client = get_supabase_client()
+    if client is None:
+        return False, "Supabase client is not configured.", []
+
+    try:
+        response = (
+            client.table(UPLOADED_FILES_TABLE)
+            .select("id, filename, storage_path, mime_type, size_bytes, created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return True, "Fetched user uploaded file history.", response.data or []
+    except Exception as exc:
+        return False, f"Failed to fetch uploaded file history: {exc}", []
+
+
 def delete_user_audit(user_id: str, audit_id: str) -> Tuple[bool, str]:
     client = get_supabase_client()
     if client is None:

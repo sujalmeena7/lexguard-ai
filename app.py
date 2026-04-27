@@ -5,7 +5,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import plotly.graph_objects as go
 import streamlit as st
@@ -23,6 +23,7 @@ from database import (
     SCHEMA_REFERENCE_SQL,
     delete_user_audit,
     fetch_user_audits,
+    fetch_user_uploaded_files,
     save_audit_log,
     save_uploaded_file,
     deduct_user_credit,
@@ -33,8 +34,10 @@ from database import (
     check_rate_limit,
 )
 from main import (
+    get_document_namespace,
     get_retriever,
     get_user_workspace_retriever,
+    get_user_workspace_vector_stats,
     index_user_document,
     run_compliance_audit,
 )
@@ -68,11 +71,17 @@ def mask_pii(text: str) -> str:
 
 def get_user_workspace_paths(user_id: str) -> Dict[str, str]:
     safe_user_id = sanitize_user_id(user_id)
+    user_path = f"data/{safe_user_id}/"
+    uploads_rel_dir = f"{user_path}uploads/"
+    cache_rel_dir = f"{user_path}cache/"
     user_root = os.path.join(USER_DATA_ROOT, safe_user_id)
     uploads_dir = os.path.join(user_root, "uploads")
     cache_dir = os.path.join(user_root, "cache")
 
     return {
+        "user_path": user_path,
+        "uploads_rel_dir": uploads_rel_dir,
+        "cache_rel_dir": cache_rel_dir,
         "user_root": user_root,
         "uploads_dir": uploads_dir,
         "cache_dir": cache_dir,
@@ -80,6 +89,38 @@ def get_user_workspace_paths(user_id: str) -> Dict[str, str]:
         "report_pdf": os.path.join(cache_dir, "report.pdf"),
         "audit_json": os.path.join(cache_dir, "audit_report.json"),
     }
+
+
+def resolve_user_storage_path(workspace_paths: Dict[str, str], storage_path: Optional[str]) -> Optional[str]:
+    if not storage_path:
+        return None
+
+    normalized = storage_path.replace("\\", "/")
+    for rel_prefix in (workspace_paths["uploads_rel_dir"], workspace_paths["cache_rel_dir"]):
+        if normalized.startswith(rel_prefix):
+            relative_fragment = normalized.replace("/", os.sep)
+            return os.path.normpath(os.path.join(BASE_DIR, relative_fragment))
+
+    if os.path.isabs(storage_path):
+        return storage_path
+
+    return None
+
+
+def list_local_files(path: str) -> List[str]:
+    if not os.path.isdir(path):
+        return []
+    return sorted(
+        [entry for entry in os.listdir(path) if os.path.isfile(os.path.join(path, entry))],
+        reverse=True,
+    )
+
+
+def refresh_user_metadata(user_id: str) -> None:
+    ok_audits, _, audits = fetch_user_audits(user_id, limit=100)
+    ok_uploads, _, uploads = fetch_user_uploaded_files(user_id, limit=100)
+    st.session_state.supabase_audits = audits if ok_audits else []
+    st.session_state.supabase_uploads = uploads if ok_uploads else []
 
 
 def ensure_workspace_dirs(paths: Dict[str, str]) -> None:
@@ -212,6 +253,7 @@ def persist_uploaded_input(
         safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", original_name)
         file_name = f"{utc_now_slug()}_{uuid.uuid4().hex[:8]}_{safe_name}"
         output_path = os.path.join(workspace_paths["uploads_dir"], file_name)
+        storage_path = f"{workspace_paths['uploads_rel_dir']}{file_name}"
 
         raw_bytes = uploaded_file.getbuffer()
         with open(output_path, "wb") as output_file:
@@ -220,7 +262,7 @@ def persist_uploaded_input(
         save_uploaded_file(
             user_id=user_id,
             filename=original_name,
-            storage_path=output_path,
+            storage_path=storage_path,
             size_bytes=len(raw_bytes),
             mime_type=uploaded_file.type or "application/octet-stream",
         )
@@ -234,6 +276,7 @@ def persist_uploaded_input(
     if pasted_text is not None and pasted_text.strip():
         file_name = f"{utc_now_slug()}_{uuid.uuid4().hex[:8]}_pasted_clause.txt"
         output_path = os.path.join(workspace_paths["uploads_dir"], file_name)
+        storage_path = f"{workspace_paths['uploads_rel_dir']}{file_name}"
 
         with open(output_path, "w", encoding="utf-8") as output_file:
             output_file.write(pasted_text.strip())
@@ -241,7 +284,7 @@ def persist_uploaded_input(
         save_uploaded_file(
             user_id=user_id,
             filename="pasted_clause.txt",
-            storage_path=output_path,
+            storage_path=storage_path,
             size_bytes=len(pasted_text.encode("utf-8")),
             mime_type="text/plain",
         )
@@ -278,11 +321,18 @@ def run_user_audit(
     with st.spinner("Analyzing document against DPDP Act 2023..."):
         retriever = load_retriever()
 
+        document_namespace = get_document_namespace(user_id=user_id, user_doc_path=source_path)
         indexed_chunks = index_user_document(user_id=user_id, user_doc_path=source_path)
-        user_workspace_retriever = get_user_workspace_retriever(user_id=user_id)
+        user_workspace_retriever = get_user_workspace_retriever(
+            user_id=user_id,
+            document_namespace=document_namespace,
+        )
 
         st.markdown("### Real-Time Diagnostics")
-        st.caption(f"Indexed {indexed_chunks} user chunks in isolated workspace store.")
+        st.caption(
+            f"Indexed {indexed_chunks} user chunks in isolated workspace store "
+            f"(namespace: {document_namespace})."
+        )
 
         progress_bar = st.progress(0)
         col1, col2, col3, col4 = st.columns(4)
@@ -361,6 +411,7 @@ def run_user_audit(
     )
 
     save_user_cache(workspace_paths)
+    refresh_user_metadata(user_id)
 
     st.success(
         f"Audit successful. 1 credit deducted. Remaining balance: {st.session_state.credits}"
@@ -493,32 +544,49 @@ if not st.session_state.authenticated:
 render_auth_controls()
 
 if not st.session_state.authenticated:
+    landing_page_url = st.secrets.get("LANDING_PAGE_URL", "/")
+    st.markdown(
+        f"<meta http-equiv='refresh' content='0;url={landing_page_url}'>",
+        unsafe_allow_html=True,
+    )
     st.markdown(
         """
         <div style='padding: 2rem 0;'>
-            <h1 style='margin-top: 0;'>LexGuard AI Workspace</h1>
+            <h1 style='margin-top: 0;'>LexGuard Landing Redirect</h1>
             <p style='color: #a1a1aa; font-size: 1.05rem; max-width: 700px;'>
-                Sign in from the sidebar to access your isolated workspace. Your uploaded files,
-                audit history, and configuration data are private to your account.
+                Your session is not authenticated, so this workspace is redirecting to the landing page.
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    st.info("Authentication required. Main app logic is blocked until sign in succeeds.")
+    st.info("Authentication required. Redirecting now.")
     st.stop()
 
 
 # User-scoped bootstrap
 ensure_user_session_defaults()
 
+if st.session_state.get("user_id") is None:
+    landing_page_url = st.secrets.get("LANDING_PAGE_URL", "/")
+    st.markdown(
+        f"<meta http-equiv='refresh' content='0;url={landing_page_url}'>",
+        unsafe_allow_html=True,
+    )
+    st.warning("No active user session found. Redirecting to the landing page.")
+    st.stop()
+
 current_user_id = str(st.session_state.user_id)
+USER_PATH = f"data/{st.session_state.user_id}/"
 workspace_paths = get_user_workspace_paths(current_user_id)
 ensure_workspace_dirs(workspace_paths)
 
 if st.session_state.get("active_user_id") != current_user_id:
     st.session_state.active_user_id = current_user_id
     load_user_cache(workspace_paths)
+    refresh_user_metadata(current_user_id)
+elif "supabase_audits" not in st.session_state or "supabase_uploads" not in st.session_state:
+    refresh_user_metadata(current_user_id)
 
 # Removed trivial admin bypass via query parameter
 
@@ -809,8 +877,8 @@ if st.session_state.current_page == "audit":
                             run_user_audit(current_user_id, workspace_paths, paste_info["path"], paste_info["source_name"], paste_info["source_type"])
 
             st.markdown("### Past Audits")
-            ok_history, history_message, history_records = fetch_user_audits(current_user_id, limit=3)
-            if ok_history and history_records:
+            history_records = st.session_state.get("supabase_audits", [])[:3]
+            if history_records:
                 for r in history_records:
                     metrics = r.get("metrics_json") or {}
                     st.caption(f"**{r.get('source_name')}** ({r.get('source_type')}) - {metrics.get('high_risk', 0)} High Risk")
@@ -887,58 +955,144 @@ elif st.session_state.current_page == "dashboard":
     st.markdown("<h2 style='color: white; margin-top:0; font-family: Cabinet Grotesk, sans-serif;'>Dashboard Overview</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8;'>Metrics and quick actions for your LexGuard workspace.</p>", unsafe_allow_html=True)
     st.markdown("---")
-    
-    col1, col2, col3 = st.columns(3)
-    ok_history, msg, history_records = fetch_user_audits(current_user_id, limit=100)
-    
-    total_audits = len(history_records) if history_records else 0
-    total_high_risk = sum(r.get("metrics_json", {}).get("high_risk", 0) for r in history_records) if history_records else 0
-    
+
+    history_records = st.session_state.get("supabase_audits", [])
+    uploaded_records = st.session_state.get("supabase_uploads", [])
+    vector_stats = get_user_workspace_vector_stats(current_user_id)
+    local_upload_files = list_local_files(workspace_paths["uploads_dir"])
+    local_cache_files = list_local_files(workspace_paths["cache_dir"])
+
+    col1, col2, col3, col4 = st.columns(4)
+    total_audits = len(history_records)
+    total_uploaded = len(uploaded_records)
+    total_high_risk = sum(r.get("metrics_json", {}).get("high_risk", 0) for r in history_records)
+
     with col1:
         st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
         st.metric("Total Documents Audited", total_audits)
         st.markdown("</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
-        st.metric("Total High Risks Found", total_high_risk)
+        st.metric("Uploaded Files (Supabase)", total_uploaded)
         st.markdown("</div>", unsafe_allow_html=True)
     with col3:
         st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
-        st.metric("Workspace Status", "Secure 🔒")
+        st.metric("Total High Risks Found", total_high_risk)
         st.markdown("</div>", unsafe_allow_html=True)
-    
+    with col4:
+        st.markdown("<div class='lg-card'>", unsafe_allow_html=True)
+        st.metric("User Vector Chunks", vector_stats.get("total_chunks", 0))
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.caption(
+        f"USER_PATH: {USER_PATH} | Local uploads: {len(local_upload_files)} | Local cache files: {len(local_cache_files)}"
+    )
+
+    if not history_records and not uploaded_records:
+        st.info("Start your first audit to populate your dashboard history.")
+        if st.button("Start your first audit", type="primary", use_container_width=True):
+            st.session_state.current_page = "audit"
+            st.rerun()
+        st.stop()
+
     st.markdown("### Recent Activity")
     if history_records:
         for r in history_records[:5]:
             metrics = r.get("metrics_json") or {}
             st.info(f"📄 **{r.get('source_name')}** audited recently. Found **{metrics.get('high_risk', 0)} High Risk** clauses.")
     else:
-        st.caption("No recent activity. Go to Document Audit to scan your first file.")
+        st.caption("No recent audit activity yet.")
+
+    st.markdown("### Report Download")
+    st.caption(f"Report cache path: {workspace_paths['cache_rel_dir']}")
+    if os.path.exists(workspace_paths["report_pdf"]):
+        with open(workspace_paths["report_pdf"], "rb") as report_file:
+            st.download_button(
+                label="Report Download",
+                data=report_file.read(),
+                file_name="LexGuard_Latest_Report.pdf",
+                mime="application/pdf",
+                key="dashboard_report_download",
+                use_container_width=True,
+            )
+    else:
+        st.caption("No cached report found in your USER_PATH/cache directory.")
+
+    st.markdown("### Uploaded Documents")
+    st.caption(f"Document source path: {workspace_paths['uploads_rel_dir']}")
+    if uploaded_records:
+        for doc in uploaded_records[:5]:
+            storage_path = doc.get("storage_path")
+            resolved_path = resolve_user_storage_path(workspace_paths, storage_path)
+            display_path = storage_path or f"{workspace_paths['uploads_rel_dir']}{doc.get('filename', '')}"
+
+            c1, c2, c3 = st.columns([2.5, 2.0, 1.0])
+            c1.markdown(f"**{doc.get('filename', 'document')}**")
+            c2.caption(display_path)
+            if resolved_path and os.path.exists(resolved_path):
+                with open(resolved_path, "rb") as doc_file:
+                    c3.download_button(
+                        "View Document",
+                        data=doc_file.read(),
+                        file_name=os.path.basename(resolved_path),
+                        mime=doc.get("mime_type") or "application/octet-stream",
+                        key=f"view_doc_{doc.get('id')}",
+                    )
+            else:
+                c3.caption("Missing")
+    else:
+        st.caption("No uploaded documents recorded in Supabase for this user yet.")
 
 elif st.session_state.current_page == "library":
     st.markdown("<h2 style='color: white; margin-top:0; font-family: Cabinet Grotesk, sans-serif;'>Compliance Library</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8;'>Your full history of audited documents and generated reports.</p>", unsafe_allow_html=True)
     st.markdown("---")
-    
-    ok_history, msg, history_records = fetch_user_audits(current_user_id, limit=50)
-    if ok_history and history_records:
+
+    history_records = st.session_state.get("supabase_audits", [])
+    uploaded_records = st.session_state.get("supabase_uploads", [])
+    uploads_by_filename = {}
+    for record in uploaded_records:
+        filename = record.get("filename")
+        if filename and filename not in uploads_by_filename:
+            uploads_by_filename[filename] = record
+
+    if history_records:
         for r in history_records:
             with st.expander(f"📄 {r.get('source_name')} - Risk Score: {r.get('metrics_json', {}).get('high_risk', 0)} High Risks"):
                 metrics = r.get("metrics_json") or {}
                 st.write(f"**High Risk:** {metrics.get('high_risk', 0)} | **Medium Risk:** {metrics.get('medium_risk', 0)} | **Compliant:** {metrics.get('compliant', 0)}")
-                
-                pdf_path = r.get("report_pdf_path")
-                if pdf_path and os.path.exists(pdf_path):
-                    with open(pdf_path, "rb") as f:
+
+                st.caption(f"Report path: {workspace_paths['cache_rel_dir']}report.pdf")
+                if os.path.exists(workspace_paths["report_pdf"]):
+                    with open(workspace_paths["report_pdf"], "rb") as f:
                         st.download_button(
                             "⬇️ Download PDF Report", 
-                            data=f, 
+                            data=f.read(), 
                             file_name=f"LexGuard_Audit_{r.get('source_name')}.pdf", 
                             mime="application/pdf", 
                             key=f"dl_{r.get('id')}"
                         )
                 else:
-                    st.caption("PDF report not available for this legacy audit.")
+                    st.caption("Cached report not available in USER_PATH/cache.")
+
+                linked_upload = uploads_by_filename.get(r.get("source_name"))
+                if linked_upload:
+                    upload_storage = linked_upload.get("storage_path")
+                    upload_abs_path = resolve_user_storage_path(workspace_paths, upload_storage)
+                    st.caption(f"Document path: {upload_storage}")
+                    if upload_abs_path and os.path.exists(upload_abs_path):
+                        with open(upload_abs_path, "rb") as doc_file:
+                            st.download_button(
+                                "View Document",
+                                data=doc_file.read(),
+                                file_name=os.path.basename(upload_abs_path),
+                                mime=linked_upload.get("mime_type") or "application/octet-stream",
+                                key=f"view_lib_doc_{linked_upload.get('id')}_{r.get('id')}",
+                            )
+                    else:
+                        st.caption("Uploaded document file is not available in local USER_PATH/uploads.")
+                else:
+                    st.caption("No linked uploaded file metadata found for this audit record.")
     else:
         st.info("Your compliance library is currently empty. Run an audit to start building history.")
 
