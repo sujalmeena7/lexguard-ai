@@ -250,7 +250,7 @@ def get_or_create_user_profile(user_id: str, email: str) -> Dict:
             return existing_profile
 
         # If not found, create new profile with defaults
-        new_profile = {"id": user_id, "credits": 0, "is_premium": False}
+        new_profile = {"id": user_id, "credits": 5, "is_premium": False}
         if email and email.strip():
             new_profile["email"] = email.strip()
 
