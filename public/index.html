@@ -36,7 +36,7 @@
     <script>
         window.ENV_SUPABASE_URL = "https://corbyaeuxflemgilgcom.supabase.co";
         window.ENV_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI";
-        window.ENV_DASHBOARD_URL = "https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/";
+        window.ENV_DASHBOARD_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:8501/' : "https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/";
     </script>
     <script>window.addEventListener("error", function (e) { if (e.error instanceof DOMException && e.error.name === "DataCloneError" && e.message && e.message.includes("PerformanceServerTiming")) { e.stopImmediatePropagation(); e.preventDefault() } }, true);</script>
     <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>

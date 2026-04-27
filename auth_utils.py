@@ -4,6 +4,9 @@ from typing import Optional, Tuple
 
 import streamlit as st
 from supabase import Client, create_client
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +58,11 @@ def init_auth_state() -> None:
 
 def get_supabase_client() -> Optional[Client]:
     """Create or return a cached Supabase client from Streamlit secrets/env vars."""
-    supabase_url = st.secrets.get("SUPABASE_URL", os.environ.get("SUPABASE_URL"))
-    supabase_anon_key = st.secrets.get("SUPABASE_ANON_KEY", os.environ.get("SUPABASE_ANON_KEY"))
+    default_url = "https://corbyaeuxflemgilgcom.supabase.co"
+    default_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI"
+    
+    supabase_url = st.secrets.get("SUPABASE_URL", os.environ.get("SUPABASE_URL", default_url))
+    supabase_anon_key = st.secrets.get("SUPABASE_ANON_KEY", os.environ.get("SUPABASE_ANON_KEY", default_key))
 
     if not supabase_url or not supabase_anon_key:
         return None
