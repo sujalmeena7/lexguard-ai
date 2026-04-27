@@ -12,7 +12,7 @@ import glob
 import json
 import textwrap
 import streamlit as st
-from typing import Optional
+from typing import Dict, Optional
 
 # ── LangChain core
 from langchain_community.document_loaders import PyPDFLoader
@@ -167,11 +167,22 @@ def _load_user_document(user_doc_path: str):
     return loader.load()
 
 
+def _safe_namespace_token(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"_", "-", "."} else "_" for ch in value)
+
+
+def get_document_namespace(user_id: str, user_doc_path: str) -> str:
+    user_token = _safe_namespace_token(user_id)
+    source_token = _safe_namespace_token(os.path.basename(user_doc_path))
+    return f"{user_token}:{source_token}"
+
+
 def index_user_document(user_id: str, user_doc_path: str) -> int:
     """Index user document chunks with user_id metadata for isolated retrieval."""
     user_docs = _load_user_document(user_doc_path)
     if not user_docs:
         return 0
+    document_namespace = get_document_namespace(user_id, user_doc_path)
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=80)
     user_chunks = splitter.split_documents(user_docs)
@@ -180,6 +191,7 @@ def index_user_document(user_id: str, user_doc_path: str) -> int:
             **chunk.metadata,
             "user_id": user_id,
             "source_path": os.path.basename(user_doc_path),
+            "document_namespace": document_namespace,
         }
 
     embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
@@ -192,8 +204,12 @@ def index_user_document(user_id: str, user_doc_path: str) -> int:
     return len(user_chunks)
 
 
-def get_user_workspace_retriever(user_id: str, k: int = 4):
-    """Create a user-scoped retriever that filters vectors by user_id."""
+def get_user_workspace_retriever(user_id: str, k: int = 4, document_namespace: Optional[str] = None):
+    """Create a user-scoped retriever that filters vectors by user_id and optional document namespace."""
+    metadata_filter = {"user_id": user_id}
+    if document_namespace:
+        metadata_filter["document_namespace"] = document_namespace
+
     embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
     vectorstore = Chroma(
         persist_directory=WORKSPACE_DB_DIR,
@@ -201,8 +217,21 @@ def get_user_workspace_retriever(user_id: str, k: int = 4):
         collection_name=WORKSPACE_COLLECTION,
     )
     return vectorstore.as_retriever(
-        search_kwargs={"k": k, "filter": {"user_id": user_id}}
+        search_kwargs={"k": k, "filter": metadata_filter}
     )
+
+
+def get_user_workspace_vector_stats(user_id: str, document_namespace: Optional[str] = None) -> Dict[str, int]:
+    metadata_filter = {"user_id": user_id}
+    if document_namespace:
+        metadata_filter["document_namespace"] = document_namespace
+
+    vectorstore = Chroma(
+        persist_directory=WORKSPACE_DB_DIR,
+        collection_name=WORKSPACE_COLLECTION,
+    )
+    vector_data = vectorstore.get(where=metadata_filter, include=[])
+    return {"total_chunks": len(vector_data.get("ids", []))}
 
 
 # =====================================================================
