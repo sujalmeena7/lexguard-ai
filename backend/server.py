@@ -67,7 +67,7 @@ else:
 
 # ── Gemini client ──
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
-GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-pro-latest')
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'dev-token-local')
 if not GOOGLE_API_KEY:
     raise RuntimeError("GOOGLE_API_KEY environment variable is required but not set.")
@@ -124,7 +124,12 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For now allowing all, but in prod should be restricted to Vercel domain
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -306,7 +311,6 @@ async def analyze_policy(
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
     except Exception as e:
         logger.error(f"Gemini error after multiple attempts: {e}")
-
         raise HTTPException(status_code=502, detail=f"Analysis failed after multiple attempts: {str(e)[:120]}")
 
     analysis_id = str(uuid.uuid4())
@@ -348,6 +352,17 @@ async def analyze_policy(
         created_at=created_at,
     )
     return preview
+
+@api_router.get("/audits")
+async def get_user_audits(user: dict = Depends(get_current_user)):
+    """Fetch all past audits securely isolated to the authenticated user."""
+    try:
+        cursor = db.analyses.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+        audits = await cursor.to_list(length=100)
+        return audits
+    except Exception as e:
+        logger.warning(f"Failed to fetch audits: {e}")
+        return []
 
 
 @api_router.post("/unlock", response_model=AnalysisResult)
