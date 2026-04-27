@@ -67,6 +67,7 @@ create policy "uploaded_files_select_own" on public.uploaded_files for select us
 create policy "uploaded_files_insert_own" on public.uploaded_files for insert with check (auth.uid() = user_id);
 
 create policy "user_profiles_select_own" on public.user_profiles for select using (auth.uid() = id);
+create policy "user_profiles_insert_own" on public.user_profiles for insert with check (auth.uid() = id);
 create policy "user_profiles_update_own" on public.user_profiles for update using (auth.uid() = id);
 
 create policy "security_logs_insert_auth" on public.security_logs for insert with check (auth.role() = 'authenticated');
@@ -219,12 +220,22 @@ def get_or_create_user_profile(user_id: str, email: str) -> Dict:
         return {}
 
     try:
-        # Construct payload dynamically to avoid overwriting email with empty strings
-        profile = {"id": user_id}
-        if email and email.strip():
-            profile["email"] = email.strip()
+        # First, try to fetch the existing profile
+        response = client.table(USER_PROFILES_TABLE).select("*").eq("id", user_id).execute()
+        if response.data:
+            existing_profile = response.data[0]
+            # If email is provided and different, update it
+            if email and email.strip() and existing_profile.get("email") != email.strip():
+                client.table(USER_PROFILES_TABLE).update({"email": email.strip()}).eq("id", user_id).execute()
+                existing_profile["email"] = email.strip()
+            return existing_profile
 
-        response = client.table(USER_PROFILES_TABLE).upsert(profile, on_conflict="id").execute()
+        # If not found, create new profile with defaults
+        new_profile = {"id": user_id, "credits": 0, "is_premium": False}
+        if email and email.strip():
+            new_profile["email"] = email.strip()
+
+        response = client.table(USER_PROFILES_TABLE).insert(new_profile).execute()
         return response.data[0] if response.data else {}
     except Exception as exc:
         print(f"Failed to get/create user profile: {exc}")
@@ -265,6 +276,34 @@ def update_user_premium_status(user_id: str, is_premium: bool) -> bool:
     except Exception as exc:
         print(f"Failed to update premium status: {exc}")
         return False
+
+
+def add_user_credits(user_id: str, amount: int) -> Tuple[bool, int]:
+    client = get_supabase_client()
+    if client is None:
+        return False, 0
+
+    try:
+        # Fetch current balance
+        response = client.table(USER_PROFILES_TABLE).select("credits").eq("id", user_id).execute()
+        
+        if not response.data:
+            # Fallback: ensure profile exists and try again
+            profile = get_or_create_user_profile(user_id, "")
+            if not profile:
+                return False, 0
+            current_credits = profile.get("credits", 0)
+        else:
+            current_credits = response.data[0].get("credits", 0)
+            
+        new_credits = current_credits + amount
+        
+        # Update balance
+        client.table(USER_PROFILES_TABLE).update({"credits": new_credits}).eq("id", user_id).execute()
+        return True, new_credits
+    except Exception as exc:
+        print(f"Failed to add user credits: {exc}")
+        return False, 0
 
 
 def check_rate_limit(event_type: str, user_id: Optional[str] = None, limit: int = 5, window_minutes: int = 15) -> bool:

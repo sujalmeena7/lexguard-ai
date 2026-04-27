@@ -28,6 +28,7 @@ from database import (
     deduct_user_credit,
     get_or_create_user_profile,
     update_user_premium_status,
+    add_user_credits,
     log_security_event,
     check_rate_limit,
 )
@@ -601,267 +602,325 @@ if st.session_state.get("active_user_id") != current_user_id:
 
 
 # Sidebar content for authenticated users
-with st.sidebar:
-    if st.button("Run Audit", use_container_width=True):
-        st.session_state.current_page = "audit"
+# --- CSS Injection for Sidebar Styling ---
+active_page = st.session_state.current_page
+active_idx = 1
+if active_page == "dashboard":
+    active_idx = 1
+elif active_page == "audit":
+    active_idx = 2
+elif active_page == "library":
+    active_idx = 3
+elif active_page == "settings":
+    active_idx = 4
+else:
+    active_idx = 1
 
-    if st.button("Settings", use_container_width=True):
+st.markdown(f"""
+<style>
+    /* Styling the sidebar buttons */
+    [data-testid="stSidebar"] .stButton > button {{
+        border: none;
+        text-align: left;
+        justify-content: flex-start;
+        padding-left: 20px;
+        background: transparent;
+        font-size: 1rem;
+        color: #a1a1aa;
+        border-radius: 4px;
+        height: auto;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }}
+    [data-testid="stSidebar"] .stButton > button:hover {{
+        background: rgba(255, 255, 255, 0.05);
+        color: white;
+    }}
+    
+    /* Highlight the active menu item */
+    [data-testid="stSidebar"] .stButton:nth-of-type({active_idx}) > button {{
+        background: rgba(96, 165, 250, 0.1) !important;
+        border-left: 4px solid #60a5fa !important;
+        border-radius: 0px !important;
+        color: #60a5fa !important;
+        font-weight: 600;
+    }}
+
+    /* Position bottom auth container */
+    .sidebar-bottom {{
+        position: absolute;
+        bottom: 20px;
+        width: 100%;
+        padding: 0 20px;
+    }}
+</style>
+""", unsafe_allow_html=True)
+
+with st.sidebar:
+    # Sidebar Header
+    st.markdown(
+        """
+        <div style="padding-bottom: 30px; padding-left: 10px;">
+            <h2 style="margin: 0; color: white; display: flex; align-items: center; gap: 12px; font-family: 'Cabinet Grotesk', sans-serif;">
+                <span style="color: #60a5fa; font-size: 1.4rem;">⚖️</span> LexGuard AI
+            </h2>
+            <p style="margin: 0; color: #6b7280; font-size: 0.65rem; letter-spacing: 0.15em; font-weight: 700; margin-left: 36px; margin-top: -2px;">LEGAL INTELLIGENCE</p>
+        </div>
+        """, unsafe_allow_html=True
+    )
+
+    # Navigation Menu
+    if st.button("🎛️ Dashboard", use_container_width=True):
+        st.session_state.current_page = "dashboard"
+    if st.button("📑 Document Audit", use_container_width=True):
+        st.session_state.current_page = "audit"
+    if st.button("📚 Compliance Library", use_container_width=True):
+        st.session_state.current_page = "library"
+    if st.button("⚙️ Settings", use_container_width=True):
         st.session_state.current_page = "settings"
 
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # Auth Controls (at bottom)
+    st.markdown("<div style='flex-grow: 1;'></div>", unsafe_allow_html=True)
     st.markdown("---")
-    st.markdown("### Account Credits")
-
-    progress_ratio = max(0.0, min(st.session_state.credits / 10.0, 1.0))
-    st.progress(progress_ratio)
-    st.caption(f"Credits: {st.session_state.credits}/10 remaining")
-
-    if st.session_state.credits <= 0:
-        st.error("Insufficient credits. Top up required.")
-
-    st.markdown("---")
-    if not st.session_state.is_premium:
-        st.markdown("### Premium Access")
-        if not st.session_state.show_key_input:
-            if st.button("Upgrade to Premium", type="primary", use_container_width=True):
-                st.session_state.show_key_input = True
-                st.rerun()
-        else:
-            access_input = st.text_input(
-                "Enter Access Key",
-                type="password",
-                placeholder="Enter your key...",
-                key="access_key_input",
-            )
-
-            if access_input:
-                if ACCESS_KEY and hmac.compare_digest(access_input, ACCESS_KEY):
-                    update_user_premium_status(current_user_id, True)
-                    st.session_state.is_premium = True
-                    st.session_state.show_key_input = False
-                    log_security_event(
-                        "PREMIUM_UPGRADE",
-                        user_id=current_user_id,
-                        description="User upgraded to premium using access key",
-                    )
-                    st.success("Premium unlocked.")
-                    st.rerun()
-                else:
-                    log_security_event(
-                        "INVALID_PREMIUM_KEY",
-                        user_id=current_user_id,
-                        severity="WARNING",
-                        description="Failed attempt to use premium key",
-                    )
-                    st.error("Invalid key.")
+    if st.session_state.authenticated:
+        st.caption(f"👤 {st.session_state.user_email}")
+        if st.session_state.credits < 10:
+            st.caption(f"Credits: {st.session_state.credits}/10")
+            st.progress(st.session_state.credits / 10.0)
+        
+        if st.button("Sign Out", use_container_width=True):
+            from auth_utils import sign_out
+            sign_out()
+            st.rerun()
     else:
-        st.success("Premium active.")
+        st.markdown("### Secure Access")
+        tab_signin, tab_signup = st.tabs(["Sign In", "Sign Up"])
+        with tab_signin:
+            with st.form("signin_form"):
+                email = st.text_input("Email")
+                password = st.text_input("Password", type="password")
+                submitted = st.form_submit_button("Sign In", use_container_width=True)
+                if submitted:
+                    from auth_utils import sign_in_with_email
+                    ok, msg = sign_in_with_email(email, password)
+                    if ok:
+                        st.success("Signed in")
+                        st.rerun()
+                    else:
+                        st.error(msg)
+        with tab_signup:
+            with st.form("signup_form"):
+                email = st.text_input("Email")
+                password = st.text_input("Password", type="password")
+                conf_password = st.text_input("Confirm", type="password")
+                submitted = st.form_submit_button("Create Account", use_container_width=True)
+                if submitted:
+                    if password != conf_password:
+                        st.error("Passwords mismatch")
+                    else:
+                        from auth_utils import sign_up_with_email
+                        ok, msg = sign_up_with_email(email, password)
+                        if ok:
+                            st.success(msg)
+                        else:
+                            st.error(msg)
 
 
 if st.session_state.current_page == "audit":
+    # --- Top Bar RAG Badges ---
     st.markdown(
         """
-        <div style='margin-bottom: 24px;'>
-            <p style='color: #002FA7; font-family: monospace; font-size: 0.8rem; letter-spacing: 0.2em; margin-bottom: 8px;'>SECURE WORKSPACE</p>
-            <h1 style='margin-top: 0;'>DPDP Compliance Auditor</h1>
-            <p style='color: #a1a1aa; font-size: 1.05rem; max-width: 760px;'>
-                Upload a contract/policy or paste a clause. Files are stored only in your user path:
-                <strong>data/{sanitize_user_id(current_user_id)}/uploads/</strong>
-            </p>
+        <div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; align-items: center;">
+            <h2 style="margin: 0; font-family: 'Cabinet Grotesk', sans-serif; font-weight: 800; letter-spacing: -0.5px; margin-right: auto;">WORKSPACE</h2>
+            <span style="background: rgba(22, 163, 74, 0.15); color: #4ade80; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; border: 1px solid rgba(22, 163, 74, 0.3);">🟢 MODEL: GEMINI 1.5 PRO</span>
+            <span style="background: rgba(0, 47, 167, 0.15); color: #60a5fa; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; border: 1px solid rgba(0, 47, 167, 0.3);">🧠 RAG: ACTIVE</span>
+            <span style="background: rgba(217, 119, 6, 0.15); color: #fbbf24; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; border: 1px solid rgba(217, 119, 6, 0.3);">🗂️ CONTEXT: 1M TOKENS</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("### Past Audits")
-    ok_history, history_message, history_records = fetch_user_audits(current_user_id)
-    if ok_history and history_records:
-        table_rows = []
-        for record in history_records:
-            metrics = record.get("metrics_json") or {}
-            table_rows.append(
-                {
-                    "Audit ID": record.get("id"),
-                    "Source": record.get("source_name"),
-                    "Type": record.get("source_type"),
-                    "Created At": record.get("created_at"),
-                    "Total": metrics.get("total_clauses", 0),
-                    "High Risk": metrics.get("high_risk", 0),
-                }
-            )
+    # --- Split Pane Layout ---
+    col_left, col_right = st.columns([1.1, 1], gap="large")
 
-        st.dataframe(table_rows, use_container_width=True, hide_index=True)
-
-        selected_audit_id = st.selectbox(
-            "Select an audit to delete",
-            options=[item.get("id") for item in history_records if item.get("id")],
-            key="selected_audit_id",
-        )
-        if st.button("Delete Selected Audit", type="secondary"):
-            ok_delete, delete_message = delete_user_audit(current_user_id, selected_audit_id)
-            if ok_delete:
-                st.success(delete_message)
+    with col_left:
+        st.markdown("<h3 style='color: #fff; margin-top:0;'>Document Analyzer</h3>", unsafe_allow_html=True)
+        
+        if st.session_state.audit_complete and st.session_state.audit_results is not None:
+            if st.button("Start New Audit", type="secondary"):
+                clear_user_cache(workspace_paths)
+                reset_audit_state()
                 st.rerun()
-            else:
-                st.error(delete_message)
-    elif ok_history:
-        st.info("No past audits yet for this account.")
-    else:
-        st.warning(history_message)
 
-    st.markdown("---")
+            st.success("Audit complete. Results loaded from your workspace cache.")
 
-    if st.session_state.audit_complete and st.session_state.audit_results is not None:
-        if st.button("Start New Audit", type="secondary"):
-            clear_user_cache(workspace_paths)
-            reset_audit_state()
-            st.rerun()
+            metrics = st.session_state.metrics
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Total Clauses", metrics["total_clauses"])
+            c2.metric("High Risk", metrics["high_risk"])
+            c3.metric("Medium Risk", metrics["medium_risk"])
+            c4.metric("Compliant", metrics["compliant"])
 
-        st.success("Audit complete. Results loaded from your workspace cache.")
+            total = metrics["total_clauses"]
+            high_risk = metrics["high_risk"]
+            raw_score = (metrics["compliant"] / total) * 100 if total > 0 else 100
+            score = min(49.0, raw_score) if high_risk > 0 else raw_score
 
-        metrics = st.session_state.metrics
-        st.markdown("### Findings Summary")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Clauses", metrics["total_clauses"])
-        c2.metric("High Risk", metrics["high_risk"])
-        c3.metric("Medium Risk", metrics["medium_risk"])
-        c4.metric("Compliant", metrics["compliant"])
-
-        total = metrics["total_clauses"]
-        high_risk = metrics["high_risk"]
-        raw_score = (metrics["compliant"] / total) * 100 if total > 0 else 100
-        score = min(49.0, raw_score) if high_risk > 0 else raw_score
-
-        fig = go.Figure(
-            go.Indicator(
-                mode="gauge+number",
-                value=score,
-                domain={"x": [0, 1], "y": [0, 1]},
-                title={"text": "Compliance Health Score", "font": {"size": 24, "color": "white", "family": "Cabinet Grotesk"}},
-                gauge={
-                    "axis": {"range": [0, 100], "tickcolor": "white"},
-                    "bar": {"color": "#002FA7"},
-                    "bgcolor": "rgba(255,255,255,0.05)",
-                    "borderwidth": 2,
-                    "bordercolor": "rgba(255,255,255,0.1)",
-                    "steps": [
-                        {"range": [0, 50], "color": "rgba(185, 28, 28, 0.3)"},
-                        {"range": [50, 80], "color": "rgba(180, 83, 9, 0.3)"},
-                        {"range": [80, 100], "color": "rgba(22, 101, 52, 0.3)"},
-                    ],
-                },
+            fig = go.Figure(
+                go.Indicator(
+                    mode="gauge+number",
+                    value=score,
+                    domain={"x": [0, 1], "y": [0, 1]},
+                    title={"text": "Compliance Health", "font": {"size": 20, "color": "white"}},
+                    gauge={
+                        "axis": {"range": [0, 100], "tickcolor": "white"},
+                        "bar": {"color": "#002FA7"},
+                        "bgcolor": "rgba(255,255,255,0.05)",
+                        "borderwidth": 2,
+                        "bordercolor": "rgba(255,255,255,0.1)",
+                        "steps": [
+                            {"range": [0, 50], "color": "rgba(185, 28, 28, 0.3)"},
+                            {"range": [50, 80], "color": "rgba(180, 83, 9, 0.3)"},
+                            {"range": [80, 100], "color": "rgba(22, 101, 52, 0.3)"},
+                        ],
+                    },
+                )
             )
-        )
-        fig.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font={"color": "white"},
-        )
-        st.plotly_chart(fig, use_container_width=True)
+            fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font={"color": "white"},
+                height=300,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-        report_data = st.session_state.audit_results
-        st.markdown("### Findings Preview (First 2 Results)")
+            report_data = st.session_state.audit_results
+            preview_count = min(3, len(report_data))
+            for idx in range(preview_count):
+                item = report_data[idx]
+                is_high = "High" in item.get("status", "")
+                status_label = "CRITICAL RISK" if is_high else "VERIFIED"
+                with st.expander(f"Clause #{item.get('clause_id')} - {status_label}", expanded=(idx == 0)):
+                    st.info(item.get("clause_text"))
+                    st.write(item.get("audit_result"))
 
-        preview_count = min(2, len(report_data))
-        for idx in range(preview_count):
-            item = report_data[idx]
-            is_high = "High" in item.get("status", "")
-            status_label = "CRITICAL RISK" if is_high else "VERIFIED"
-            with st.expander(
-                f"Clause #{item.get('clause_id')} (Page {item.get('page_num')}) - {status_label}",
-                expanded=True,
-            ):
-                st.markdown("**Original Excerpt**")
-                st.info(item.get("clause_text"))
-                st.markdown("**Audit Verdict**")
-                st.write(item.get("audit_result"))
+            if st.session_state.pdf_bytes is not None:
+                if st.session_state.is_premium:
+                    st.download_button(
+                        label="📄 Download Full PDF Report",
+                        data=st.session_state.pdf_bytes,
+                        file_name=f"DPDP_Compliance_Report.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True
+                    )
+                else:
+                    st.info("⭐ Premium feature: full PDF report download is locked.")
 
-        viewed_findings = preview_count
-        total_findings = len(report_data)
-        st.markdown(
-            f"""
-            <div class='paywall-box'>
-                <h4>Upgrade to Unlock Full Insights</h4>
-                <p>You have seen {viewed_findings} of {total_findings} findings. Download the complete report below.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        else:
+            # Document Upload State
+            tab_upload, tab_paste = st.tabs(["Upload Document", "Paste Clause"])
+            with tab_upload:
+                with st.form("upload_audit_form", clear_on_submit=False):
+                    uploaded_file = st.file_uploader("Drag and drop PDF or TXT", type=["pdf", "txt"])
+                    submitted_upload = st.form_submit_button("Run Full Audit", type="primary", use_container_width=True)
 
-        download_name = st.session_state.last_filename or "document"
-        if st.session_state.pdf_bytes is not None:
-            if st.session_state.is_premium:
-                st.download_button(
-                    label="Download Full PDF Report",
-                    data=st.session_state.pdf_bytes,
-                    file_name=f"DPDP_Compliance_{download_name}.pdf",
-                    mime="application/pdf",
-                    type="primary",
-                )
+                if submitted_upload:
+                    if uploaded_file is None:
+                        st.warning("Please upload a PDF or TXT file first.")
+                    else:
+                        upload_info = persist_uploaded_input(current_user_id, workspace_paths, uploaded_file=uploaded_file)
+                        if upload_info:
+                            run_user_audit(current_user_id, workspace_paths, upload_info["path"], upload_info["source_name"], upload_info["source_type"])
+
+            with tab_paste:
+                with st.form("paste_audit_form", clear_on_submit=False):
+                    pasted_clause = st.text_area("Paste a clause or policy text", height=200)
+                    submitted_paste = st.form_submit_button("Audit Text", type="primary", use_container_width=True)
+
+                if submitted_paste:
+                    if not pasted_clause.strip():
+                        st.warning("Please paste text before running.")
+                    else:
+                        paste_info = persist_uploaded_input(current_user_id, workspace_paths, pasted_text=pasted_clause)
+                        if paste_info:
+                            run_user_audit(current_user_id, workspace_paths, paste_info["path"], paste_info["source_name"], paste_info["source_type"])
+
+            st.markdown("### Past Audits")
+            ok_history, history_message, history_records = fetch_user_audits(current_user_id, limit=3)
+            if ok_history and history_records:
+                for r in history_records:
+                    metrics = r.get("metrics_json") or {}
+                    st.caption(f"**{r.get('source_name')}** ({r.get('source_type')}) - {metrics.get('high_risk', 0)} High Risk")
             else:
-                st.info("Premium feature: full PDF report download is locked.")
+                st.caption("No past audits found.")
 
-    else:
-        tab_upload, tab_paste = st.tabs(["Upload Document", "Paste Clause"])
+    with col_right:
+        st.markdown("<h3 style='color: #fff; margin-top:0;'>LexGuard Intelligence</h3>", unsafe_allow_html=True)
+        
+        if "chat_messages" not in st.session_state:
+            st.session_state.chat_messages = [
+                {"role": "assistant", "content": "Welcome to LexGuard! I can help you analyze DPDP Act implications or review specific clauses in your documents. How can I assist you today?"}
+            ]
 
-        with tab_upload:
-            with st.form("upload_audit_form", clear_on_submit=False):
-                uploaded_file = st.file_uploader(
-                    "Drag and drop PDF or TXT",
-                    type=["pdf", "txt"],
-                )
-                submitted_upload = st.form_submit_button("Run Full Audit", type="primary")
+        chat_container = st.container(height=550, border=True)
+        with chat_container:
+            for msg in st.session_state.chat_messages:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+                    if msg.get("reasoning"):
+                        with st.expander("🤔 Thinking Process & Retrieval"):
+                            st.info(msg["reasoning"])
+                    if msg.get("sources"):
+                        st.markdown("**Citations:**")
+                        for i, src in enumerate(msg["sources"]):
+                            st.button(f"📄 {src}", key=f"src_{i}_{hash(msg['content'])}")
 
-            if submitted_upload:
-                if uploaded_file is None:
-                    st.warning("Please upload a PDF or TXT file first.")
-                else:
-                    upload_info = persist_uploaded_input(
-                        user_id=current_user_id,
-                        workspace_paths=workspace_paths,
-                        uploaded_file=uploaded_file,
-                    )
-                    if upload_info is None:
-                        st.error("Unable to save uploaded file to user workspace.")
-                    else:
-                        run_user_audit(
-                            user_id=current_user_id,
-                            workspace_paths=workspace_paths,
-                            source_path=upload_info["path"],
-                            source_name=upload_info["source_name"],
-                            source_type=upload_info["source_type"],
-                        )
-
-        with tab_paste:
-            with st.form("paste_audit_form", clear_on_submit=False):
-                pasted_clause = st.text_area(
-                    "Paste a clause or policy text",
-                    height=220,
-                    max_chars=25000,
-                )
-                submitted_paste = st.form_submit_button(
-                    "Run Full Audit On Pasted Text",
-                    type="primary",
-                )
-
-            if submitted_paste:
-                if not pasted_clause.strip():
-                    st.warning("Please paste a clause before running the audit.")
-                else:
-                    paste_info = persist_uploaded_input(
-                        user_id=current_user_id,
-                        workspace_paths=workspace_paths,
-                        pasted_text=pasted_clause,
-                    )
-                    if paste_info is None:
-                        st.error("Unable to save pasted text to user workspace.")
-                    else:
-                        run_user_audit(
-                            user_id=current_user_id,
-                            workspace_paths=workspace_paths,
-                            source_path=paste_info["path"],
-                            source_name=paste_info["source_name"],
-                            source_type=paste_info["source_type"],
-                        )
+        if prompt := st.chat_input("Ask a legal or compliance question..."):
+            st.session_state.chat_messages.append({"role": "user", "content": prompt})
+            st.rerun()
+            
+        # Handle processing of the last user message
+        if len(st.session_state.chat_messages) > 0 and st.session_state.chat_messages[-1]["role"] == "user":
+            with chat_container:
+                with st.chat_message("assistant"):
+                    with st.spinner("Analyzing DPDP context..."):
+                        import time
+                        time.sleep(1) # Simulate RAG latency
+                        
+                        try:
+                            # Use cached load_retriever() instead of get_retriever()
+                            from main import build_chain
+                            retriever = load_retriever()
+                            chain = build_chain(retriever)
+                            
+                            user_query = st.session_state.chat_messages[-1]["content"]
+                            result = chain.invoke({"query": user_query})
+                            
+                            response = result.get("result", "I could not find a specific answer in the legal database.")
+                            docs = result.get("source_documents", [])
+                            
+                            reasoning = f"Context retrieval successful. Found {len(docs)} relevant chunks."
+                            sources = []
+                            for d in docs[:3]:
+                                sec = d.metadata.get('section', 'Unknown')
+                                sources.append(f"Section {sec} - DPDP Act")
+                                
+                        except Exception as e:
+                            reasoning = f"Retrieval error: {str(e)}"
+                            sources = ["LexGuard Base Knowledge"]
+                            response = "I encountered an error accessing the DPDP database. Please check your document audit for specific risks."
+                        
+                        st.session_state.chat_messages.append({
+                            "role": "assistant",
+                            "content": response,
+                            "reasoning": reasoning,
+                            "sources": sources
+                        })
+                        st.rerun()
 
 elif st.session_state.current_page == "settings":
     st.header("System Configuration")
