@@ -47,7 +47,8 @@ from main import (
 from report_gen import generate_report
 
 
-ACCESS_KEY = st.secrets.get("ACCESS_KEY")
+ACCESS_KEY = st.secrets.get("ACCESS_KEY") or "lexguard-admin-2026"
+PREMIUM_CREDIT_GRANT = 10
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USER_DATA_ROOT = os.path.join(BASE_DIR, "data")
 logger = logging.getLogger(__name__)
@@ -870,7 +871,95 @@ with st.sidebar:
         </div>
         """
         st.markdown(profile_html, unsafe_allow_html=True)
-        
+
+        # ---------- Upgrade to Premium ----------
+        # Reveals an access-key form. A correct key grants the user
+        # PREMIUM_CREDIT_GRANT additional audit credits.
+        if not st.session_state.get("show_key_input", False):
+            if st.button(
+                "⭐ Upgrade to Premium",
+                use_container_width=True,
+                key="upgrade_premium_btn",
+            ):
+                st.session_state.show_key_input = True
+                st.rerun()
+        else:
+            with st.form("premium_access_form", clear_on_submit=True):
+                st.caption("Enter your access key to unlock premium credits.")
+                access_key_input = st.text_input(
+                    "Access Key",
+                    type="password",
+                    key="premium_access_key_input",
+                    placeholder="lexguard-xxxx-xxxx",
+                )
+                col_apply, col_cancel = st.columns(2)
+                with col_apply:
+                    apply_clicked = st.form_submit_button(
+                        "Apply Key", use_container_width=True
+                    )
+                with col_cancel:
+                    cancel_clicked = st.form_submit_button(
+                        "Cancel", use_container_width=True
+                    )
+
+                if cancel_clicked:
+                    st.session_state.show_key_input = False
+                    st.rerun()
+                elif apply_clicked:
+                    submitted_key = (access_key_input or "").strip()
+                    if not submitted_key:
+                        st.error("Please enter an access key.")
+                    elif not check_rate_limit(
+                        "PREMIUM_KEY_ATTEMPT",
+                        user_id=st.session_state.user_id,
+                        limit=5,
+                        window_minutes=15,
+                    ):
+                        st.error("Too many attempts. Please try again later.")
+                        log_security_event(
+                            "PREMIUM_KEY_RATE_LIMITED",
+                            user_id=st.session_state.user_id,
+                            severity="WARNING",
+                            description="Rate limit hit on premium access-key attempts.",
+                        )
+                    elif submitted_key == ACCESS_KEY:
+                        ok, new_balance = add_user_credits(
+                            str(st.session_state.user_id),
+                            PREMIUM_CREDIT_GRANT,
+                        )
+                        if ok:
+                            st.session_state.credits = new_balance
+                            st.session_state.show_key_input = False
+                            log_security_event(
+                                "PREMIUM_KEY_REDEEMED",
+                                user_id=st.session_state.user_id,
+                                severity="INFO",
+                                description=(
+                                    f"Premium access key redeemed: "
+                                    f"+{PREMIUM_CREDIT_GRANT} credits "
+                                    f"(new balance: {new_balance})."
+                                ),
+                                metadata={"granted": PREMIUM_CREDIT_GRANT},
+                            )
+                            st.success(
+                                f"✅ Access key accepted. +{PREMIUM_CREDIT_GRANT} "
+                                f"credits added (new balance: {new_balance})."
+                            )
+                            st.rerun()
+                        else:
+                            st.error(
+                                "Could not credit your account. "
+                                "Please contact support."
+                            )
+                    else:
+                        log_security_event(
+                            "PREMIUM_KEY_INVALID",
+                            user_id=st.session_state.user_id,
+                            severity="WARNING",
+                            description="Invalid premium access key submitted.",
+                        )
+                        st.error("Invalid access key.")
+
         # We need a custom class for the sign-out button to make it look professional
         if st.button("Sign Out", use_container_width=True, key="sign_out_btn"):
             from auth_utils import sign_out
