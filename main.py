@@ -378,8 +378,8 @@ def run_compliance_audit(
         print("⚠  No text found in the provided PDF.")
         return
 
-    # Split user doc into chunks roughly 3-4 sentences long
-    audit_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
+    # Split user doc into chunks — larger chunks = fewer total LLM calls
+    audit_splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=80)
     audit_chunks = audit_splitter.split_documents(user_docs)
 
     google_key = st.secrets.get('GOOGLE_API_KEY')
@@ -399,9 +399,13 @@ def run_compliance_audit(
     print(f"\n🔍 Analyzing {total} sections via two-layer audit "
           f"({TRIAGE_MODEL} → {DEEP_MODEL})...\n")
 
-    # ---- Step A: pre-fetch retrieval contexts once (local, fast) -----------
+    # ---- Step A: pre-fetch retrieval contexts in parallel (I/O bound) ------
+    import time
+    t0 = time.time()
     contexts = [""] * total
-    for idx, chunk in enumerate(audit_chunks):
+
+    def _fetch_context(i: int) -> str:
+        chunk = audit_chunks[i]
         legal_docs = retriever.invoke(chunk.page_content)
         ctx = "\n\n".join(d.page_content for d in legal_docs)
         if user_workspace_retriever is not None:
@@ -409,7 +413,15 @@ def run_compliance_audit(
             if ws_docs:
                 ws_ctx = "\n\n".join(d.page_content for d in ws_docs)
                 ctx = f"{ctx}\n\nUser Workspace Context (isolated):\n{ws_ctx}"
-        contexts[idx] = ctx
+        return ctx
+
+    with ThreadPoolExecutor(max_workers=6, thread_name_prefix="retrieve") as retrieve_pool:
+        retrieve_futs = {retrieve_pool.submit(_fetch_context, i): i for i in range(total)}
+        for fut in as_completed(retrieve_futs):
+            i = retrieve_futs[fut]
+            contexts[i] = fut.result()
+
+    print(f"  📚 Context retrieval done in {time.time()-t0:.1f}s ({total} chunks)")
 
     # ---- Step B: layer-1 triage + layer-2 deep audit, pipelined ------------
     @retry(
