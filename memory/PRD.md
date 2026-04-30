@@ -40,10 +40,10 @@ Add an inline "Try it now" hero widget to the LexGuard AI landing page. User pas
 
 ## User Personas
 - **End user**: Indian founder/legal counsel → quick audit → wants the full Streamlit power tool
-- **Admin (Sujal)**: Owns the lead funnel → `/admin.html` with token `lexguard-admin-2026`
+- **Admin (Sujal)**: Owns the lead funnel → `/admin.html` (token in `backend/.env` as `ADMIN_TOKEN`, never committed)
 
 ## Credentials
-- `GROQ_API_KEY`, `ADMIN_TOKEN=lexguard-admin-2026` in `/app/backend/.env`
+- `GROQ_API_KEY`, `ADMIN_TOKEN`, `GOOGLE_API_KEY` — see `/app/backend/.env` (gitignored)
 - Admin: `${REACT_APP_BACKEND_URL}/admin.html`
 - Streamlit: `https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app`
 

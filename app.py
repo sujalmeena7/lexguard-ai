@@ -47,7 +47,13 @@ from main import (
 from report_gen import generate_report
 
 
-ACCESS_KEY = st.secrets.get("ACCESS_KEY") or "lexguard-admin-2026"
+# Premium upgrade access key. Read from Streamlit secrets or environment;
+# never hardcoded. When unset, the Upgrade-to-Premium UI is hidden so no
+# spoofable default exists in source.
+ACCESS_KEY = (
+    (st.secrets.get("ACCESS_KEY") or os.environ.get("ACCESS_KEY") or "").strip()
+    or None
+)
 PREMIUM_CREDIT_GRANT = 10
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USER_DATA_ROOT = os.path.join(BASE_DIR, "data")
@@ -875,7 +881,9 @@ with st.sidebar:
         # ---------- Upgrade to Premium ----------
         # Reveals an access-key form. A correct key grants the user
         # PREMIUM_CREDIT_GRANT additional audit credits.
-        if not st.session_state.get("show_key_input", False):
+        # Only rendered when ACCESS_KEY is configured via secrets/env so the
+        # repo never ships a guessable default.
+        if ACCESS_KEY and not st.session_state.get("show_key_input", False):
             if st.button(
                 "⭐ Upgrade to Premium",
                 use_container_width=True,
@@ -883,7 +891,7 @@ with st.sidebar:
             ):
                 st.session_state.show_key_input = True
                 st.rerun()
-        else:
+        elif ACCESS_KEY:
             with st.form("premium_access_form", clear_on_submit=True):
                 st.caption("Enter your access key to unlock premium credits.")
                 access_key_input = st.text_input(

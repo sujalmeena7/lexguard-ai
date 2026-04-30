@@ -31,7 +31,7 @@
     "/app/memory/test_credentials.md (ADMIN_TOKEN documented)"
   ],
   "success_rate": {"backend": "92% (12/13, 1 xfail env-limit)", "frontend": "100%"},
-  "test_credentials": "ADMIN_TOKEN=lexguard-admin-2026 (backend/.env), documented in /app/memory/test_credentials.md",
+  "test_credentials": "ADMIN_TOKEN read from backend/.env (gitignored) — see test_credentials.md for local setup instructions.",
   "seed_data_creation": "No new seed data. Existing leads: meenasujal60@gmail.com, TEST_e2e@example.com, TEST_qa@example.com, test@example.com (4 leads, 41 analyses).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

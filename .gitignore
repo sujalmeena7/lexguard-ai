@@ -5,13 +5,18 @@
 data_store/
 session_cache.json
 
+# ── Dev-output artifacts
+info.json
+full_path.txt
+local_store.txt
+p_show.txt
+pip_show.txt
+parent_retreiver.txt
+
 # ── Vector DB & Document Store
 db/
 db_workspace/
 docstore.json
-
-# ── PDF Files (user uploads & generated reports) 
-*.pdf
 
 # ── Python Cache
 __pycache__/

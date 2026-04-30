@@ -57,14 +57,22 @@ def init_auth_state() -> None:
 
 
 def get_supabase_client() -> Optional[Client]:
-    """Create or return a cached Supabase client from Streamlit secrets/env vars."""
-    default_url = "https://corbyaeuxflemgilgcom.supabase.co"
-    default_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI"
-    
-    supabase_url = st.secrets.get("SUPABASE_URL", os.environ.get("SUPABASE_URL", default_url))
-    supabase_anon_key = st.secrets.get("SUPABASE_ANON_KEY", os.environ.get("SUPABASE_ANON_KEY", default_key))
+    """Create or return a cached Supabase client.
+
+    Reads SUPABASE_URL and SUPABASE_ANON_KEY from Streamlit secrets first,
+    falling back to environment variables. Never embeds credentials in source.
+    """
+    supabase_url = st.secrets.get("SUPABASE_URL") or os.environ.get("SUPABASE_URL")
+    supabase_anon_key = (
+        st.secrets.get("SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY")
+    )
 
     if not supabase_url or not supabase_anon_key:
+        st.session_state["_supabase_client_error"] = (
+            "Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY "
+            "in .streamlit/secrets.toml (or as environment variables) before "
+            "starting the app."
+        )
         return None
 
     st.session_state["_supabase_client_error"] = None

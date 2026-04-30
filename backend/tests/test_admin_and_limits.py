@@ -6,7 +6,13 @@ import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://policy-scanner-9.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
-ADMIN_TOKEN = "lexguard-admin-2026"
+# Read from env. Tests that need admin auth are skipped automatically when
+# ADMIN_TOKEN is not configured, so the secret is never embedded in source.
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+admin_required = pytest.mark.skipif(
+    not ADMIN_TOKEN,
+    reason="ADMIN_TOKEN env var not set; skipping admin-route tests.",
+)
 
 
 @pytest.fixture(scope="session")
@@ -25,6 +31,7 @@ def admin_session():
 
 # ---------- Admin login ----------
 class TestAdminLogin:
+    @admin_required
     def test_login_success(self, session):
         r = session.post(f"{API}/admin/login", json={"token": ADMIN_TOKEN})
         assert r.status_code == 200, r.text
@@ -55,6 +62,7 @@ class TestAdminAuthGuard:
 
 
 # ---------- Admin stats ----------
+@admin_required
 class TestAdminStats:
     def test_stats_shape(self, admin_session):
         r = admin_session.get(f"{API}/admin/stats")
@@ -70,6 +78,7 @@ class TestAdminStats:
 
 
 # ---------- Admin leads listing ----------
+@admin_required
 class TestAdminLeads:
     def test_leads_list(self, admin_session):
         r = admin_session.get(f"{API}/admin/leads")
@@ -91,6 +100,7 @@ class TestAdminLeads:
 
 
 # ---------- Admin lead detail ----------
+@admin_required
 class TestAdminLeadDetail:
     def test_lead_detail(self, admin_session):
         leads = admin_session.get(f"{API}/admin/leads?limit=1").json()
