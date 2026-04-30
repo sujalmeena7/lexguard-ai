@@ -91,7 +91,18 @@ def get_supabase_client() -> Optional[Client]:
             st.session_state["_supabase_client_error"] = f"Supabase client init failed: {exc}.{hint}"
             return None
 
-    return st.session_state["_supabase_client"]
+    client = st.session_state["_supabase_client"]
+
+    # Re-attach the user's JWT so PostgREST calls (DB reads/writes) pass RLS
+    # after a Streamlit rerun wipes the client's internal auth state.
+    user_token = st.session_state.get("auth_access_token")
+    if user_token:
+        try:
+            client.postgrest.auth(user_token)
+        except Exception:
+            pass  # If the token is expired the next DB call will fail naturally
+
+    return client
 
 
 def get_supabase_client_error() -> Optional[str]:
