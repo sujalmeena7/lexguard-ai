@@ -863,7 +863,7 @@ with st.sidebar:
                         {st.session_state.user_email}
                     </div>
                     <div style="color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Enterprise Plan
+                        {'Premium Plan' if st.session_state.is_premium else 'Enterprise Plan'}
                     </div>
                 </div>
             </div>
@@ -936,7 +936,12 @@ with st.sidebar:
                             PREMIUM_CREDIT_GRANT,
                         )
                         if ok:
+                            # Upgrade plan to Premium in DB and session
+                            update_user_premium_status(
+                                str(st.session_state.user_id), True
+                            )
                             st.session_state.credits = new_balance
+                            st.session_state.is_premium = True
                             st.session_state.show_key_input = False
                             log_security_event(
                                 "PREMIUM_KEY_REDEEMED",
@@ -1077,7 +1082,7 @@ if st.session_state.current_page == "audit":
             st.plotly_chart(fig, use_container_width=True)
 
             report_data = st.session_state.audit_results
-            preview_count = min(3, len(report_data))
+            preview_count = min(2, len(report_data))
             for idx in range(preview_count):
                 item = report_data[idx]
                 is_high = "High" in item.get("status", "")
@@ -1086,7 +1091,19 @@ if st.session_state.current_page == "audit":
                     st.info(item.get("clause_text"))
                     st.write(item.get("audit_result"))
 
-            if st.session_state.pdf_bytes is not None:
+            if not st.session_state.is_premium:
+                st.divider()
+                st.markdown(
+                    "<div style='text-align:center; padding: 16px; border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px;'>"
+                    "<p style='color: #94a3b8; font-size: 14px; margin-bottom: 8px;'>"
+                    "🔒 <strong>2 more clauses hidden</strong></p>"
+                    "<p style='color: #64748b; font-size: 12px; margin: 0;'>"
+                    "To view the full audit and download the professional PDF report, upgrade to Premium by clicking the "
+                    "<strong>⭐ Upgrade to Premium</strong> button in the sidebar."
+                    "</p></div>",
+                    unsafe_allow_html=True,
+                )
+            elif st.session_state.pdf_bytes is not None:
                 st.download_button(
                     label="📄 Download Full PDF Report",
                     data=st.session_state.pdf_bytes,
