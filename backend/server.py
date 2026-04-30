@@ -82,6 +82,23 @@ if not GOOGLE_API_KEY:
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel(GEMINI_MODEL)
 
+# ── Groq fallback (used when Gemini hits quota/429) ──
+# When GROQ_API_KEY is set, /api/analyze automatically retries on Groq
+# Llama-3.3-70B if Gemini exhausts its tenacity retries with a quota error.
+# Same prompt + JSON schema, sub-second latency on Groq's LPU.
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
+GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+groq_client = None
+if GROQ_API_KEY:
+    try:
+        from groq import AsyncGroq
+        groq_client = AsyncGroq(api_key=GROQ_API_KEY)
+        logging.info(f"Groq fallback enabled (model={GROQ_MODEL}).")
+    except Exception as exc:
+        logging.warning(f"Groq SDK unavailable; fallback disabled: {exc}")
+else:
+    logging.info("GROQ_API_KEY not set \u2014 Gemini-only mode (no fallback on quota).")
+
 # ── Supabase Auth Guard ──
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
@@ -398,16 +415,67 @@ async def analyze_policy(
         )
         return response.text
 
+    async def get_groq_completion(text: str) -> str:
+        """Fallback: ask Groq Llama-3.3-70B for the same JSON schema."""
+        completion = await groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": f"Audit this document against DPDP Act 2023:\n\n---\n{text}\n---",
+                },
+            ],
+            temperature=0,
+            max_tokens=2048,
+            response_format={"type": "json_object"},
+        )
+        return completion.choices[0].message.content or ""
+
+    def _is_quota_error(exc: Exception) -> bool:
+        msg = str(exc).lower()
+        return any(
+            token in msg
+            for token in (
+                "quota", "429", "rate limit", "rate_limit",
+                "exceeded", "resource_exhausted", "resource exhausted",
+            )
+        )
+
+    raw = None
+    used_provider = "gemini"
     try:
         raw = await get_gemini_completion(req.policy_text)
         logger.info(f"Gemini raw response (first 500 chars): {raw[:500]}")
         data = _extract_json(raw)
     except json.JSONDecodeError as e:
-        logger.error(f"Gemini returned invalid JSON after retries: {e}\nRaw: {raw[:1000] if 'raw' in dir() else 'N/A'}")
+        logger.error(f"Gemini returned invalid JSON after retries: {e}\nRaw: {raw[:1000] if raw else 'N/A'}")
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
     except Exception as e:
-        logger.error(f"Gemini error after multiple attempts: {e}")
-        raise HTTPException(status_code=502, detail=f"Analysis failed after multiple attempts: {str(e)[:120]}")
+        gemini_err_str = str(e)
+        if groq_client is not None and _is_quota_error(e):
+            logger.warning(
+                f"Gemini quota error after retries; falling back to Groq {GROQ_MODEL}: {gemini_err_str[:200]}"
+            )
+            try:
+                raw = await get_groq_completion(req.policy_text)
+                logger.info(f"Groq fallback raw response (first 500 chars): {raw[:500]}")
+                data = _extract_json(raw)
+                used_provider = f"groq:{GROQ_MODEL}"
+            except json.JSONDecodeError as je:
+                logger.error(f"Groq fallback returned invalid JSON: {je}\nRaw: {raw[:1000] if raw else 'N/A'}")
+                raise HTTPException(status_code=502, detail="Fallback model returned invalid response. Please retry.")
+            except Exception as ge:
+                logger.error(f"Groq fallback also failed: {ge}")
+                raise HTTPException(
+                    status_code=503,
+                    detail="All AI providers are over their quota right now. Please retry in a minute.",
+                )
+        else:
+            logger.error(f"Gemini error after multiple attempts: {gemini_err_str}")
+            raise HTTPException(status_code=502, detail=f"Analysis failed after multiple attempts: {gemini_err_str[:120]}")
+
+    logger.info(f"Analysis served by provider={used_provider}")
 
     analysis_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
