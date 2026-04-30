@@ -107,7 +107,7 @@
     border-radius: 999px;
     padding: 5px 10px;
     font-size: 11px;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -123,10 +123,11 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 11px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
+    font-weight: 600;
     color: var(--lg-muted);
     margin-bottom: 10px;
 }
@@ -159,7 +160,7 @@
     align-items: center;
     justify-content: space-between;
     margin: 10px 2px 16px;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 11px;
 }
 .lg-chars { color: var(--lg-muted); }
@@ -201,7 +202,7 @@
 
 .lg-btn-label { display: inline-flex; align-items: center; gap: 8px; }
 .lg-btn-meta {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 11px;
     opacity: 0.7;
     font-weight: 500;
@@ -230,7 +231,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 11px;
     color: var(--lg-muted);
 }
@@ -313,7 +314,7 @@
     50% { box-shadow: 0 0 20px rgba(240,201,58,0.55), 0 0 6px rgba(240,201,58,0.3); }
 }
 .lg-progress-pct {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 11px;
     font-weight: 600;
     color: var(--lg-accent);
@@ -360,10 +361,11 @@
     font-weight: 500;
 }
 .lg-score-label {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 10px;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.1em;
     color: var(--lg-muted);
+    font-weight: 500;
     margin-top: 6px;
 }
 
@@ -373,10 +375,10 @@
     gap: 8px;
     padding: 10px 14px;
     border-radius: 999px;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     border: 1px solid;
 }
 .lg-verdict-dot {
@@ -433,13 +435,14 @@
     margin-bottom: 10px;
 }
 .lg-clauses-title {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 10px;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.1em;
     color: var(--lg-muted);
+    font-weight: 600;
 }
 .lg-clauses-meta {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 11px;
     color: var(--lg-muted);
 }
@@ -467,10 +470,10 @@
     flex-wrap: wrap;
 }
 .lg-chip {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     padding: 3px 7px;
     border-radius: 4px;
 }
@@ -479,16 +482,18 @@
 .lg-chip-low  { background: rgba(61,220,151,0.14); color: var(--lg-green); }
 
 .lg-clause-id {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
+    font-family: 'Cabinet Grotesk', 'Satoshi', sans-serif;
+    font-size: 12px;
     color: var(--lg-text);
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.01em;
 }
 .lg-clause-section {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 11px;
     color: var(--lg-blue);
     margin-left: auto;
+    font-weight: 500;
 }
 
 .lg-clause-excerpt {
@@ -515,7 +520,7 @@
     color: #c4edd9;
     line-height: 1.5;
 }
-.lg-clause-fix strong { color: var(--lg-green); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; display: block; margin-bottom: 3px; }
+.lg-clause-fix strong { color: var(--lg-green); font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 10px; letter-spacing: 0.06em; font-weight: 700; display: block; margin-bottom: 3px; }
 
 /* ========== EMAIL GATE ========== */
 .lg-gate {
@@ -623,8 +628,9 @@
     color: var(--lg-accent);
 }
 .lg-tab-count {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 10px;
+    font-weight: 600;
     padding: 2px 6px;
     border-radius: 4px;
     background: rgba(255,255,255,0.08);
@@ -676,9 +682,10 @@
     line-height: 1.45;
 }
 .lg-check-status {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 10px;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
+    font-weight: 600;
     padding: 3px 7px;
     border-radius: 4px;
     font-weight: 700;
