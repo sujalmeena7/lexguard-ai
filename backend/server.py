@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Dict, List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
+import asyncio
 import secrets
 import google.generativeai as genai
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -445,12 +446,33 @@ async def analyze_policy(
     raw = None
     used_provider = "gemini"
     try:
-        raw = await get_gemini_completion(req.policy_text)
+        raw = await asyncio.wait_for(get_gemini_completion(req.policy_text), timeout=3.0)
         logger.info(f"Gemini raw response (first 500 chars): {raw[:500]}")
         data = _extract_json(raw)
     except json.JSONDecodeError as e:
         logger.error(f"Gemini returned invalid JSON after retries: {e}\nRaw: {raw[:1000] if raw else 'N/A'}")
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
+    except asyncio.TimeoutError:
+        logger.warning(
+            f"Gemini audit exceeded 3s timeout; falling back to Groq {GROQ_MODEL}"
+        )
+        if groq_client is not None:
+            try:
+                raw = await get_groq_completion(req.policy_text)
+                logger.info(f"Groq fallback raw response (first 500 chars): {raw[:500]}")
+                data = _extract_json(raw)
+                used_provider = f"groq:{GROQ_MODEL}"
+            except json.JSONDecodeError as je:
+                logger.error(f"Groq fallback returned invalid JSON: {je}\nRaw: {raw[:1000] if raw else 'N/A'}")
+                raise HTTPException(status_code=502, detail="Fallback model returned invalid response. Please retry.")
+            except Exception as ge:
+                logger.error(f"Groq fallback also failed: {ge}")
+                raise HTTPException(
+                    status_code=503,
+                    detail="All AI providers are unavailable right now. Please retry in a minute.",
+                )
+        else:
+            raise HTTPException(status_code=504, detail="Audit timed out and no fallback is available.")
     except Exception as e:
         gemini_err_str = str(e)
         if groq_client is not None and _is_quota_error(e):
