@@ -11,6 +11,7 @@ from slowapi.errors import RateLimitExceeded
 import os
 import json
 import logging
+import hashlib
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import Dict, List, Optional
@@ -69,7 +70,11 @@ else:
 
 # ── Gemini client ──
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
-GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-pro-latest')
+# Widget endpoint uses Gemini 2.0 Flash by default: ~3-5x faster than Pro and
+# accurate enough for a one-shot landing-page summary that only previews 2
+# clauses. The full deep audit lives in the Streamlit dashboard's two-layer
+# pipeline (Flash triage → Pro deep audit on flagged clauses only).
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash')
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'dev-token-local')
 if not GOOGLE_API_KEY:
     raise RuntimeError("GOOGLE_API_KEY environment variable is required but not set.")
@@ -103,26 +108,59 @@ def _cleanup_expired_handoffs() -> None:
     for code in expired_codes:
         _auth_handoff_store.pop(code, None)
 
+ANONYMOUS_USER_PREFIX = "anonymous_"
+
+
+def _is_anonymous_user(user: dict) -> bool:
+    return str(user.get("id", "")).startswith(ANONYMOUS_USER_PREFIX)
+
+
 async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
-    """Verify Supabase JWT and return user data."""
+    """Verify Supabase JWT and return user data. STRICT (401 if missing)."""
     if not authorization or not authorization.startswith("Bearer "):
-        # For local dev without auth, you can comment this out or use a bypass
-        # But for production, this is mandatory.
         raise HTTPException(status_code=401, detail="Authentication required (Bearer token missing)")
-    
+
     token = authorization.split(" ")[1]
     if not supabase_client:
         raise HTTPException(status_code=503, detail="Auth service unavailable")
-        
+
     try:
-        # Validate token with Supabase (prevents forged/expired tokens)
         res = supabase_client.auth.get_user(token)
         if not res or not res.user:
             raise HTTPException(status_code=401, detail="Invalid or expired session")
         return {"id": res.user.id, "email": res.user.email}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Auth verification error: {e}")
         raise HTTPException(status_code=401, detail="Authentication failed")
+
+
+async def get_current_user_optional(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+) -> dict:
+    """Optional auth: returns the real user if a valid Bearer token is present,
+    otherwise returns a per-IP anonymous sentinel. Used by public lead-gen
+    endpoints (/api/analyze, /api/unlock) so the landing-page widget works
+    without forcing visitors to sign in. Per-IP rate limits still apply.
+    """
+    if authorization and authorization.startswith("Bearer ") and supabase_client:
+        token = authorization.split(" ", 1)[1].strip()
+        if token:
+            try:
+                res = supabase_client.auth.get_user(token)
+                if res and res.user:
+                    return {"id": res.user.id, "email": res.user.email}
+            except Exception as e:
+                # Fall through to anonymous on auth failure—public endpoints
+                # should not 401 a visitor whose session merely expired.
+                logger.info(f"Optional auth fell back to anonymous: {e}")
+
+    ip = _client_ip(request) if request is not None else "unknown"
+    # Hash the IP so we never persist a raw IP in the DB.
+    anon_id = ANONYMOUS_USER_PREFIX + hashlib.sha256(ip.encode("utf-8")).hexdigest()[:16]
+    return {"id": anon_id, "email": None}
 
 # Rate limiter (per client IP, proxy-aware: honors X-Forwarded-For)
 def _client_ip(request: Request) -> str:
@@ -301,11 +339,17 @@ async def exchange_auth_handoff(req: HandoffExchangeRequest):
 @api_router.post("/analyze", response_model=AnalysisResult)
 @limiter.limit("5/minute;50/day")
 async def analyze_policy(
-    request: Request, 
+    request: Request,
     req: AnalyzeRequest,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user_optional),
 ):
-    """Analyze privacy policy against DPDP Act 2023. Authenticated only."""
+    """Analyze privacy policy against DPDP Act 2023.
+
+    Public endpoint: anonymous visitors using the landing-page widget are
+    served via a per-IP anonymous user id; logged-in users get their record
+    attached to their Supabase user id. Per-IP rate limit (5/min, 50/day)
+    bounds abuse from anonymous callers.
+    """
 
     def _extract_json(text: str) -> dict:
         """Robustly extract JSON from model output."""
@@ -345,8 +389,10 @@ async def analyze_policy(
         response = await model.generate_content_async(
             prompt,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.2,
-                max_output_tokens=4096,
+                temperature=0,
+                # Schema is bounded (~6 clauses + 6 checklist items); 2048 is
+                # plenty and keeps Flash latency tight (~5-10s end-to-end).
+                max_output_tokens=2048,
                 response_mime_type="application/json",
             )
         )
@@ -418,9 +464,9 @@ async def get_user_audits(user: dict = Depends(get_current_user)):
 @api_router.post("/unlock", response_model=AnalysisResult)
 @limiter.limit("20/minute")
 async def unlock_full_report(
-    request: Request, 
+    request: Request,
     req: UnlockRequest,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user_optional),
 ):
     """Capture email → store in leads collection → return FULL analysis."""
     # Find in DB or fallback to a dummy if DB is down
@@ -434,9 +480,18 @@ async def unlock_full_report(
         # If DB is down, we can't fetch the specific analysis, but we can tell the user why
         raise HTTPException(status_code=404, detail="Analysis not found or Database is offline.")
 
-    # Check ownership (IDOR Protection)
-    if doc.get("user_id") != user["id"]:
-        logger.warning(f"IDOR ATTEMPT: User {user['id']} tried to access analysis {req.analysis_id} owned by {doc.get('user_id')}")
+    # Ownership / IDOR protection.
+    # Analyses created anonymously (via the public landing-page widget) are
+    # gated only by knowledge of the random analysis_id + the email-capture
+    # form below, which is the intended lead-gen contract. Authenticated
+    # users still get strict per-user IDOR enforcement.
+    doc_owner = doc.get("user_id", "")
+    doc_is_anonymous = str(doc_owner).startswith(ANONYMOUS_USER_PREFIX)
+    if not doc_is_anonymous and doc_owner != user["id"]:
+        logger.warning(
+            f"IDOR ATTEMPT: User {user['id']} tried to access analysis "
+            f"{req.analysis_id} owned by {doc_owner}"
+        )
         raise HTTPException(status_code=403, detail="You do not have permission to access this report.")
 
     # Store lead
