@@ -1,9 +1,0 @@
-Data Collection: We collect your name, email, phone number, and contacts from your phone. We also track your precise GPS location at all times to improve our service.
-
-Third-Party Sharing: By using our app, you agree that we may share your personal data with our marketing partners, insurance companies, and any third-party advertisers we choose, without further notice to you.
-
-Data Retention: We reserve the right to store your data indefinitely in our servers located in various international jurisdictions to ensure business continuity.
-
-No Erasure: Due to the nature of our blockchain-based backend, we cannot delete or correct any data once it has been uploaded to our system.
-
-Grievances: If you have any issues, you can email our general support team. We do not have a dedicated Data Protection Officer at this time.
