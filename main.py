@@ -277,9 +277,11 @@ def index_user_document(user_id: str, user_doc_path: str) -> int:
 
 def get_user_workspace_retriever(user_id: str, k: int = 4, document_namespace: Optional[str] = None):
     """Create a user-scoped retriever that filters vectors by user_id and optional document namespace."""
-    metadata_filter = {"user_id": user_id}
+    # ChromaDB >=0.5 requires explicit $eq operator in where clauses.
+    conditions = [{"user_id": {"$eq": user_id}}]
     if document_namespace:
-        metadata_filter["document_namespace"] = document_namespace
+        conditions.append({"document_namespace": {"$eq": document_namespace}})
+    metadata_filter = conditions[0] if len(conditions) == 1 else {"$and": conditions}
 
     embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
     vectorstore = Chroma(
@@ -293,9 +295,10 @@ def get_user_workspace_retriever(user_id: str, k: int = 4, document_namespace: O
 
 
 def get_user_workspace_vector_stats(user_id: str, document_namespace: Optional[str] = None) -> Dict[str, int]:
-    metadata_filter = {"user_id": user_id}
+    conditions = [{"user_id": {"$eq": user_id}}]
     if document_namespace:
-        metadata_filter["document_namespace"] = document_namespace
+        conditions.append({"document_namespace": {"$eq": document_namespace}})
+    metadata_filter = conditions[0] if len(conditions) == 1 else {"$and": conditions}
 
     vectorstore = Chroma(
         persist_directory=WORKSPACE_DB_DIR,
