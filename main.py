@@ -33,6 +33,44 @@ from langchain_core.stores import InMemoryStore
 from langchain_core.documents import Document
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+# ── Groq synchronous fallback (used when Gemini hits quota/429) ─────────
+_groq_client = None
+_groq_model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+def _init_groq():
+    """Lazy-init sync Groq client from Streamlit secrets or env."""
+    global _groq_client
+    if _groq_client is not None:
+        return _groq_client
+    key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+    if key:
+        try:
+            from groq import Groq
+            _groq_client = Groq(api_key=key)
+            print(f"✅ Groq fallback enabled ({_groq_model}).")
+        except Exception as exc:
+            print(f"⚠️ Groq SDK unavailable: {exc}")
+    return _groq_client
+
+def _is_quota_error(exc: Exception) -> bool:
+    """Detect Google 429 / RESOURCE_EXHAUSTED errors."""
+    s = str(exc).lower()
+    return any(k in s for k in ("429", "resource_exhausted", "quota",
+                                "rate limit", "exceeded your current quota"))
+
+def _groq_chat(system: str, user: str, temperature: float = 0) -> str:
+    """Call Groq synchronously; returns raw text."""
+    client = _init_groq()
+    if client is None:
+        raise RuntimeError("Groq fallback unavailable: GROQ_API_KEY not configured.")
+    resp = client.chat.completions.create(
+        model=_groq_model,
+        messages=[{"role": "system", "content": system},
+                  {"role": "user", "content": user}],
+        temperature=temperature,
+    )
+    return resp.choices[0].message.content
+
 # ── Paths 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR   = os.path.join(BASE_DIR, "data")
@@ -434,10 +472,16 @@ def run_compliance_audit(
         reraise=True,
     )
     def _triage_call(user_text: str, context: str) -> dict:
-        raw = triage_llm.invoke(
-            TRIAGE_PROMPT.format(user_text=user_text, context=context)
-        )
-        text = raw.content if hasattr(raw, "content") else str(raw)
+        prompt = TRIAGE_PROMPT.format(user_text=user_text, context=context)
+        try:
+            raw = triage_llm.invoke(prompt)
+            text = raw.content if hasattr(raw, "content") else str(raw)
+        except Exception as e:
+            if _is_quota_error(e):
+                print(f"  ⚠️ Gemini triage quota exceeded; falling back to Groq {_groq_model}")
+                text = _groq_chat(SYSTEM_PROMPT, prompt)
+            else:
+                raise
         return _extract_triage_json(text)
 
     @retry(
@@ -447,10 +491,17 @@ def run_compliance_audit(
         reraise=True,
     )
     def _deep_call(user_text: str, context: str) -> str:
-        raw = deep_llm.invoke(
-            AUDIT_PROMPT.format(user_text=user_text, context=context)
-        )
-        return raw.content if hasattr(raw, "content") else str(raw)
+        prompt = AUDIT_PROMPT.format(user_text=user_text, context=context)
+        try:
+            raw = deep_llm.invoke(prompt)
+            text = raw.content if hasattr(raw, "content") else str(raw)
+        except Exception as e:
+            if _is_quota_error(e):
+                print(f"  ⚠️ Gemini deep audit quota exceeded; falling back to Groq {_groq_model}")
+                text = _groq_chat(SYSTEM_PROMPT, prompt)
+            else:
+                raise
+        return text
 
     triage_results: Dict[int, dict] = {}
     deep_results: Dict[int, str] = {}
