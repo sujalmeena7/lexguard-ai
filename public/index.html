@@ -25,18 +25,31 @@
     <link rel="stylesheet" href="/css/style.css" />
     <link rel="stylesheet" href="/css/widget.css" />
 
-    <!-- Backend URL exposed for widget JS (replaces build-time token) -->
-    <script>
-        window.__LEXGUARD_BACKEND__ = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") 
-            ? "http://localhost:8000" 
-            : "https://lexguard-backend-3mmj.onrender.com";
-    </script>
+    <!--
+      ═════════════════════════════════════════════════════════════════
+      SECURITY NOTE: Secrets & endpoint URLs are NEVER hardcoded here.
+      They are injected at build / deploy time by your CI/CD pipeline
+      (e.g. sed, envsubst, or a static-site generator).
 
+      Required environment variables:
+        LEXGUARD_BACKEND_URL       →  window.__LEXGUARD_BACKEND__
+        SUPABASE_URL               →  window.ENV_SUPABASE_URL
+        SUPABASE_ANON_KEY          →  window.ENV_SUPABASE_ANON_KEY
+        DASHBOARD_URL              →  window.ENV_DASHBOARD_URL
 
+      Example GitHub Actions / deploy step:
+        sed -i 's|__BACKEND_URL__|https://api.example.com|g' index.html
+      ═════════════════════════════════════════════════════════════════
+    -->
     <script>
-        window.ENV_SUPABASE_URL = "https://corbyaeuxflemgilgcom.supabase.co";
-        window.ENV_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI";
-        window.ENV_DASHBOARD_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:8501/' : "https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/";
+        window.__LEXGUARD_BACKEND__ = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:8000'
+            : '__BACKEND_URL__';
+        window.ENV_SUPABASE_URL = '__SUPABASE_URL__';
+        window.ENV_SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+        window.ENV_DASHBOARD_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:8501/'
+            : '__DASHBOARD_URL__';
     </script>
     <script>window.addEventListener("error", function (e) { if (e.error instanceof DOMException && e.error.name === "DataCloneError" && e.message && e.message.includes("PerformanceServerTiming")) { e.stopImmediatePropagation(); e.preventDefault() } }, true);</script>
     <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
@@ -301,14 +314,14 @@
                                 branded reports, and audit 100+ documents.
                             </p>
                             <div class="lg-redirect-actions">
-                                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank"
+                                <a href="__DASHBOARD_URL__" target="_blank"
                                     rel="noopener" class="lg-btn lg-btn-primary lg-btn-redirect"
                                     data-testid="lg-redirect-cta">
                                     <span class="lg-btn-label"><i class="ph-bold ph-arrow-up-right"></i> Open Dashboard
                                         &amp; claim credit</span>
                                 </a>
                                 <p class="lg-redirect-hint">Didn't open? <a
-                                        href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank"
+                                        href="__DASHBOARD_URL__" target="_blank"
                                         rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it
                                     manually.</p>
                             </div>

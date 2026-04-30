@@ -22,8 +22,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 
-    <!-- Backend URL exposed for widget JS (replaces build-time token) -->
-    <script>window.__LEXGUARD_BACKEND__ = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ? "http://localhost:8000" : "https://lexguard-backend-3mmj.onrender.com";</script>
+    <!--
+      ═════════════════════════════════════════════════════════════════
+      SECURITY NOTE: Backend URL is injected at build / deploy time.
+      Set LEXGUARD_BACKEND_URL in your CI/CD pipeline and substitute
+      __BACKEND_URL__ before deploying.
+      ═════════════════════════════════════════════════════════════════
+    -->
+    <script>
+        window.__LEXGUARD_BACKEND__ = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
+            : '__BACKEND_URL__';
+    </script>
     <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
     <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
     <style>
@@ -91,7 +101,7 @@
                 <button type="button" id="theme-toggle" class="btn btn-secondary" style="padding: 0 12px;" data-testid="theme-toggle" aria-label="Toggle dark mode">
                     <i class="ph-bold ph-moon"></i>
                 </button>
-                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="nav-demo" data-testid="nav-demo-link">Launch Dashboard <i class="ph ph-arrow-up-right"></i></a>
+                <a href="__DASHBOARD_URL__" target="_blank" rel="noopener" class="nav-demo" data-testid="nav-demo-link">Launch Dashboard <i class="ph ph-arrow-up-right"></i></a>
                 <button type="button" class="btn btn-primary" data-open-modal="pilot" data-testid="nav-enterprise-cta">Enterprise Access</button>
             </div>
 
@@ -128,7 +138,7 @@
                     <a href="#try-it-widget" class="btn btn-primary btn-lg" data-testid="hero-primary-cta">
                         Try a Live Audit <i class="ph-bold ph-arrow-right"></i>
                     </a>
-                    <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="btn btn-secondary btn-lg" data-testid="hero-dashboard-cta">
+                    <a href="__DASHBOARD_URL__" target="_blank" rel="noopener" class="btn btn-secondary btn-lg" data-testid="hero-dashboard-cta">
                         Launch Dashboard <i class="ph-bold ph-arrow-up-right"></i>
                     </a>
                 </div>
@@ -313,7 +323,7 @@
                             </p>
                             <div class="lg-redirect-actions">
                                 <a
-                                    href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app"
+                                    href="__DASHBOARD_URL__"
                                     target="_blank"
                                     rel="noopener"
                                     class="lg-btn lg-btn-primary lg-btn-redirect"
@@ -321,7 +331,7 @@
                                 >
                                     <span class="lg-btn-label"><i class="ph-bold ph-arrow-up-right"></i> Open Dashboard &amp; claim credit</span>
                                 </a>
-                                <p class="lg-redirect-hint">Didn't open? <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
+                                <p class="lg-redirect-hint">Didn't open? <a href="__DASHBOARD_URL__" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
                             </div>
                         </div>
                     </div>
@@ -569,7 +579,7 @@
             <h2>Stop reading agreements.<br/>Start <em>auditing</em> them.</h2>
             <p class="final-sub">Bring LexGuard AI to your legal, compliance, or vendor-risk team. Enterprise pilots include a custom DPDP clause library and white-labelled reports.</p>
             <div class="final-ctas">
-                <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="btn btn-invert btn-lg" data-testid="final-demo-cta">
+                <a href="__DASHBOARD_URL__" target="_blank" rel="noopener" class="btn btn-invert btn-lg" data-testid="final-demo-cta">
                     Launch Dashboard <i class="ph-bold ph-arrow-up-right"></i>
                 </a>
                 <button type="button" class="btn btn-ghost btn-lg" data-open-modal="pilot" data-testid="final-enterprise-cta">
@@ -592,7 +602,7 @@
                 <div>
                     <h4>Product</h4>
                     <a href="#try-it">Try it Now</a>
-                    <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener">Launch Dashboard</a>
+                    <a href="__DASHBOARD_URL__" target="_blank" rel="noopener">Launch Dashboard</a>
                     <a href="#features">Features</a>
                     <a href="#process">Process</a>
                 </div>

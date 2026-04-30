@@ -9,7 +9,7 @@
     const BACKEND = (window.__LEXGUARD_BACKEND__ || '').replace(/\/+$/, '');
     const API = (BACKEND ? BACKEND : '') + '/api';
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const STREAMLIT_URL = isLocalhost ? 'http://localhost:8501' : 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app';
+    const STREAMLIT_URL = window.ENV_DASHBOARD_URL || (isLocalhost ? 'http://localhost:8501' : '');
 
     const SAMPLE_POLICY = `We may collect, process, store, and share your personal data — including your name, email, phone number, location, browsing behaviour, device identifiers, and financial information — with our affiliates, business partners, marketing agencies, and any third-party service providers for purposes we deem necessary, in perpetuity. By using this service, you are deemed to have given your consent to all current and any future uses of your data, even if our policy changes without prior notice. We may retain your data indefinitely, even after your account is closed, and we reserve the right not to respond to requests for data deletion if we believe retention serves a legitimate business interest. In the event of a data breach, we will evaluate on a case-by-case basis whether notification is warranted.`;
 
