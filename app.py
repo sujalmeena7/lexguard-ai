@@ -1087,17 +1087,14 @@ if st.session_state.current_page == "audit":
                     st.write(item.get("audit_result"))
 
             if st.session_state.pdf_bytes is not None:
-                if st.session_state.is_premium:
-                    st.download_button(
-                        label="📄 Download Full PDF Report",
-                        data=st.session_state.pdf_bytes,
-                        file_name=f"DPDP_Compliance_Report.pdf",
-                        mime="application/pdf",
-                        type="primary",
-                        use_container_width=True
-                    )
-                else:
-                    st.info("⭐ Premium feature: full PDF report download is locked.")
+                st.download_button(
+                    label="📄 Download Full PDF Report",
+                    data=st.session_state.pdf_bytes,
+                    file_name=f"DPDP_Compliance_Report.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True
+                )
 
         else:
             # Document Upload State

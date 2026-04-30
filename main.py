@@ -51,7 +51,10 @@ EMBED_MODEL   = "all-MiniLM-L6-v2"
 # This typically cuts audit time by 5-10x and Pro-tier API spend by 70-90%, while
 # preserving the rigor of Pro on the clauses that actually matter.
 TRIAGE_MODEL  = "gemini-2.0-flash"
-DEEP_MODEL    = "gemini-1.5-pro"
+# Use -latest suffix so we always hit a valid stable snapshot even if Google
+# deprecates a specific revision. If your key still lacks Pro access, swap to
+# "gemini-2.0-flash" and both layers will run on the same fast model.
+DEEP_MODEL    = "gemini-1.5-pro-latest"
 # Kept for backward compatibility (used by build_chain / interactive Q&A).
 GEMINI_MODEL  = DEEP_MODEL
 
@@ -516,7 +519,7 @@ def run_compliance_audit(
             try:
                 triage = fut.result()
             except Exception as e:
-                # On triage failure, fall back to deep audit (fail-safe).
+                # On triage failure, escalate to deep audit (fail-safe).
                 triage = {
                     "verdict": "REVIEW_NEEDED",
                     "risk_level": "Medium",
@@ -544,7 +547,15 @@ def run_compliance_audit(
             try:
                 deep_results[i] = fut.result()
             except Exception as e:
-                deep_results[i] = f"Critical Error: deep audit failed. {e}"
+                # Graceful fallback: if deep model fails (quota/unavailable),
+                # surface the triage reason so the audit still completes.
+                triage_fallback = triage_results.get(i, {})
+                reason = triage_fallback.get("reason", "Deep model unavailable.")
+                deep_results[i] = (
+                    f"Flagged for review. {reason} "
+                    f"(Deep audit skipped: {type(e).__name__})"
+                )
+                print(f"  ⚠️ Clause {i+1} deep audit failed, using triage fallback: {e}")
             record = _build_record(i)
             finalized[i] = record
             completed += 1
