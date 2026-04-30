@@ -16,7 +16,7 @@
     const LOG_LINES = [
         'ingesting document · tokenizing…',
         'vectorising against DPDP §6 clause library',
-        'routing to gemini-1.5-pro for legal reasoning…',
+        'routing to gemini-2.0-flash… (groq fallback if >3s)',
         'cross-referencing DPDP Act 2023 obligations',
         'scoring compliance · ranking risks',
     ];
@@ -223,17 +223,34 @@
             showState('loading');
             els.log.innerHTML = '';
             els.progressBar.style.width = '0%';
+            els.progressBar.classList.add('lg-bar-animated');
+            const pctEl = document.getElementById('lg-progress-pct');
+            if (pctEl) { pctEl.textContent = '0%'; pctEl.classList.remove('lg-pct-done'); }
 
             const started = performance.now();
             let progressIdx = 0;
+            let currentPct = 0;
+            let targetPct = 0;
+            let rafId = null;
+
+            const animateBar = () => {
+                const diff = targetPct - currentPct;
+                currentPct += diff * 0.12;
+                if (Math.abs(diff) < 0.5) currentPct = targetPct;
+                els.progressBar.style.width = currentPct + '%';
+                if (pctEl) pctEl.textContent = Math.round(currentPct) + '%';
+                if (currentPct !== targetPct) rafId = requestAnimationFrame(animateBar);
+            };
+            const setTarget = (v) => { targetPct = v; cancelAnimationFrame(rafId); rafId = requestAnimationFrame(animateBar); };
+
             const logInterval = setInterval(() => {
                 if (progressIdx >= LOG_LINES.length) return;
                 const li = document.createElement('li');
                 li.textContent = LOG_LINES[progressIdx];
                 els.log.appendChild(li);
                 progressIdx++;
-                els.progressBar.style.width = Math.min(90, progressIdx * 18) + '%';
-            }, 280);
+                setTarget(Math.min(88, progressIdx * 17.5));
+            }, 320);
 
             const originalBtnHtml = els.analyzeBtn.innerHTML;
             els.analyzeBtn.disabled = true;
@@ -246,6 +263,8 @@
                 if (!authHeader.Authorization) {
                     console.log('[LexGuard] Unauthenticated attempt. Opening auth modal.');
                     clearInterval(logInterval);
+                    cancelAnimationFrame(rafId);
+                    els.progressBar.classList.remove('lg-bar-animated');
                     const authBtn = document.querySelector('[data-open-modal="auth"]');
                     if (authBtn) {
                         authBtn.click();
@@ -258,7 +277,6 @@
                     return;
                 }
                 
-                // Revert button for the actual analysis phase which has its own loader
                 els.analyzeBtn.disabled = false;
                 els.analyzeBtn.innerHTML = originalBtnHtml;
 
@@ -273,6 +291,7 @@
                 });
 
                 clearInterval(logInterval);
+                cancelAnimationFrame(rafId);
 
                 if (!resp.ok) {
                     const err = await resp.json().catch(() => ({ detail: 'Request failed' }));
@@ -280,7 +299,9 @@
                 }
 
                 const data = await resp.json();
+                els.progressBar.classList.remove('lg-bar-animated');
                 els.progressBar.style.width = '100%';
+                if (pctEl) { pctEl.textContent = '100%'; pctEl.classList.add('lg-pct-done'); }
 
                 // Mark remaining logs as done
                 LOG_LINES.slice(progressIdx).forEach(line => {
@@ -299,6 +320,8 @@
                 renderPreview(data, elapsed);
             } catch (e) {
                 clearInterval(logInterval);
+                cancelAnimationFrame(rafId);
+                els.progressBar.classList.remove('lg-bar-animated');
                 els.errorMsg.textContent = e.message || 'Analysis failed. Please try again.';
                 showState('error');
             }

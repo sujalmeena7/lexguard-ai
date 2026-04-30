@@ -261,17 +261,69 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+.lg-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
 .lg-progress {
-    height: 4px;
+    flex: 1;
+    height: 6px;
     background: rgba(255,255,255,0.06);
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
 }
 .lg-progress-bar {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, var(--lg-accent) 0%, var(--lg-accent-2) 100%);
-    transition: width .4s ease;
+    background: linear-gradient(90deg, #f0c93a 0%, #ffde6d 50%, #f0c93a 100%);
+    background-size: 200% 100%;
+    border-radius: 6px;
+    transition: width .25s cubic-bezier(.2,.8,.2,1);
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 0 12px rgba(240,201,58,0.35), 0 0 4px rgba(240,201,58,0.2);
+}
+.lg-progress-bar.lg-bar-animated {
+    animation: lg-bar-shimmer 1.4s linear infinite, lg-bar-glow 2s ease-in-out infinite;
+}
+.lg-progress-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: lg-bar-shimmer 1.4s linear infinite;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity .3s ease;
+}
+.lg-progress-bar.lg-bar-animated ~ .lg-progress-shimmer {
+    opacity: 1;
+}
+@keyframes lg-bar-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+@keyframes lg-bar-glow {
+    0%, 100% { box-shadow: 0 0 8px rgba(240,201,58,0.3), 0 0 2px rgba(240,201,58,0.15); }
+    50% { box-shadow: 0 0 20px rgba(240,201,58,0.55), 0 0 6px rgba(240,201,58,0.3); }
+}
+.lg-progress-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--lg-accent);
+    min-width: 34px;
+    text-align: right;
+    letter-spacing: 0.02em;
+    transition: color .3s ease;
+}
+.lg-progress-pct.lg-pct-done {
+    color: var(--lg-green);
 }
 
 .lg-loading-note {
