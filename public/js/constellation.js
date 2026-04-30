@@ -28,7 +28,7 @@
         particleSpeed:      1.2,
         mouseRepelRadius:   160,
         mouseRepelForce:    0.6,
-        labelFont:          '10px "IBM Plex Mono", ui-monospace, monospace',
+        labelFont:          '10px "Satoshi", ui-sans-serif, system-ui, sans-serif',
         /* Klein-blue primary */
         pri:  [0, 47, 167],
         /* Particle palette */

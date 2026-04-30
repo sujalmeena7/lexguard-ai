@@ -33,7 +33,7 @@
             font-weight: 800; font-size: 22px; letter-spacing: -0.02em;
         }
         .a-brand span { color: #f0c93a; }
-        .a-nav-right { display: flex; align-items: center; gap: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8a93b5; }
+        .a-nav-right { display: flex; align-items: center; gap: 14px; font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: #8a93b5; }
         .a-logout {
             background: transparent; border: 1px solid rgba(255,255,255,0.14);
             color: #e6ebfa; padding: 6px 12px; border-radius: 6px;
@@ -60,7 +60,7 @@
         .a-input {
             width: 100%; padding: 12px 14px; border-radius: 8px;
             background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14);
-            color: #e6ebfa; font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+            color: #e6ebfa; font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; font-size: 13px;
             margin-bottom: 12px;
         }
         .a-input:focus {
@@ -76,7 +76,7 @@
         .a-btn:hover { background: #ffde6d; transform: translateY(-1px); }
         .a-err {
             color: #ff6b6b; font-size: 12px; margin-top: 10px;
-            font-family: 'IBM Plex Mono', monospace;
+            font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
         }
 
         /* Stats */
@@ -87,7 +87,7 @@
             border: 1px solid rgba(255,255,255,0.08);
         }
         .a-stat-label {
-            font-family: 'IBM Plex Mono', monospace;
+            font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
             font-size: 10px; letter-spacing: 0.12em; color: #8a93b5;
             text-transform: uppercase; margin-bottom: 8px;
         }
@@ -112,7 +112,7 @@
         .a-refresh {
             background: transparent; border: 1px solid rgba(255,255,255,0.14);
             color: #e6ebfa; padding: 6px 12px; border-radius: 6px;
-            cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+            cursor: pointer; font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; font-size: 11px;
             display: inline-flex; align-items: center; gap: 6px;
         }
         .a-refresh:hover { background: rgba(255,255,255,0.06); }
@@ -125,7 +125,7 @@
         .a-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .a-table th {
             text-align: left; padding: 12px 16px;
-            font-family: 'IBM Plex Mono', monospace;
+            font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
             font-size: 10px; letter-spacing: 0.1em; color: #8a93b5;
             text-transform: uppercase; font-weight: 500;
             border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -139,16 +139,16 @@
         .a-table tr:last-child td { border-bottom: none; }
         .a-table tr:hover td { background: rgba(255,255,255,0.02); }
         .a-email {
-            font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+            font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; font-size: 12.5px;
             color: #6fa8ff; cursor: pointer;
         }
         .a-date {
-            font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8a93b5;
+            font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; font-size: 11px; color: #8a93b5;
         }
         .a-source-chip {
             display: inline-block; padding: 2px 7px; border-radius: 4px;
             background: rgba(240,201,58,0.14); color: #f0c93a;
-            font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+            font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; font-size: 10px;
             letter-spacing: 0.06em;
         }
         .a-empty {
@@ -181,12 +181,12 @@
             font-weight: 800; font-size: 20px; margin-bottom: 14px;
         }
         .a-kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 14px; margin-bottom: 20px; font-size: 13px; }
-        .a-kv dt { color: #8a93b5; font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 2px; }
+        .a-kv dt { color: #8a93b5; font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 2px; }
         .a-kv dd { color: #e6ebfa; word-break: break-word; }
 
         .a-badge {
             display: inline-block; padding: 3px 8px; border-radius: 4px;
-            font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+            font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; font-size: 10px;
             letter-spacing: 0.08em; font-weight: 700;
         }
         .a-badge.low { background: rgba(61,220,151,0.14); color: #3ddc97; }
@@ -195,7 +195,7 @@
 
         .a-foot {
             margin-top: 28px; font-size: 11px; color: #8a93b5;
-            font-family: 'IBM Plex Mono', monospace; text-align: center;
+            font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif; text-align: center;
         }
         .a-foot a { color: #6fa8ff; }
     </style>
@@ -363,7 +363,7 @@
                     tr.innerHTML = `
                         <td><span class="a-email" data-lead-id="${esc(l.lead_id)}">${esc(l.email)}</span></td>
                         <td><span class="a-source-chip">${esc(l.source || 'unknown')}</span></td>
-                        <td><code style="font-size:11px;color:#8a93b5;font-family:'IBM Plex Mono',monospace">${esc(l.analysis_id).slice(0, 8)}…</code></td>
+                        <td><code style="font-size:11px;color:#8a93b5;font-family:'Satoshi',ui-sans-serif,system-ui,sans-serif">${esc(l.analysis_id).slice(0, 8)}…</code></td>
                         <td class="a-date">${fmtDate(l.created_at)}</td>
                     `;
                     tbody.appendChild(tr);
@@ -390,7 +390,7 @@
                         <dt>Verdict</dt><dd>${verdictBadge(analysis.verdict)}</dd>
                         <dt>Flagged</dt><dd>${analysis.total_clauses_flagged} clauses</dd>
                         <dt>Summary</dt><dd>${esc(analysis.summary)}</dd>
-                        <dt>Analysis ID</dt><dd><code style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#8a93b5">${esc(analysis.analysis_id)}</code></dd>
+                        <dt>Analysis ID</dt><dd><code style="font-size:11px;font-family:'Satoshi',ui-sans-serif,system-ui,sans-serif;color:#8a93b5">${esc(analysis.analysis_id)}</code></dd>
                     `;
                 } else {
                     auditKv.innerHTML = `<dt>—</dt><dd>Audit snapshot no longer available.</dd>`;
