@@ -62,10 +62,14 @@ def get_supabase_client() -> Optional[Client]:
     Reads SUPABASE_URL and SUPABASE_ANON_KEY from Streamlit secrets first,
     falling back to environment variables. Never embeds credentials in source.
     """
-    supabase_url = st.secrets.get("SUPABASE_URL") or os.environ.get("SUPABASE_URL")
-    supabase_anon_key = (
-        st.secrets.get("SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY")
-    )
+    def _safe_get_secret(key):
+        try:
+            return st.secrets[key]
+        except (FileNotFoundError, KeyError, Exception):
+            return os.environ.get(key)
+
+    supabase_url = _safe_get_secret("SUPABASE_URL")
+    supabase_anon_key = _safe_get_secret("SUPABASE_ANON_KEY")
 
     if not supabase_url or not supabase_anon_key:
         st.session_state["_supabase_client_error"] = (
