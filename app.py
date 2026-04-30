@@ -243,6 +243,26 @@ def bootstrap_auth_from_query() -> None:
         st.session_state.entry_source = entry_source
 
 
+def _is_same_origin_redirect(url: str) -> bool:
+    """Return True if the URL points back to this same app (causing a loop)."""
+    if not url or url.strip() == "/" or url.strip() == "":
+        return True
+    # On Streamlit Cloud the hostname ends with .streamlit.app
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        # Heuristic: if redirecting to localhost/127 or same streamlit app domain
+        if host in ("localhost", "127.0.0.1", ""):
+            return True
+        # If the URL contains streamlit.app and we're on streamlit.app, it's same app
+        if ".streamlit.app" in host and ".streamlit.app" in str(st_javascript.st_javascript or "").lower():
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def render_redirect_fallback(landing_page_url: str) -> None:
     st.caption("If automatic redirect does not work, use the button below.")
     st.link_button("Go to Landing Page", landing_page_url, use_container_width=True)
@@ -673,14 +693,15 @@ if not st.session_state.authenticated:
     landing_page_url = st.secrets.get("LANDING_PAGE_URL", "/")
     from_landing = st.session_state.get("entry_source") == "landing"
     handoff_failed = st.session_state.get("handoff_exchange_failed", False)
+    would_loop = _is_same_origin_redirect(landing_page_url)
 
-    if from_landing:
+    if from_landing or would_loop:
         st.markdown(
             """
             <div style='padding: 2rem 0;'>
                 <h1 style='margin-top: 0;'>LexGuard Dashboard Sign-In</h1>
                 <p style='color: #a1a1aa; font-size: 1.05rem; max-width: 700px;'>
-                    We couldn’t auto-complete your landing-page sign-in handoff. Please sign in once here to open your dashboard session.
+                    We couldn't auto-complete your landing-page sign-in handoff. Please sign in once here to open your dashboard session.
                 </p>
             </div>
             """,
@@ -688,6 +709,8 @@ if not st.session_state.authenticated:
         )
         if handoff_failed:
             st.warning("Automatic sign-in handoff failed. Use the form below to continue.")
+        if would_loop and not from_landing:
+            st.info("Landing page URL isn't configured, so you're seeing the sign-in form directly.")
 
         with st.form("landing_handoff_signin_form"):
             email = st.text_input("Email")
@@ -717,7 +740,7 @@ if not st.session_state.authenticated:
             unsafe_allow_html=True,
         )
         st.info("Authentication required. Redirecting now.")
-    render_redirect_fallback(landing_page_url)
+        render_redirect_fallback(landing_page_url)
     st.stop()
 
 
@@ -726,12 +749,16 @@ ensure_user_session_defaults()
 
 if st.session_state.get("user_id") is None:
     landing_page_url = st.secrets.get("LANDING_PAGE_URL", "/")
-    st.markdown(
-        f"<meta http-equiv='refresh' content='0;url={landing_page_url}'>",
-        unsafe_allow_html=True,
-    )
-    st.warning("No active user session found. Redirecting to the landing page.")
-    render_redirect_fallback(landing_page_url)
+    if _is_same_origin_redirect(landing_page_url):
+        st.warning("No active user session found.")
+        st.info("Landing page URL isn't configured. Please sign in above to continue.")
+    else:
+        st.markdown(
+            f"<meta http-equiv='refresh' content='0;url={landing_page_url}'>",
+            unsafe_allow_html=True,
+        )
+        st.warning("No active user session found. Redirecting to the landing page.")
+        render_redirect_fallback(landing_page_url)
     st.stop()
 
 current_user_id = str(st.session_state.user_id)
