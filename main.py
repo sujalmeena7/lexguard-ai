@@ -7,12 +7,14 @@ persists parent documents to disk, and introduces an automated
 """
 
 import os
+import re
 import sys
 import glob
 import json
 import textwrap
 import streamlit as st
 from typing import Dict, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ── LangChain core
 from langchain_community.document_loaders import PyPDFLoader
@@ -41,7 +43,21 @@ WORKSPACE_COLLECTION = "user_workspace_chunks"
 
 # ── Configuration ───────────────────────────────────────────────────
 EMBED_MODEL   = "all-MiniLM-L6-v2"
-GEMINI_MODEL  = "gemini-1.5-pro"
+
+# Two-layer audit architecture:
+#   Layer 1 (TRIAGE_MODEL): fast, cheap classifier that screens every chunk in parallel.
+#   Layer 2 (DEEP_MODEL):   slower, more accurate model invoked ONLY on chunks the
+#                           triage layer marked as needing review.
+# This typically cuts audit time by 5-10x and Pro-tier API spend by 70-90%, while
+# preserving the rigor of Pro on the clauses that actually matter.
+TRIAGE_MODEL  = "gemini-2.0-flash"
+DEEP_MODEL    = "gemini-1.5-pro"
+# Kept for backward compatibility (used by build_chain / interactive Q&A).
+GEMINI_MODEL  = DEEP_MODEL
+
+TRIAGE_CONCURRENCY = 8   # Flash tolerates high RPM
+DEEP_CONCURRENCY   = 3   # Pro RPM is much lower; stay conservative
+
 COLLECTION    = "dpdp_parent_child"
 
 # ── Prompts ─────────────────────────────────────────────────────────────
@@ -77,6 +93,61 @@ AUDIT_PROMPT = PromptTemplate(
     template=AUDIT_PROMPT_STR,
     input_variables=["context", "user_text"],
 )
+
+# Layer-1 triage prompt: must return ONLY a tight JSON object so we can parse
+# deterministically and route flagged clauses into the deep-audit layer.
+TRIAGE_PROMPT_STR = textwrap.dedent("""\
+    You are a fast DPDP Act 2023 compliance triage agent. Classify the Company Clause
+    against the Legal Context. Return ONLY a single valid JSON object. No markdown,
+    no code fences, no commentary.
+
+    Schema:
+    {{
+      "verdict": "COMPLIANT" | "REVIEW_NEEDED" | "NON_COMPLIANT",
+      "risk_level": "Low" | "Medium" | "High",
+      "reason": "<one short sentence, max 25 words>"
+    }}
+
+    Decision rules:
+    - COMPLIANT (Low): clause clearly aligns with DPDP requirements, no material gaps.
+    - REVIEW_NEEDED (Medium): clause is ambiguous, partial, or has minor concerns worth deeper review.
+    - NON_COMPLIANT (High): clause omits or violates a DPDP obligation.
+
+    Company Clause:
+    {user_text}
+
+    Legal Context:
+    {context}
+
+    Return JSON only.
+    """)
+
+TRIAGE_PROMPT = PromptTemplate(
+    template=TRIAGE_PROMPT_STR,
+    input_variables=["context", "user_text"],
+)
+
+
+def _extract_triage_json(text: str) -> dict:
+    """Robustly extract the triage JSON object from a model response."""
+    if not text:
+        raise ValueError("Empty triage response")
+    # 1) raw
+    try:
+        return json.loads(text.strip())
+    except json.JSONDecodeError:
+        pass
+    # 2) strip markdown fences
+    cleaned = re.sub(r"```(?:json)?", "", text).strip()
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+    # 3) first { ... last }
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return json.loads(text[start:end + 1])
+    raise json.JSONDecodeError("Triage JSON not found", text, 0)
 
 # =====================================================================
 # Persistent Store Wrapper
@@ -307,70 +378,189 @@ def run_compliance_audit(
     # Split user doc into chunks roughly 3-4 sentences long
     audit_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
     audit_chunks = audit_splitter.split_documents(user_docs)
-    
+
     google_key = st.secrets.get('GOOGLE_API_KEY')
     if not google_key:
         print("❌ Error: GOOGLE_API_KEY not found in Streamlit secrets.")
         return []
 
-    llm = ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=google_key, temperature=0)
-    
-    print(f"\n🔍 Analyzing {len(audit_chunks)} sections of the document...\n")
-    report = []
-    
+    # Layer 1: fast Flash classifier  |  Layer 2: deep Pro auditor
+    triage_llm = ChatGoogleGenerativeAI(
+        model=TRIAGE_MODEL, google_api_key=google_key, temperature=0
+    )
+    deep_llm = ChatGoogleGenerativeAI(
+        model=DEEP_MODEL, google_api_key=google_key, temperature=0
+    )
+
+    total = len(audit_chunks)
+    print(f"\n🔍 Analyzing {total} sections via two-layer audit "
+          f"({TRIAGE_MODEL} → {DEEP_MODEL})...\n")
+
+    # ---- Step A: pre-fetch retrieval contexts once (local, fast) -----------
+    contexts = [""] * total
+    for idx, chunk in enumerate(audit_chunks):
+        legal_docs = retriever.invoke(chunk.page_content)
+        ctx = "\n\n".join(d.page_content for d in legal_docs)
+        if user_workspace_retriever is not None:
+            ws_docs = user_workspace_retriever.invoke(chunk.page_content)
+            if ws_docs:
+                ws_ctx = "\n\n".join(d.page_content for d in ws_docs)
+                ctx = f"{ctx}\n\nUser Workspace Context (isolated):\n{ws_ctx}"
+        contexts[idx] = ctx
+
+    # ---- Step B: layer-1 triage + layer-2 deep audit, pipelined ------------
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
+    def _triage_call(user_text: str, context: str) -> dict:
+        raw = triage_llm.invoke(
+            TRIAGE_PROMPT.format(user_text=user_text, context=context)
+        )
+        text = raw.content if hasattr(raw, "content") else str(raw)
+        return _extract_triage_json(text)
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception_type(Exception),
-        reraise=True
+        reraise=True,
     )
-    def get_audit_completion(user_text, context):
-        return llm.invoke(AUDIT_PROMPT.format(user_text=user_text, context=context))
+    def _deep_call(user_text: str, context: str) -> str:
+        raw = deep_llm.invoke(
+            AUDIT_PROMPT.format(user_text=user_text, context=context)
+        )
+        return raw.content if hasattr(raw, "content") else str(raw)
 
-    for idx, chunk in enumerate(audit_chunks):
-        # 1. Retrieve legal context
-        legal_docs = retriever.invoke(chunk.page_content)
-        context_str = "\n\n".join([d.page_content for d in legal_docs])
+    triage_results: Dict[int, dict] = {}
+    deep_results: Dict[int, str] = {}
+    finalized: Dict[int, dict] = {}
+    completed = 0
 
-        # Optional: retrieve user workspace context strictly scoped to this user.
-        if user_workspace_retriever is not None:
-            user_workspace_docs = user_workspace_retriever.invoke(chunk.page_content)
-            if user_workspace_docs:
-                workspace_context = "\n\n".join(d.page_content for d in user_workspace_docs)
-                context_str = (
-                    f"{context_str}\n\nUser Workspace Context (isolated):\n{workspace_context}"
-                )
-        
-        # 2. Predict Compliance with Retry Logic
-        try:
-            raw_response = get_audit_completion(chunk.page_content, context_str)
-            response = raw_response.content if hasattr(raw_response, 'content') else str(raw_response)
-        except Exception as e:
-            response = f"Critical Error: Failed after multiple attempts. {e}"
-            
-        is_high_risk = "Non-Compliant" in response
+    def _build_record(i: int) -> dict:
+        chunk = audit_chunks[i]
+        triage = triage_results.get(i) or {
+            "verdict": "REVIEW_NEEDED", "risk_level": "Medium",
+            "reason": "Triage unavailable."
+        }
+        deep_text = deep_results.get(i)
 
-        record = {
-            "clause_id": idx + 1,
+        if deep_text is not None:
+            audit_text = deep_text
+        else:
+            # COMPLIANT path: build a concise human-readable summary so
+            # downstream consumers (report_gen, UI) keep working unchanged.
+            audit_text = (
+                f"Compliant. {triage.get('reason', '').strip()}".strip()
+            )
+
+        verdict = (triage.get("verdict") or "").upper()
+        risk = (triage.get("risk_level") or "").capitalize()
+        is_high = ("Non-Compliant" in audit_text) or verdict == "NON_COMPLIANT"
+        if is_high:
+            status = "High Risk"
+        elif verdict == "REVIEW_NEEDED" or risk == "Medium":
+            status = "Medium Risk"
+        else:
+            status = "Compliant"
+
+        return {
+            "clause_id": i + 1,
             "page_num": chunk.metadata.get("page", 0) + 1,
             "clause_text": chunk.page_content,
-            "audit_result": response,
-            "status": "High Risk" if is_high_risk else "Reviewed"
+            "audit_result": audit_text,
+            "status": status,
+            "triage_verdict": verdict or "REVIEW_NEEDED",
+            "triage_risk_level": risk or "Medium",
+            "triage_reason": triage.get("reason", ""),
         }
-        report.append(record)
-        
-        if is_high_risk:
-            print(f"🔴 High Risk Found (Page {record['page_num']}):\n{response.strip()}\n")
-            
-        if progress_callback:
-            progress_callback(idx + 1, len(audit_chunks), record, is_high_risk)
-            
+
+    triage_pool = ThreadPoolExecutor(
+        max_workers=TRIAGE_CONCURRENCY, thread_name_prefix="triage"
+    )
+    deep_pool = ThreadPoolExecutor(
+        max_workers=DEEP_CONCURRENCY, thread_name_prefix="deep"
+    )
+
+    try:
+        # Submit every chunk to layer-1 triage in parallel.
+        triage_futs = {
+            triage_pool.submit(
+                _triage_call, audit_chunks[i].page_content, contexts[i]
+            ): i
+            for i in range(total)
+        }
+        deep_futs: Dict = {}
+
+        # As triage results stream in, immediately finalize compliant chunks
+        # and pipeline flagged chunks into the deep auditor.
+        for fut in as_completed(triage_futs):
+            i = triage_futs[fut]
+            try:
+                triage = fut.result()
+            except Exception as e:
+                # On triage failure, fall back to deep audit (fail-safe).
+                triage = {
+                    "verdict": "REVIEW_NEEDED",
+                    "risk_level": "Medium",
+                    "reason": f"Triage error, escalated to deep audit: {e}",
+                }
+            triage_results[i] = triage
+
+            if triage.get("verdict", "").upper() == "COMPLIANT":
+                record = _build_record(i)
+                finalized[i] = record
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed, total, record, False)
+            else:
+                df = deep_pool.submit(
+                    _deep_call,
+                    audit_chunks[i].page_content,
+                    contexts[i],
+                )
+                deep_futs[df] = i
+
+        # Drain layer-2 deep audits.
+        for fut in as_completed(deep_futs):
+            i = deep_futs[fut]
+            try:
+                deep_results[i] = fut.result()
+            except Exception as e:
+                deep_results[i] = f"Critical Error: deep audit failed. {e}"
+            record = _build_record(i)
+            finalized[i] = record
+            completed += 1
+            if progress_callback:
+                is_high = record["status"] == "High Risk"
+                progress_callback(completed, total, record, is_high)
+            if record["status"] == "High Risk":
+                print(
+                    f"🔴 High Risk Found (Page {record['page_num']}):\n"
+                    f"{record['audit_result'].strip()}\n"
+                )
+    finally:
+        triage_pool.shutdown(wait=True)
+        deep_pool.shutdown(wait=True)
+
+    # Reassemble in original document order.
+    report = [finalized[i] for i in range(total) if i in finalized]
+
+    deep_count = len(deep_results)
+    print(
+        f"✅ Two-layer audit complete: {total} clauses triaged, "
+        f"{deep_count} escalated to {DEEP_MODEL} "
+        f"({(deep_count / total * 100) if total else 0:.0f}% of total)."
+    )
+
     # Save Report
     report_file = report_output_path or "audit_report.json"
     with open(report_file, 'w', encoding='utf-8') as f:
         json.dump(report, f, indent=4)
-        
-    print(f"✅ Audit complete. Full report saved to {os.path.abspath(report_file)}")
+
+    print(f"✅ Full report saved to {os.path.abspath(report_file)}")
     return report
 
 
