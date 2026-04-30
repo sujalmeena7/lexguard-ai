@@ -12,6 +12,7 @@ from typing import Dict, List, Optional
 
 import plotly.graph_objects as go
 import streamlit as st
+st.write("DEBUG secrets keys:", list(st.secrets.keys()))
 
 from auth_utils import (
     init_auth_state,
