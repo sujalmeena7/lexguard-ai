@@ -81,7 +81,7 @@ declare
 begin
   update user_profiles
   set credits = credits - 1
-  where id = target_user_id and credits > 0 and is_premium = false
+  where id = target_user_id and credits > 0
   returning credits into updated_credits;
   
   return updated_credits;
@@ -272,11 +272,6 @@ def deduct_user_credit(user_id: str) -> Tuple[bool, int]:
         if response.data is not None:
             return True, response.data
         
-        # Fallback if credits were already 0 or user is premium (which is handled in RPC)
-        profile = get_or_create_user_profile(user_id, "")
-        if profile.get("is_premium"):
-            return True, profile.get("credits", 0)
-            
         return False, 0
     except Exception as exc:
         # Fallback for if the RPC isn't installed yet
@@ -315,8 +310,8 @@ def add_user_credits(user_id: str, amount: int) -> Tuple[bool, int]:
         else:
             current_credits = response.data[0].get("credits", 0)
             
-        new_credits = current_credits + amount
-        
+        new_credits = min(current_credits + amount, 10)
+
         # Update balance
         client.table(USER_PROFILES_TABLE).update({"credits": new_credits}).eq("id", user_id).execute()
         return True, new_credits
