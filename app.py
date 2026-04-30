@@ -940,6 +940,8 @@ with st.sidebar:
                             update_user_premium_status(
                                 str(st.session_state.user_id), True
                             )
+                            old_balance = st.session_state.credits
+                            actual_added = new_balance - old_balance
                             st.session_state.credits = new_balance
                             st.session_state.is_premium = True
                             st.session_state.show_key_input = False
@@ -949,13 +951,13 @@ with st.sidebar:
                                 severity="INFO",
                                 description=(
                                     f"Premium access key redeemed: "
-                                    f"+{PREMIUM_CREDIT_GRANT} credits "
+                                    f"+{actual_added} credits "
                                     f"(new balance: {new_balance})."
                                 ),
-                                metadata={"granted": PREMIUM_CREDIT_GRANT},
+                                metadata={"granted": actual_added, "capped": actual_added < PREMIUM_CREDIT_GRANT},
                             )
                             st.success(
-                                f"✅ Access key accepted. +{PREMIUM_CREDIT_GRANT} "
+                                f"✅ Access key accepted. +{actual_added} "
                                 f"credits added (new balance: {new_balance})."
                             )
                             st.rerun()
