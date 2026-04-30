@@ -1460,6 +1460,7 @@ html.dark {
     margin-bottom: 12px;
     background: linear-gradient(135deg, #000, #444);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 .auth-panel .modal-sub {
@@ -1548,4 +1549,51 @@ html.dark {
     padding: 32px 40px;
     text-align: center;
 }
+
+/* ── Dark mode auth panel overrides ── */
+html.dark .auth-panel {
+    background: rgba(11, 11, 24, 0.98);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.02), inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+html.dark .auth-tabs { background: #1a1a2e; }
+html.dark .auth-tab.active {
+    background: #0b0b18;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+html.dark .auth-panel .modal-head h3 {
+    background: linear-gradient(135deg, #fff, #a1a1aa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+html.dark .auth-panel .field input {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.1);
+    color: #ffffff;
+}
+html.dark .auth-panel .field input::placeholder { color: rgba(255,255,255,0.35); }
+html.dark .auth-panel .field input:focus {
+    border-color: var(--ikb);
+    box-shadow: 0 0 0 4px rgba(0, 47, 167, 0.2);
+}
+html.dark .auth-panel .btn-lg {
+    background: #ffffff;
+    color: #06060e;
+}
+html.dark .auth-divider { color: var(--zinc-500); }
+html.dark .auth-divider::before,
+html.dark .auth-divider::after { background: rgba(255,255,255,0.1); }
+html.dark .social-btn {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.8);
+}
+html.dark .social-btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: #ffffff;
+}
+html.dark .auth-footer { color: var(--zinc-500); }
 

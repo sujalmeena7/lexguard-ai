@@ -10,6 +10,7 @@
     const API = (BACKEND ? BACKEND : '') + '/api';
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const STREAMLIT_URL = window.ENV_DASHBOARD_URL || (isLocalhost ? 'http://localhost:8501' : '');
+    const HAS_PLACEHOLDER_URL = BACKEND.includes('__BACKEND_URL__');
 
     const SAMPLE_POLICY = `We may collect, process, store, and share your personal data — including your name, email, phone number, location, browsing behaviour, device identifiers, and financial information — with our affiliates, business partners, marketing agencies, and any third-party service providers for purposes we deem necessary, in perpetuity. By using this service, you are deemed to have given your consent to all current and any future uses of your data, even if our policy changes without prior notice. We may retain your data indefinitely, even after your account is closed, and we reserve the right not to respond to requests for data deletion if we believe retention serves a legitimate business interest. In the event of a data breach, we will evaluate on a case-by-case basis whether notification is warranted.`;
 
@@ -220,6 +221,12 @@
             const policyText = (els.input.value || '').trim();
             if (policyText.length < 50) return;
 
+            if (HAS_PLACEHOLDER_URL) {
+                els.errorMsg.textContent = 'Backend URL is not configured. Please set __BACKEND_URL__ in index.html or your deployment pipeline.';
+                showState('error');
+                return;
+            }
+
             showState('loading');
             els.log.innerHTML = '';
             els.progressBar.style.width = '0%';
@@ -259,34 +266,20 @@
             try {
                 console.log('[LexGuard] Starting analysis...');
                 const authHeader = await getAuthHeader();
-                
-                if (!authHeader.Authorization) {
-                    console.log('[LexGuard] Unauthenticated attempt. Opening auth modal.');
-                    clearInterval(logInterval);
-                    cancelAnimationFrame(rafId);
-                    els.progressBar.classList.remove('lg-bar-animated');
-                    const authBtn = document.querySelector('[data-open-modal="auth"]');
-                    if (authBtn) {
-                        authBtn.click();
-                    } else {
-                        alert('Please sign in to run audits.');
-                    }
-                    showState('input');
-                    els.analyzeBtn.disabled = false;
-                    els.analyzeBtn.innerHTML = originalBtnHtml;
-                    return;
+
+                // Backend supports anonymous audits — auth is optional for lead-gen flow
+                const headers = { 'Content-Type': 'application/json' };
+                if (authHeader.Authorization) {
+                    headers['Authorization'] = authHeader.Authorization;
                 }
-                
+
                 els.analyzeBtn.disabled = false;
                 els.analyzeBtn.innerHTML = originalBtnHtml;
 
-                console.log('[LexGuard] Token found. Calling backend...');
+                console.log('[LexGuard] Calling backend...');
                 const resp = await fetch(`${API}/analyze`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        ...authHeader
-                    },
+                    headers,
                     body: JSON.stringify({ policy_text: policyText }),
                 });
 

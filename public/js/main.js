@@ -436,14 +436,39 @@ Sent from lexguard-ai landing page.
 
 document.addEventListener('DOMContentLoaded', () => {
     const themeBtn = document.getElementById('theme-toggle');
+    const STORAGE_KEY = 'lexguard-theme';
+
+    const applyTheme = (isDark) => {
+        document.documentElement.classList.toggle('dark', isDark);
+        const icon = themeBtn ? themeBtn.querySelector('i') : null;
+        if (icon) {
+            icon.className = isDark ? 'ph-bold ph-sun' : 'ph-bold ph-moon';
+        }
+    };
+
+    const initTheme = () => {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved !== null) {
+            applyTheme(saved === 'dark');
+        } else {
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(prefersDark);
+        }
+    };
+
+    initTheme();
     if (!themeBtn) return;
+
     themeBtn.addEventListener('click', (e) => {
+        const isDark = !document.documentElement.classList.contains('dark');
+        localStorage.setItem(STORAGE_KEY, isDark ? 'dark' : 'light');
+
         if (!document.startViewTransition) {
-            document.documentElement.classList.toggle('dark');
+            applyTheme(isDark);
             return;
         }
         const transition = document.startViewTransition(() => {
-            document.documentElement.classList.toggle('dark');
+            applyTheme(isDark);
         });
         transition.ready.then(() => {
             const r = Math.hypot(Math.max(e.clientX, innerWidth - e.clientX), Math.max(e.clientY, innerHeight - e.clientY));
