@@ -89,10 +89,9 @@ EMBED_MODEL   = "all-MiniLM-L6-v2"
 # This typically cuts audit time by 5-10x and Pro-tier API spend by 70-90%, while
 # preserving the rigor of Pro on the clauses that actually matter.
 TRIAGE_MODEL  = "gemini-2.0-flash"
-# Use -latest suffix so we always hit a valid stable snapshot even if Google
-# deprecates a specific revision. If your key still lacks Pro access, swap to
-# "gemini-2.0-flash" and both layers will run on the same fast model.
-DEEP_MODEL    = "gemini-1.5-pro-latest"
+# If your key still lacks Pro access, swap to "gemini-2.0-flash" and both
+# layers will run on the same fast model.
+DEEP_MODEL    = "gemini-2.0-pro"
 # Kept for backward compatibility (used by build_chain / interactive Q&A).
 GEMINI_MODEL  = DEEP_MODEL
 
@@ -496,9 +495,15 @@ def run_compliance_audit(
             raw = deep_llm.invoke(prompt)
             text = raw.content if hasattr(raw, "content") else str(raw)
         except Exception as e:
-            if _is_quota_error(e):
-                print(f"  ⚠️ Gemini deep audit quota exceeded; falling back to Groq {_groq_model}")
+            # Fallback to Groq for ANY Gemini/LangChain error if available (quota, auth,
+            # model errors, network, etc.) — preserves audit completion.
+            if _groq_client is not None:
+                err_name = type(e).__name__
+                print(f"  ⚠️ Gemini deep audit failed ({err_name}); falling back to Groq {_groq_model}")
                 text = _groq_chat(SYSTEM_PROMPT, prompt)
+            elif _is_quota_error(e):
+                print(f"  ⚠️ Gemini deep audit quota exceeded; no Groq fallback configured.")
+                raise
             else:
                 raise
         return text
