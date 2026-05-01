@@ -79,7 +79,7 @@ export default function Widget() {
   }, [input]);
 
   return (
-    <section id="try-it-widget" className="relative z-10 py-24 px-6">
+    <section id="audit-widget" className="relative z-10 py-12 px-6 flex justify-center">
       <div className="max-w-4xl mx-auto">
         <div className="liquid-glass rounded-2xl p-8 md:p-12">
           <div className="flex items-center gap-3 mb-6">
