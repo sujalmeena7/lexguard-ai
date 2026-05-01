@@ -152,16 +152,6 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }) {
               Sign in with Google
             </button>
             <button
-              onClick={() => handleOAuth("apple")}
-              className="w-full h-11 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-sm flex items-center justify-center gap-2.5 hover:bg-gray-50 transition-colors"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M15.208 10.708c-.033-2.583 2.1-3.825 2.192-3.883-1.192-1.742-3.05-1.983-3.708-2.008-1.575-.16-3.075.925-3.875.925-.808 0-2.042-.9-3.367-.876-1.733.033-3.333 1.008-4.225 2.558-1.8 3.125-.458 7.758 1.292 10.292.858 1.242 1.875 2.633 3.208 2.583 1.283-.05 1.767-.833 3.317-.833 1.533 0 1.967.833 3.308.8 1.367-.042 2.233-1.242 3.083-2.492.975-1.425 1.375-2.808 1.4-2.875-.033-.017-2.692-1.033-2.725-4.091z" fill="#000" />
-                <path d="M13.458 3.458c.692-.833 1.167-1.992 1.042-3.142-.992.042-2.192.662-2.9 1.492-.642.742-1.2 1.933-1.05 3.067 1.117.083 2.258-.567 2.908-1.417z" fill="#000" />
-              </svg>
-              Sign in with Apple
-            </button>
-            <button
               onClick={() => handleOAuth("sso")}
               className="w-full h-11 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-sm flex items-center justify-center gap-2.5 hover:bg-gray-50 transition-colors"
             >

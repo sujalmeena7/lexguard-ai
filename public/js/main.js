@@ -432,7 +432,6 @@ Sent from lexguard-ai landing page.
     // --- OAuth Button Handlers ---
     const oauthProviders = [
         { id: 'auth-google-btn', provider: 'google' },
-        { id: 'auth-apple-btn', provider: 'apple' },
         { id: 'auth-sso-btn',    provider: 'sso' }
     ];
     oauthProviders.forEach(({ id, provider }) => {
