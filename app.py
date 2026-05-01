@@ -228,6 +228,7 @@ def exchange_handoff_code_for_token(handoff_code: str) -> Optional[str]:
 def bootstrap_auth_from_query() -> None:
     handoff_code = _query_param_str("handoff_code")
     entry_source = _query_param_str("src")
+    access_token = _query_param_str("access_token")
 
     if handoff_code:
         exchanged_token = exchange_handoff_code_for_token(handoff_code)
@@ -238,6 +239,11 @@ def bootstrap_auth_from_query() -> None:
         else:
             st.session_state.handoff_exchange_failed = True
         _remove_query_param("handoff_code")
+
+    if access_token:
+        st.session_state.auth_access_token = access_token
+        st.session_state.requested_page = "dashboard"
+        _remove_query_param("access_token")
 
     if entry_source:
         st.session_state.entry_source = entry_source
