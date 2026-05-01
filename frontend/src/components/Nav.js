@@ -32,14 +32,24 @@ export default function Nav({ onOpenAuth, user, onLogout }) {
 
   return (
     <>
+      <style>{`
+        @media (max-width: 767px) {
+          .lg-nav-desktop { display: none !important; }
+          .lg-nav-mobile  { display: flex !important; }
+        }
+        @media (min-width: 768px) {
+          .lg-nav-desktop { display: flex !important; }
+          .lg-nav-mobile  { display: none !important; }
+        }
+      `}</style>
       <nav className="relative z-50 px-4 sm:px-6 py-4 sm:py-6">
         <div className="rounded-full px-4 sm:px-6 py-3 flex items-center justify-between max-w-5xl mx-auto liquid-glass">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 shrink-0">
               <Globe size={22} className="text-white" />
-              <span className="text-white font-semibold text-base sm:text-lg">LexGuard AI</span>
+              <span className="text-white font-semibold text-base sm:text-lg whitespace-nowrap">LexGuard AI</span>
             </div>
-            <div className="hidden md:flex items-center gap-6">
+            <div className="lg-nav-desktop items-center gap-6">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
@@ -52,16 +62,16 @@ export default function Nav({ onOpenAuth, user, onLogout }) {
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="lg-nav-desktop items-center gap-3">
             {user ? (
               <>
                 <span className="text-white/60 text-sm hidden lg:inline truncate max-w-[140px]">{user.email}</span>
                 <a
                   href={DASHBOARD_URL}
                   onClick={goToDashboard}
-                  className="bg-white rounded-full px-4 py-2 text-black text-sm font-medium hover:bg-white/90 transition-colors"
+                  className="bg-white rounded-full px-4 py-2 text-black text-sm font-medium hover:bg-white/90 transition-colors whitespace-nowrap"
                 >
-                  Go to Dashboard
+                  Dashboard
                 </a>
                 <button
                   onClick={onLogout}
@@ -89,7 +99,7 @@ export default function Nav({ onOpenAuth, user, onLogout }) {
           </div>
 
           <button
-            className="md:hidden text-white p-1"
+            className="lg-nav-mobile text-white p-1"
             onClick={() => setMenuOpen(true)}
             aria-label="Open menu"
           >
