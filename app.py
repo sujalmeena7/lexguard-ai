@@ -1121,7 +1121,7 @@ if st.session_state.current_page == "audit":
             for idx in range(preview_count):
                 item = report_data[idx]
                 is_high = "High" in item.get("status", "")
-                status_label = "CRITICAL RISK" if is_high else "VERIFIED"
+                status_label = "High Risk" if is_high else "Compliant"
                 with st.expander(f"Clause #{item.get('clause_id')} - {status_label}", expanded=(idx == 0)):
                     st.info(item.get("clause_text"))
                     st.write(item.get("audit_result"))

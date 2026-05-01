@@ -348,6 +348,57 @@ def get_user_workspace_vector_stats(user_id: str, document_namespace: Optional[s
     return {"total_chunks": len(vector_data.get("ids", []))}
 
 
+# ---- Normalization helpers (shared with backend/server.py) ----
+def _normalize_text(text: str) -> str:
+    """Convert ALL-CAPS strings to sentence case; leave mixed-case text alone."""
+    import re
+    if not text or not isinstance(text, str):
+        return text or ""
+    alpha = [c for c in text if c.isalpha()]
+    if not alpha:
+        return text
+    upper_ratio = sum(1 for c in alpha if c.isupper()) / len(alpha)
+    if upper_ratio > 0.7:
+        text = text.lower()
+        text = text[0].upper() + text[1:] if text else text
+        # Restore protected terms
+        protected = [
+            ("aadhaar", "Aadhaar"),
+            ("dpdp", "DPDP"),
+            ("pii", "PII"),
+            ("kyc", "KYC"),
+            ("gdpr", "GDPR"),
+            ("hipaa", "HIPAA"),
+            ("india", "India"),
+            ("indian", "Indian"),
+        ]
+        for lower, proper in protected:
+            text = re.sub(rf'\b{re.escape(lower)}\b', proper, text, flags=re.IGNORECASE)
+    return text
+
+def _normalize_verdict(v: str) -> str:
+    return {"LOW RISK": "Low Risk", "MODERATE RISK": "Moderate Risk",
+            "HIGH RISK": "High Risk", "CRITICAL RISK": "High Risk"}.get(v, _normalize_text(v))
+
+def _normalize_risk(v: str) -> str:
+    return {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low",
+            "CRITICAL": "High"}.get(v, _normalize_text(v))
+
+def _normalize_status(v: str) -> str:
+    return {"COMPLIANT": "Compliant", "NON-COMPLIANT": "Non-Compliant",
+            "NOT ADDRESSED": "Not Addressed", "PARTIAL": "Partial"}.get(v, _normalize_text(v))
+
+def _normalize_record(record: dict) -> dict:
+    """Normalize casing in a single audit record."""
+    if not isinstance(record, dict):
+        return record
+    record["triage_verdict"] = _normalize_verdict(record.get("triage_verdict", ""))
+    record["triage_risk_level"] = _normalize_risk(record.get("triage_risk_level", ""))
+    record["status"] = _normalize_status(record.get("status", ""))
+    record["audit_result"] = _normalize_text(record.get("audit_result", ""))
+    record["triage_reason"] = _normalize_text(record.get("triage_reason", ""))
+    return record
+
 # =====================================================================
 # 2.  Retrieval-QA Chain (Interactive)
 # =====================================================================
@@ -636,6 +687,9 @@ def run_compliance_audit(
         f"{deep_count} escalated to {DEEP_MODEL} "
         f"({(deep_count / total * 100) if total else 0:.0f}% of total)."
     )
+
+    # Normalize text casing before saving
+    report = [_normalize_record(r) for r in report]
 
     # Save Report
     report_file = report_output_path or "audit_report.json"
