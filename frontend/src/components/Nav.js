@@ -9,7 +9,7 @@ export default function Nav({ onOpenAuth, user, onLogout }) {
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
             <Globe size={24} className="text-white" />
-            <span className="text-white font-semibold text-lg">Asme</span>
+            <span className="text-white font-semibold text-lg">LexGuard AI</span>
           </div>
           <div className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-white/80 hover:text-white transition-colors text-sm font-medium">
