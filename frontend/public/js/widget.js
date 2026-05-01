@@ -116,9 +116,9 @@
 
         const riskChip = (level) => {
             const l = (level || '').toLowerCase();
-            if (l.startsWith('high')) return { cls: 'lg-chip-high', label: 'HIGH RISK' };
-            if (l.startsWith('med')) return { cls: 'lg-chip-med', label: 'MEDIUM' };
-            return { cls: 'lg-chip-low', label: 'LOW' };
+            if (l.startsWith('high')) return { cls: 'lg-chip-high', label: 'High Risk' };
+            if (l.startsWith('med')) return { cls: 'lg-chip-med', label: 'Medium' };
+            return { cls: 'lg-chip-low', label: 'Low' };
         };
 
         const renderClauseCard = (c) => {
@@ -134,7 +134,7 @@
                 </div>
                 ${c.clause_excerpt ? `<div class="lg-clause-excerpt">&ldquo;${escapeHtml(c.clause_excerpt)}&rdquo;</div>` : ''}
                 <div class="lg-clause-issue">${escapeHtml(c.issue || '')}</div>
-                ${c.suggested_fix ? `<div class="lg-clause-fix"><strong>SUGGESTED FIX</strong>${escapeHtml(c.suggested_fix)}</div>` : ''}
+                ${c.suggested_fix ? `<div class="lg-clause-fix"><strong>Suggested fix</strong>${escapeHtml(c.suggested_fix)}</div>` : ''}
             `;
             return card;
         };
@@ -173,7 +173,7 @@
                         <div class="lg-check-area">${escapeHtml(it.focus_area)}</div>
                         <div class="lg-check-note">${escapeHtml(it.note)}</div>
                     </div>
-                    <span class="lg-check-status ${statusClass(it.status)}">${escapeHtml((it.status || '').toUpperCase())}</span>
+                    <span class="lg-check-status ${statusClass(it.status)}">${escapeHtml(it.status || '')}</span>
                 `;
                 els.checklist.appendChild(row);
             });

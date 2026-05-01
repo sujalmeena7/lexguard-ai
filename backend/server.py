@@ -292,7 +292,8 @@ You MUST respond with ONLY a valid JSON object, no markdown fences, no prose. Us
   ]
 }
 
-Return at minimum 4 flagged_clauses if any risks exist, up to 8. All 6 checklist items are mandatory. Be decisive, specific, and cite DPDP sections where possible."""
+Return at minimum 4 flagged_clauses if any risks exist, up to 8. All 6 checklist items are mandatory. Use normal sentence case. Do NOT write responses in ALL CAPS.
+Be decisive, specific, and cite DPDP sections where possible."""
 
 
 # ====================== Admin auth ======================
