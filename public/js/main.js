@@ -74,6 +74,11 @@
         if (authSubtitle) authSubtitle.textContent = isSignIn ? 'Sign in to your secure workspace.' : 'Join the enterprise compliance engine.';
         if (authSubmitBtn) authSubmitBtn.querySelector('span').textContent = isSignIn ? 'Sign In' : 'Sign Up';
         
+        const forgotLink = document.getElementById('auth-forgot-link');
+        if (forgotLink) {
+            forgotLink.style.display = isSignIn ? '' : 'none';
+        }
+
         const switchText = document.getElementById('auth-switch-text');
         if (switchText) {
             switchText.innerHTML = isSignIn
@@ -420,6 +425,65 @@ Sent from lexguard-ai landing page.
                     authSubmitBtn.disabled = false;
                     authSubmitBtn.querySelector('span').textContent = mode === 'signin' ? 'Sign In' : 'Sign Up';
                 }
+            }
+        });
+    }
+
+    // --- OAuth Button Handlers ---
+    const oauthProviders = [
+        { id: 'auth-google-btn', provider: 'google' },
+        { id: 'auth-apple-btn', provider: 'apple' },
+        { id: 'auth-sso-btn',    provider: 'sso' }
+    ];
+    oauthProviders.forEach(({ id, provider }) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            if (!supabaseClient) {
+                alert('Supabase is not configured.');
+                return;
+            }
+            if (provider === 'sso') {
+                alert('SSO authentication is not yet configured. Please use email/password or Google sign-in.');
+                return;
+            }
+            try {
+                const { error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: provider,
+                    options: { redirectTo: window.location.origin + '/' }
+                });
+                if (error) throw error;
+            } catch (err) {
+                console.error(`${provider} OAuth error:`, err);
+                alert(`${provider} sign-in failed. Please try email/password instead.`);
+            }
+        });
+    });
+
+    // --- Forgot Password ---
+    const forgotLink = document.getElementById('auth-forgot-link');
+    if (forgotLink) {
+        forgotLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!supabaseClient) {
+                alert('Supabase is not configured.');
+                return;
+            }
+            const email = document.getElementById('auth-email').value;
+            if (!email) {
+                alert('Please enter your email address in the Email field first.');
+                document.getElementById('auth-email').focus();
+                return;
+            }
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/'
+                });
+                if (error) throw error;
+                alert('Password reset email sent. Please check your inbox.');
+            } catch (err) {
+                console.error('Forgot password error:', err);
+                alert('Failed to send reset email. Please verify your email address.');
             }
         });
     }
