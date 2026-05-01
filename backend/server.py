@@ -261,16 +261,18 @@ You analyze privacy policies, terms of service, or data-sharing agreements submi
 2. Identify flagged clauses with risk level, DPDP section cited, an excerpt from the text, the issue, and a suggested fix.
 3. Evaluate the document against 6 DPDP focus areas: Consent, Notice, Purpose Limitation, Data Minimization, Data Principal Rights, Breach Notification.
 
+CRITICAL INSTRUCTION: Use normal sentence case (Title Case for short labels, Sentence case for prose). NEVER write in ALL CAPS. The model sometimes produces ALL CAPS text, which is a bug. Do NOT do that.
+
 Score guidance:
-- 80-100: LOW RISK (mostly compliant, minor gaps)
-- 50-79: MODERATE RISK (meaningful gaps requiring attention)
-- 0-49: HIGH RISK (major violations / missing critical DPDP obligations)
+- 80-100: Low Risk (mostly compliant, minor gaps)
+- 50-79: Moderate Risk (meaningful gaps requiring attention)
+- 0-49: High Risk (major violations / missing critical DPDP obligations)
 
 You MUST respond with ONLY a valid JSON object, no markdown fences, no prose. Use this exact schema:
 
 {
   "compliance_score": <integer 0-100>,
-  "verdict": "<LOW RISK | MODERATE RISK | HIGH RISK>",
+  "verdict": "<Low Risk | Moderate Risk | High Risk>",
   "summary": "<2-3 sentence board-ready summary>",
   "flagged_clauses": [
     {
@@ -292,7 +294,7 @@ You MUST respond with ONLY a valid JSON object, no markdown fences, no prose. Us
   ]
 }
 
-Return at minimum 4 flagged_clauses if any risks exist, up to 8. All 6 checklist items are mandatory. Use normal sentence case. Do NOT write responses in ALL CAPS.
+Return at minimum 4 flagged_clauses if any risks exist, up to 8. All 6 checklist items are mandatory.
 Be decisive, specific, and cite DPDP sections where possible."""
 
 
@@ -434,6 +436,51 @@ async def analyze_policy(
         )
         return completion.choices[0].message.content or ""
 
+    def _normalize_text(text: str) -> str:
+        """Convert ALL-CAPS strings to sentence case; leave mixed-case text alone."""
+        if not text or not isinstance(text, str):
+            return text or ""
+        alpha = [c for c in text if c.isalpha()]
+        if not alpha:
+            return text
+        upper_ratio = sum(1 for c in alpha if c.isupper()) / len(alpha)
+        if upper_ratio > 0.7:
+            text = text.lower()
+            text = text[0].upper() + text[1:] if text else text
+        return text
+
+    def _normalize_verdict(v: str) -> str:
+        return {"LOW RISK": "Low Risk", "MODERATE RISK": "Moderate Risk",
+                "HIGH RISK": "High Risk"}.get(v, _normalize_text(v))
+
+    def _normalize_risk(v: str) -> str:
+        return {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low"}.get(v, _normalize_text(v))
+
+    def _normalize_status(v: str) -> str:
+        return {"COMPLIANT": "Compliant", "NON-COMPLIANT": "Non-Compliant",
+                "NOT ADDRESSED": "Not Addressed", "PARTIAL": "Partial"}.get(v, _normalize_text(v))
+
+    def _normalize_audit_data(data: dict) -> dict:
+        """Recursively normalize text case in model output."""
+        # Verdict
+        data["verdict"] = _normalize_verdict(data.get("verdict", ""))
+        # Summary
+        data["summary"] = _normalize_text(data.get("summary", ""))
+        # Flagged clauses
+        for fc in data.get("flagged_clauses", []) or []:
+            fc["risk_level"] = _normalize_risk(fc.get("risk_level", ""))
+            fc["issue"] = _normalize_text(fc.get("issue", ""))
+            fc["suggested_fix"] = _normalize_text(fc.get("suggested_fix", ""))
+            fc["clause_excerpt"] = _normalize_text(fc.get("clause_excerpt", ""))
+            fc["dpdp_section"] = fc.get("dpdp_section", "")
+            fc["clause_id"] = fc.get("clause_id", "")
+        # Checklist
+        for item in data.get("checklist", []) or []:
+            item["status"] = _normalize_status(item.get("status", ""))
+            item["note"] = _normalize_text(item.get("note", ""))
+            item["focus_area"] = item.get("focus_area", "")
+        return data
+
     def _is_quota_error(exc: Exception) -> bool:
         msg = str(exc).lower()
         return any(
@@ -450,6 +497,7 @@ async def analyze_policy(
         raw = await asyncio.wait_for(get_gemini_completion(req.policy_text), timeout=3.0)
         logger.info(f"Gemini raw response (first 500 chars): {raw[:500]}")
         data = _extract_json(raw)
+        _normalize_audit_data(data)
     except json.JSONDecodeError as e:
         logger.error(f"Gemini returned invalid JSON after retries: {e}\nRaw: {raw[:1000] if raw else 'N/A'}")
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
@@ -462,6 +510,7 @@ async def analyze_policy(
                 raw = await get_groq_completion(req.policy_text)
                 logger.info(f"Groq fallback raw response (first 500 chars): {raw[:500]}")
                 data = _extract_json(raw)
+                _normalize_audit_data(data)
                 used_provider = f"groq:{GROQ_MODEL}"
             except json.JSONDecodeError as je:
                 logger.error(f"Groq fallback returned invalid JSON: {je}\nRaw: {raw[:1000] if raw else 'N/A'}")
@@ -484,6 +533,7 @@ async def analyze_policy(
                 raw = await get_groq_completion(req.policy_text)
                 logger.info(f"Groq fallback raw response (first 500 chars): {raw[:500]}")
                 data = _extract_json(raw)
+                _normalize_audit_data(data)
                 used_provider = f"groq:{GROQ_MODEL}"
             except json.JSONDecodeError as je:
                 logger.error(f"Groq fallback returned invalid JSON: {je}\nRaw: {raw[:1000] if raw else 'N/A'}")
@@ -492,7 +542,7 @@ async def analyze_policy(
                 logger.error(f"Groq fallback also failed: {ge}")
                 raise HTTPException(
                     status_code=503,
-                    detail="All AI providers are over their quota right now. Please retry in a minute.",
+                    detail="All AI providers are unavailable right now. Please retry in a minute.",
                 )
         else:
             logger.error(f"Gemini error after multiple attempts: {gemini_err_str}")

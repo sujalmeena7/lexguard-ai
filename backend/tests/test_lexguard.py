@@ -69,7 +69,7 @@ class TestAnalyze:
         assert 0 <= s <= 100
 
     def test_verdict_value(self, analysis):
-        assert analysis["verdict"] in ("LOW RISK", "MODERATE RISK", "HIGH RISK")
+        assert analysis["verdict"] in ("Low Risk", "Moderate Risk", "High Risk")
 
     def test_preview_only_two_clauses(self, analysis):
         assert len(analysis["flagged_clauses"]) <= 2, "Preview must contain at most 2 clauses"
