@@ -532,7 +532,7 @@ async def analyze_policy(
     raw = None
     used_provider = "gemini"
     try:
-        raw = await asyncio.wait_for(get_gemini_completion(req.policy_text), timeout=3.0)
+        raw = await asyncio.wait_for(get_gemini_completion(req.policy_text), timeout=45.0)
         logger.info(f"Gemini raw response (first 500 chars): {raw[:500]}")
         data = _extract_json(raw)
         _normalize_audit_data(data)
@@ -541,7 +541,7 @@ async def analyze_policy(
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
     except asyncio.TimeoutError:
         logger.warning(
-            f"Gemini audit exceeded 3s timeout; falling back to Groq {GROQ_MODEL}"
+            f"Gemini audit exceeded 45s timeout; falling back to Groq {GROQ_MODEL}"
         )
         if groq_client is not None:
             try:
