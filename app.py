@@ -500,12 +500,15 @@ def run_user_audit(
         def progress_update(current_step, total_steps, record, is_high_risk_flag):
             metrics = st.session_state.metrics
             metrics["total_clauses"] += 1
-            if is_high_risk_flag:
+            status = record.get("status", "")
+            if "High" in status:
                 metrics["high_risk"] += 1
-            elif "Medium" in record.get("status", ""):
+            elif "Medium" in status or "Moderate" in status:
                 metrics["medium_risk"] += 1
-            else:
+            elif "Low" in status or "Compliant" in status:
                 metrics["compliant"] += 1
+            else:
+                metrics["compliant"] += 1  # catch-all for unknown/empty status
 
             progress_val = current_step / total_steps if total_steps > 0 else 1.0
             progress_bar.progress(progress_val)
@@ -1120,8 +1123,7 @@ if st.session_state.current_page == "audit":
             preview_count = min(2, len(report_data))
             for idx in range(preview_count):
                 item = report_data[idx]
-                is_high = "High" in item.get("status", "")
-                status_label = "High Risk" if is_high else "Compliant"
+                status_label = item.get("status") or "Compliant"
                 with st.expander(f"Clause #{item.get('clause_id')} - {status_label}", expanded=(idx == 0)):
                     st.info(item.get("clause_text"))
                     st.write(item.get("audit_result"))

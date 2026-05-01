@@ -639,7 +639,8 @@ def run_compliance_audit(
                 finalized[i] = record
                 completed += 1
                 if progress_callback:
-                    progress_callback(completed, total, record, False)
+                    is_high = record.get("status") == "High Risk"
+                    progress_callback(completed, total, record, is_high)
             else:
                 df = deep_pool.submit(
                     _deep_call,
