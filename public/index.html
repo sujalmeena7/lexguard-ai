@@ -101,7 +101,7 @@
   <!-- Old widget CSS for compatibility -->
   <link rel="stylesheet" href="/css/widget.css" />
 </head>
-<body class="min-h-screen bg-black overflow-hidden">
+<body class="min-h-screen bg-black">
 
   <!-- Background video -->
   <video
@@ -109,7 +109,6 @@
     src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_115001_bcdaa3b4-03de-47e7-ad63-ae3e392c32d4.mp4"
     muted
     autoplay
-    loop
     playsInline
   ></video>
 
@@ -136,7 +135,7 @@
   </nav>
 
   <!-- ── Hero ── -->
-  <section class="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 text-center" style="transform: translateY(-20%);">
+  <section class="relative z-10 flex flex-col items-center justify-center px-6 py-16 text-center min-h-[70vh]">
     <h1 class="text-5xl md:text-6xl lg:text-7xl text-white mb-8 tracking-tight whitespace-nowrap" style="font-family: 'Instrument Serif', serif;">
       Built for the curious
     </h1>
@@ -155,7 +154,7 @@
       </div>
 
       <p class="text-white text-sm leading-relaxed px-4">
-        Stay updated with the latest news and insights. Subscribe to our newsletter today and never miss out on exciting updates.
+        Instant DPDP 2023 compliance scoring for privacy policies, terms of service, and data processing agreements. Paste any clause and get an actionable audit report in under 2 seconds.
       </p>
 
       <button class="liquid-glass rounded-full px-8 py-3 text-white text-sm font-medium hover:bg-white/5 transition-colors">
@@ -178,7 +177,7 @@
   </div>
 
   <!-- ── Legacy widget markup (required by widget.js) ── -->
-  <section class="relative z-10 py-12 px-6 flex justify-center" id="try-it-widget">
+  <section class="relative z-10 py-12 px-6 flex justify-center" id="features">
     <div class="lg-widget" id="lg-widget">
       <div class="lg-state lg-state-input" data-lg-state="input">
         <div class="lg-head">
@@ -273,6 +272,86 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
           <p id="lg-error-msg">Something went wrong.</p>
           <button type="button" class="lg-btn lg-btn-secondary" id="lg-error-retry" data-testid="lg-error-retry">Try again</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Features Section ── -->
+  <section id="about" class="relative z-10 bg-black/80 backdrop-blur-sm py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-3xl md:text-4xl text-white text-center mb-4" style="font-family: 'Instrument Serif', serif;">What LexGuard Does</h2>
+      <p class="text-white/60 text-center text-sm mb-12 max-w-2xl mx-auto">
+        LexGuard AI is an enterprise-grade compliance engine built specifically for India's Digital Personal Data Protection Act, 2023.
+      </p>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="liquid-glass rounded-2xl p-6">
+          <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3 class="text-white font-semibold mb-2">Clause-Level Audit</h3>
+          <p class="text-white/60 text-sm">Paste any privacy policy or T&amp;C clause and get an instant DPDP 2023 compliance verdict with detailed risk analysis.</p>
+        </div>
+        <div class="liquid-glass rounded-2xl p-6">
+          <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3 class="text-white font-semibold mb-2">Compliance Scoring</h3>
+          <p class="text-white/60 text-sm">Receive a 0-100 compliance score with actionable fixes mapped to specific DPDP 2023 sections and obligations.</p>
+        </div>
+        <div class="liquid-glass rounded-2xl p-6">
+          <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+          </div>
+          <h3 class="text-white font-semibold mb-2">PDF Export</h3>
+          <p class="text-white/60 text-sm">Generate branded 10-page audit reports with clause-level remediation guidance for your legal team.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pricing Section ── -->
+  <section id="pricing" class="relative z-10 bg-black py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-3xl md:text-4xl text-white text-center mb-4" style="font-family: 'Instrument Serif', serif;">Simple, Transparent Pricing</h2>
+      <p class="text-white/60 text-center text-sm mb-12 max-w-2xl mx-auto">
+        Start free and scale as your compliance needs grow. No hidden fees, no long-term contracts.
+      </p>
+      <div class="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div class="liquid-glass rounded-2xl p-6 flex flex-col">
+          <h3 class="text-white font-semibold mb-2">Free</h3>
+          <p class="text-3xl text-white font-bold mb-4">$0<span class="text-white/50 text-sm font-normal">/mo</span></p>
+          <ul class="text-white/60 text-sm space-y-2 mb-6 flex-1">
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> 3 audits per month</li>
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Basic compliance scoring</li>
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Email support</li>
+          </ul>
+          <button class="liquid-glass rounded-full px-6 py-2 text-white text-sm font-medium hover:bg-white/5 transition-colors w-full">Get Started</button>
+        </div>
+        <div class="liquid-glass rounded-2xl p-6 flex flex-col border border-white/20">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-white font-semibold">Pro</h3>
+            <span class="text-xs bg-white/10 text-white px-2 py-1 rounded-full">Popular</span>
+          </div>
+          <p class="text-3xl text-white font-bold mb-4">$49<span class="text-white/50 text-sm font-normal">/mo</span></p>
+          <ul class="text-white/60 text-sm space-y-2 mb-6 flex-1">
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Unlimited audits</li>
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Full PDF reports</li>
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Priority support</li>
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> API access</li>
+          </ul>
+          <button class="bg-white rounded-full px-6 py-2 text-black text-sm font-medium hover:bg-white/90 transition-colors w-full">Start Free Trial</button>
+        </div>
+        <div class="liquid-glass rounded-2xl p-6 flex flex-col">
+          <h3 class="text-white font-semibold mb-2">Enterprise</h3>
+          <p class="text-3xl text-white font-bold mb-4">Custom</p>
+          <ul class="text-white/60 text-sm space-y-2 mb-6 flex-1">
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Everything in Pro</li>
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Custom integrations</li>
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Dedicated support</li>
+            <li class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> SLA guarantee</li>
+          </ul>
+          <button class="liquid-glass rounded-full px-6 py-2 text-white text-sm font-medium hover:bg-white/5 transition-colors w-full">Contact Sales</button>
         </div>
       </div>
     </div>
@@ -381,10 +460,21 @@
           video.currentTime = 0;
           video.play().catch(function() {});
           fadeTo(1, 500);
-        }, 100);
+        }, 80);
       });
     })();
   </script>
+
+  <!-- ── Footer ── -->
+  <footer class="relative z-10 bg-black py-8 px-6 border-t border-white/10">
+    <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span class="text-white/80 text-sm font-medium">LexGuard AI</span>
+      </div>
+      <p class="text-white/40 text-xs"> DPDP 2023 Compliance Engine. All rights reserved.</p>
+    </div>
+  </footer>
 
   <!-- ── Legacy scripts ── -->
   <link rel="stylesheet" href="/css/style.css" />
