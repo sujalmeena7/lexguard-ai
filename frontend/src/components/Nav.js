@@ -149,7 +149,7 @@ export default function Nav({ onOpenAuth, user, onLogout }) {
                     onClick={(e) => { setMenuOpen(false); goToDashboard(e); }}
                     className="bg-white rounded-full px-5 py-2.5 text-black text-sm font-semibold text-center hover:bg-white/90 transition-colors"
                   >
-                    Go to Dashboard
+                    Dashboard
                   </a>
                   <button
                     onClick={() => { setMenuOpen(false); onLogout(); }}
