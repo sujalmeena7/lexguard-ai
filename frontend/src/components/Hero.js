@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { ArrowRight, Instagram, Twitter, Globe } from "lucide-react";
 
 export default function Hero() {
@@ -77,31 +77,6 @@ export default function Hero() {
     };
   }, []);
 
-  const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
-
-  const handleEmailSubmit = (e) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    console.log("Newsletter subscription:", email);
-    setSubscribed(true);
-    setEmail("");
-    setTimeout(() => setSubscribed(false), 4000);
-  };
-
-  const handleManifesto = () => {
-    fadingOutRef.current = false;
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-    }
-    video.style.opacity = "0";
-    setTimeout(() => {
-      video.currentTime = 0;
-      video.play().catch(() => {});
-      fadeTo(1, 500);
-    }, 100);
-  };
-
   return (
     <>
       <video
@@ -117,36 +92,34 @@ export default function Hero() {
 
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 text-center -translate-y-[20%]">
         <h1
-          className="text-5xl md:text-6xl lg:text-7xl text-white mb-8 tracking-tight whitespace-nowrap"
+          className="text-4xl md:text-5xl lg:text-6xl text-white mb-4 tracking-tight max-w-3xl"
           style={{ fontFamily: "'Instrument Serif', serif" }}
         >
-          Built for the curious
+          Audit Privacy Policies Against India's DPDP Act 2023
         </h1>
 
-        <div className="max-w-xl w-full space-y-4">
-          <form onSubmit={handleEmailSubmit} className="liquid-glass rounded-full pl-6 pr-2 py-2 flex items-center gap-3">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 bg-transparent text-white placeholder:text-white/40 text-base outline-none border-none"
-            />
-            <button type="submit" className="bg-white rounded-full p-3 text-black hover:bg-white/90 transition-colors">
-              <ArrowRight size={20} />
-            </button>
-          </form>
-          {subscribed && (
-            <p className="text-green-400 text-xs text-center" role="status">Thanks for subscribing!</p>
-          )}
+        <p className="text-white/70 text-base md:text-lg leading-relaxed max-w-xl mb-8">
+          Paste any privacy policy, terms of service, or data-processing clause. Get an actionable compliance score and fix-list in under 2 seconds.
+        </p>
 
-          <p className="text-white text-sm leading-relaxed px-4">
-            Stay updated with the latest news and insights. Subscribe to our newsletter today and never miss out on exciting updates.
-          </p>
-
-          <button className="liquid-glass rounded-full px-8 py-3 text-white text-sm font-medium hover:bg-white/5 transition-colors" onClick={handleManifesto}>
-            Manifesto
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <button
+            className="bg-white rounded-full px-8 py-3 text-black text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-2"
+            onClick={() => document.getElementById('audit-widget')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            Analyze Free <ArrowRight size={18} />
           </button>
+          <button
+            className="liquid-glass rounded-full px-8 py-3 text-white text-sm font-medium hover:bg-white/5 transition-colors"
+            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            View Pricing
+          </button>
+        </div>
+
+        <div className="mt-6 flex items-center gap-2 text-white/40 text-xs">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          No signup required for your first audit
         </div>
       </div>
 
