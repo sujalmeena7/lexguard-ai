@@ -90,9 +90,9 @@ export default function Hero() {
         style={{ opacity: 0 }}
       />
 
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 text-center -translate-y-[20%]">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-12 text-center">
         <h1
-          className="text-4xl md:text-5xl lg:text-6xl text-white mb-4 tracking-tight max-w-3xl"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white mb-4 tracking-tight max-w-3xl leading-tight"
           style={{ fontFamily: "'Instrument Serif', serif" }}
         >
           Audit Privacy Policies Against India's DPDP Act 2023

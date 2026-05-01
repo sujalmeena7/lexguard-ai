@@ -79,9 +79,9 @@ export default function Widget() {
   }, [input]);
 
   return (
-    <section id="audit-widget" className="relative z-10 py-12 px-6 flex justify-center">
-      <div className="max-w-4xl mx-auto">
-        <div className="liquid-glass rounded-2xl p-8 md:p-12">
+    <section id="audit-widget" className="relative z-10 py-8 md:py-12 px-4 md:px-6 flex justify-center">
+      <div className="max-w-4xl mx-auto w-full">
+        <div className="liquid-glass rounded-2xl p-4 md:p-8 lg:p-12">
           <div className="flex items-center gap-3 mb-6">
             <span className={`w-2 h-2 rounded-full ${state === "loading" ? "bg-yellow-400 animate-pulse" : state === "preview" ? "bg-green-400" : state === "error" ? "bg-red-400" : "bg-green-400"}`} />
             <span className="text-white/60 text-sm font-mono tracking-wide">
@@ -100,19 +100,19 @@ export default function Widget() {
                 placeholder="Paste a privacy policy or data-processing agreement to audit against India's DPDP Act 2023..."
                 className="w-full h-48 bg-black/20 rounded-xl p-4 text-white placeholder:text-white/30 text-sm resize-none outline-none border border-white/10 focus:border-white/30 transition-colors"
               />
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-white/40 text-xs">{charCount} chars {charCount < minChars && `(min ${minChars})`}</span>
-                <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-4 gap-3">
+                <span className="text-white/40 text-xs shrink-0">{charCount} chars {charCount < minChars && `(min ${minChars})`}</span>
+                <div className="flex gap-3 w-full sm:w-auto">
                   <button
                     onClick={() => { setInput(SAMPLE_POLICY); }}
-                    className="text-white/50 hover:text-white text-sm transition-colors"
+                    className="text-white/50 hover:text-white text-sm transition-colors flex-1 sm:flex-none text-center"
                   >
                     Load sample
                   </button>
                   <button
                     onClick={runAnalyze}
                     disabled={charCount < minChars}
-                    className="bg-white text-black rounded-full px-6 py-2 text-sm font-semibold hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                    className="bg-white text-black rounded-full px-5 py-2 text-sm font-semibold hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity flex-1 sm:flex-none whitespace-nowrap"
                   >
                     Run DPDP Audit
                   </button>
@@ -135,12 +135,12 @@ export default function Widget() {
 
           {state === "preview" && result && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <p className="text-white/60 text-sm">Compliance Score</p>
-                  <p className="text-4xl font-bold text-white">{result.compliance_score}%</p>
+                  <p className="text-3xl sm:text-4xl font-bold text-white">{result.compliance_score}%</p>
                 </div>
-                <div className={`px-4 py-2 rounded-full text-sm font-medium ${result.verdict === "COMPLIANT" ? "bg-green-500/20 text-green-300" : result.verdict === "NON_COMPLIANT" ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"}`}>
+                <div className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 ${result.verdict === "COMPLIANT" ? "bg-green-500/20 text-green-300" : result.verdict === "NON_COMPLIANT" ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"}`}>
                   {result.verdict}
                 </div>
               </div>
@@ -161,10 +161,10 @@ export default function Widget() {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => setState("input")}
-                  className="flex-1 liquid-glass rounded-full py-2 text-white text-sm font-medium hover:bg-white/5 transition-colors"
+                  className="flex-1 liquid-glass rounded-full py-2.5 text-white text-sm font-medium hover:bg-white/5 transition-colors"
                 >
                   Audit another document
                 </button>
@@ -172,7 +172,7 @@ export default function Widget() {
                   href={window.ENV_DASHBOARD_URL || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 bg-white text-black rounded-full py-2 text-sm font-semibold text-center hover:bg-white/90 transition-colors"
+                  className="flex-1 bg-white text-black rounded-full py-2.5 text-sm font-semibold text-center hover:bg-white/90 transition-colors"
                 >
                   Open Dashboard
                 </a>
