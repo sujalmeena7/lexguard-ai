@@ -477,5 +477,34 @@
   <script src="/js/main.js"></script>
   <script src="/js/widget.js"></script>
   <script src="/js/constellation.js"></script>
+
+  <!-- ── OAuth callback session handler ── -->
+  <script>
+    (function() {
+      if (typeof supabase === 'undefined') return;
+      var url = window.ENV_SUPABASE_URL;
+      var key = window.ENV_SUPABASE_ANON_KEY;
+      if (!url || !key) return;
+      try {
+        var client = supabase.createClient(url, key);
+        client.auth.getSession().then(function(result) {
+          if (result.data && result.data.session && result.data.session.user) {
+            console.log('OAuth sign-in successful:', result.data.session.user.email);
+            // Remove tokens from URL hash for clean UX
+            if (window.history.replaceState) {
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+          }
+        });
+        client.auth.onAuthStateChange(function(event, session) {
+          if (event === 'SIGNED_IN' && session) {
+            console.log('User signed in:', session.user.email);
+          }
+        });
+      } catch (e) {
+        console.error('Supabase session init failed:', e);
+      }
+    })();
+  </script>
 </body>
 </html>
