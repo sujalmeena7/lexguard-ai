@@ -140,7 +140,7 @@ export default function Widget() {
                   <p className="text-white/60 text-sm">Compliance Score</p>
                   <p className="text-3xl sm:text-4xl font-bold text-white">{result.compliance_score}%</p>
                 </div>
-                <div className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 ${result.verdict === "COMPLIANT" ? "bg-green-500/20 text-green-300" : result.verdict === "NON_COMPLIANT" ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"}`}>
+                <div className={`px-4 py-2 rounded-full text-sm font-medium shrink-0 ${result.verdict === "Compliant" ? "bg-green-500/20 text-green-300" : result.verdict === "Non-Compliant" ? "bg-red-500/20 text-red-300" : "bg-yellow-500/20 text-yellow-300"}`}>
                   {result.verdict}
                 </div>
               </div>
@@ -151,7 +151,7 @@ export default function Widget() {
                   {result.flagged_clauses.slice(0, 2).map((clause, i) => (
                     <div key={i} className="bg-black/20 rounded-xl p-4 border border-white/10">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${clause.risk_level === "High" ? "bg-red-400" : clause.risk_level === "Medium" ? "bg-yellow-400" : "bg-blue-400"}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${(clause.risk_level || '').toLowerCase().startsWith('high') || (clause.risk_level || '').toLowerCase().startsWith('crit') ? "bg-red-400" : (clause.risk_level || '').toLowerCase().startsWith('med') ? "bg-yellow-400" : "bg-blue-400"}`} />
                         <span className="text-white text-sm font-medium">Clause #{clause.clause_number} — {clause.risk_level} Risk</span>
                       </div>
                       <p className="text-white/70 text-sm line-clamp-3">{clause.excerpt}</p>

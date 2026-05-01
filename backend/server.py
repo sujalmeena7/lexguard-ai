@@ -257,7 +257,7 @@ class Lead(BaseModel):
 SYSTEM_PROMPT = """### SYSTEM_PROMPT: DPDP ZERO-TRUST AUDITOR
 You are a deterministic Legal Auditor. You MUST follow these layers:
 
-1. PII SCAN: Identify Aadhaar, Phone, and Email patterns in the document. Do NOT include raw PII in your output. If PII is present, note it briefly in the summary.
+1. PII SCAN: Identify Aadhaar, Phone, and Email patterns in the document. Do NOT include raw PII in your output. If PII is present, note it briefly in the summary. In clause_excerpt fields, replace any detected PII with redacted placeholders (e.g., [AADHAAR], [PHONE], [EMAIL], [NAME]).
 
 2. STATUTORY AUDIT: Every finding MUST cite a valid DPDP Act 2023 §Section(Sub-section). Explain the legal logic connecting the text to the Act in the issue field. If you are unsure of the exact section, state "Requires manual legal review" instead of guessing.
 
@@ -446,6 +446,18 @@ async def analyze_policy(
         )
         return completion.choices[0].message.content or ""
 
+    def _redact_pii(text: str) -> str:
+        """Redact common Indian PII patterns from text as a backend safety net."""
+        if not text or not isinstance(text, str):
+            return text or ""
+        # Aadhaar (12 digits, optional spaces/hyphens)
+        text = re.sub(r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b', '[AADHAAR]', text)
+        # Indian phone numbers (+91 optional, 10 digits)
+        text = re.sub(r'\b(?:\+91[-\s]?)?[6-9]\d{9}\b', '[PHONE]', text)
+        # Email addresses
+        text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', '[EMAIL]', text)
+        return text
+
     def _normalize_text(text: str) -> str:
         """Convert ALL-CAPS strings to sentence case; leave mixed-case text alone.
         Protected terms (e.g., DPDP, Aadhaar, PII) retain their correct casing."""
@@ -476,17 +488,18 @@ async def analyze_policy(
 
     def _normalize_verdict(v: str) -> str:
         return {"LOW RISK": "Low Risk", "MODERATE RISK": "Moderate Risk",
-                "HIGH RISK": "High Risk"}.get(v, _normalize_text(v))
+                "HIGH RISK": "High Risk", "CRITICAL RISK": "High Risk"}.get(v, _normalize_text(v))
 
     def _normalize_risk(v: str) -> str:
-        return {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low"}.get(v, _normalize_text(v))
+        return {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low",
+                "CRITICAL": "High"}.get(v, _normalize_text(v))
 
     def _normalize_status(v: str) -> str:
         return {"COMPLIANT": "Compliant", "NON-COMPLIANT": "Non-Compliant",
                 "NOT ADDRESSED": "Not Addressed", "PARTIAL": "Partial"}.get(v, _normalize_text(v))
 
     def _normalize_audit_data(data: dict) -> dict:
-        """Recursively normalize text case in model output."""
+        """Recursively normalize text case and redact PII from model output."""
         # Verdict
         data["verdict"] = _normalize_verdict(data.get("verdict", ""))
         # Summary
@@ -496,7 +509,7 @@ async def analyze_policy(
             fc["risk_level"] = _normalize_risk(fc.get("risk_level", ""))
             fc["issue"] = _normalize_text(fc.get("issue", ""))
             fc["suggested_fix"] = _normalize_text(fc.get("suggested_fix", ""))
-            fc["clause_excerpt"] = _normalize_text(fc.get("clause_excerpt", ""))
+            fc["clause_excerpt"] = _redact_pii(_normalize_text(fc.get("clause_excerpt", "")))
             fc["dpdp_section"] = fc.get("dpdp_section", "")
             fc["clause_id"] = fc.get("clause_id", "")
         # Checklist

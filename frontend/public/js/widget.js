@@ -116,7 +116,7 @@
 
         const riskChip = (level) => {
             const l = (level || '').toLowerCase();
-            if (l.startsWith('high')) return { cls: 'lg-chip-high', label: 'High Risk' };
+            if (l.startsWith('high') || l.startsWith('crit')) return { cls: 'lg-chip-high', label: 'High Risk' };
             if (l.startsWith('med')) return { cls: 'lg-chip-med', label: 'Medium' };
             return { cls: 'lg-chip-low', label: 'Low' };
         };
