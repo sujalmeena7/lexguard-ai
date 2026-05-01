@@ -127,9 +127,18 @@
           <a href="#about" class="text-white/80 hover:text-white transition-colors text-sm font-medium">About</a>
         </div>
       </div>
-      <div class="flex items-center gap-4">
-        <button data-open-modal="auth" data-auth-mode="signup" class="text-white text-sm font-medium hover:text-white/80 transition-colors">Sign Up</button>
-        <button data-open-modal="auth" data-auth-mode="signin" class="liquid-glass rounded-full px-6 py-2 text-white text-sm font-medium hover:bg-white/5 transition-colors">Login</button>
+      <div class="flex items-center gap-4" id="nav-auth-section">
+        <!-- Logged in state -->
+        <div id="nav-logged-in" class="flex items-center gap-4 hidden">
+          <span id="nav-user-email" class="text-white/60 text-sm hidden md:inline"></span>
+          <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/" class="bg-white rounded-full px-5 py-2 text-black text-sm font-medium hover:bg-white/90 transition-colors">Go to Dashboard</a>
+          <button id="nav-logout-btn" class="text-white/60 text-sm font-medium hover:text-white transition-colors">Logout</button>
+        </div>
+        <!-- Logged out state -->
+        <div id="nav-logged-out" class="flex items-center gap-4">
+          <button data-open-modal="auth" data-auth-mode="signup" class="text-white text-sm font-medium hover:text-white/80 transition-colors">Sign Up</button>
+          <button data-open-modal="auth" data-auth-mode="signin" class="liquid-glass rounded-full px-6 py-2 text-white text-sm font-medium hover:bg-white/5 transition-colors">Login</button>
+        </div>
       </div>
     </div>
   </nav>
@@ -481,6 +490,24 @@
   <!-- ── OAuth callback session handler ── -->
   <script>
     (function() {
+      function updateNav(user) {
+        var loggedIn = document.getElementById('nav-logged-in');
+        var loggedOut = document.getElementById('nav-logged-out');
+        var emailSpan = document.getElementById('nav-user-email');
+        if (!loggedIn || !loggedOut) return;
+        if (user) {
+          loggedIn.classList.remove('hidden');
+          loggedOut.classList.add('hidden');
+          if (emailSpan) emailSpan.textContent = user.email || '';
+        } else {
+          loggedIn.classList.add('hidden');
+          loggedOut.classList.remove('hidden');
+          if (emailSpan) emailSpan.textContent = '';
+        }
+      }
+
+      var logoutBtn = document.getElementById('nav-logout-btn');
+
       if (typeof supabase === 'undefined') return;
       var url = window.ENV_SUPABASE_URL;
       var key = window.ENV_SUPABASE_ANON_KEY;
@@ -488,19 +515,32 @@
       try {
         var client = supabase.createClient(url, key);
         client.auth.getSession().then(function(result) {
-          if (result.data && result.data.session && result.data.session.user) {
-            console.log('OAuth sign-in successful:', result.data.session.user.email);
-            // Remove tokens from URL hash for clean UX
+          var user = result.data && result.data.session && result.data.session.user;
+          updateNav(user);
+          if (user) {
+            console.log('Session found:', user.email);
             if (window.history.replaceState) {
               window.history.replaceState(null, '', window.location.pathname + window.location.search);
             }
           }
         });
         client.auth.onAuthStateChange(function(event, session) {
-          if (event === 'SIGNED_IN' && session) {
-            console.log('User signed in:', session.user.email);
+          var user = session && session.user;
+          updateNav(user);
+          if (event === 'SIGNED_IN' && user) {
+            console.log('User signed in:', user.email);
+          }
+          if (event === 'SIGNED_OUT') {
+            console.log('User signed out');
           }
         });
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', function() {
+            client.auth.signOut().then(function() {
+              updateNav(null);
+            });
+          });
+        }
       } catch (e) {
         console.error('Supabase session init failed:', e);
       }

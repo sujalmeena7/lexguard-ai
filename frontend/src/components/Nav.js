@@ -1,6 +1,8 @@
 import { Globe } from "lucide-react";
 
-export default function Nav({ onOpenAuth }) {
+const DASHBOARD_URL = window.ENV_DASHBOARD_URL || "/";
+
+export default function Nav({ onOpenAuth, user, onLogout }) {
   return (
     <nav className="relative z-20 px-6 py-6">
       <div className="rounded-full px-6 py-3 flex items-center justify-between max-w-5xl mx-auto liquid-glass">
@@ -22,18 +24,38 @@ export default function Nav({ onOpenAuth }) {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => onOpenAuth("signup")}
-            className="text-white text-sm font-medium hover:text-white/80 transition-colors"
-          >
-            Sign Up
-          </button>
-          <button
-            onClick={() => onOpenAuth("signin")}
-            className="liquid-glass rounded-full px-6 py-2 text-white text-sm font-medium hover:bg-white/5 transition-colors"
-          >
-            Login
-          </button>
+          {user ? (
+            <>
+              <span className="text-white/60 text-sm hidden sm:inline">{user.email}</span>
+              <a
+                href={DASHBOARD_URL}
+                className="bg-white rounded-full px-5 py-2 text-black text-sm font-medium hover:bg-white/90 transition-colors"
+              >
+                Go to Dashboard
+              </a>
+              <button
+                onClick={onLogout}
+                className="text-white/60 text-sm font-medium hover:text-white transition-colors"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => onOpenAuth("signup")}
+                className="text-white text-sm font-medium hover:text-white/80 transition-colors"
+              >
+                Sign Up
+              </button>
+              <button
+                onClick={() => onOpenAuth("signin")}
+                className="liquid-glass rounded-full px-6 py-2 text-white text-sm font-medium hover:bg-white/5 transition-colors"
+              >
+                Login
+              </button>
+            </>
+          )}
         </div>
       </div>
     </nav>
