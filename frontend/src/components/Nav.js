@@ -2,6 +2,24 @@ import { Globe } from "lucide-react";
 
 const DASHBOARD_URL = window.ENV_DASHBOARD_URL || "/";
 
+async function goToDashboard(e) {
+  e.preventDefault();
+  const client = window.__LG_SUPABASE__ || (typeof supabase !== "undefined" && window.ENV_SUPABASE_URL && window.ENV_SUPABASE_ANON_KEY
+    ? supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY)
+    : null);
+  let url = DASHBOARD_URL;
+  if (client) {
+    try {
+      const { data } = await client.auth.getSession();
+      if (data?.session?.access_token) {
+        const sep = url.includes("?") ? "&" : "?";
+        url = url + sep + "access_token=" + encodeURIComponent(data.session.access_token);
+      }
+    } catch (_) { /* ignore */ }
+  }
+  window.open(url, "_blank");
+}
+
 export default function Nav({ onOpenAuth, user, onLogout }) {
   return (
     <nav className="relative z-20 px-6 py-6">
@@ -29,6 +47,7 @@ export default function Nav({ onOpenAuth, user, onLogout }) {
               <span className="text-white/60 text-sm hidden sm:inline">{user.email}</span>
               <a
                 href={DASHBOARD_URL}
+                onClick={goToDashboard}
                 className="bg-white rounded-full px-5 py-2 text-black text-sm font-medium hover:bg-white/90 transition-colors"
               >
                 Go to Dashboard
