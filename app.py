@@ -45,6 +45,11 @@ from main import (
     run_compliance_audit,
 )
 from report_gen import generate_report
+from privacy_architect import (
+    generate_privacy_roadmap,
+    generate_roadmap_from_audit,
+    save_roadmap_json,
+)
 
 
 # Premium upgrade access key. Read from Streamlit secrets or environment;
@@ -797,10 +802,12 @@ if active_page == "dashboard":
     active_idx = 1
 elif active_page == "audit":
     active_idx = 2
-elif active_page == "library":
+elif active_page == "roadmap":
     active_idx = 3
-elif active_page == "settings":
+elif active_page == "library":
     active_idx = 4
+elif active_page == "settings":
+    active_idx = 5
 else:
     active_idx = 1
 
@@ -842,8 +849,8 @@ st.markdown(f"""
         padding: 0 20px;
     }}
 
-    /* Style the sign out button specifically (it's the 5th button in the sidebar) */
-    [data-testid="stSidebar"] .stButton:nth-of-type(5) > button {{
+    /* Style the sign out button specifically (it's the 6th button in the sidebar) */
+    [data-testid="stSidebar"] .stButton:nth-of-type(6) > button {{
         background: rgba(239, 68, 68, 0.1) !important;
         border: 1px solid rgba(239, 68, 68, 0.2) !important;
         color: #ef4444 !important;
@@ -851,7 +858,7 @@ st.markdown(f"""
         padding-left: 0 !important;
         margin-top: 8px;
     }}
-    [data-testid="stSidebar"] .stButton:nth-of-type(5) > button:hover {{
+    [data-testid="stSidebar"] .stButton:nth-of-type(6) > button:hover {{
         background: rgba(239, 68, 68, 0.2) !important;
     }}
 </style>
@@ -875,6 +882,8 @@ with st.sidebar:
         st.session_state.current_page = "dashboard"
     if st.button("📑 Document Audit", use_container_width=True):
         st.session_state.current_page = "audit"
+    if st.button("🗺️ Privacy Roadmap", use_container_width=True):
+        st.session_state.current_page = "roadmap"
     if st.button("📚 Compliance Library", use_container_width=True):
         st.session_state.current_page = "library"
     if st.button("⚙️ Settings", use_container_width=True):
@@ -1345,6 +1354,308 @@ elif st.session_state.current_page == "dashboard":
                 c3.caption("Missing")
     else:
         st.caption("No uploaded documents recorded in Supabase for this user yet.")
+
+elif st.session_state.current_page == "roadmap":
+    # ── Privacy Architect Roadmap Page ──────────────────────────────────
+    st.markdown(
+        """
+        <div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; align-items: center;">
+            <h2 style="margin: 0; font-family: 'Cabinet Grotesk', sans-serif; font-weight: 800; letter-spacing: -0.5px; margin-right: auto;">PRIVACY ROADMAP</h2>
+            <span style="background: rgba(168, 85, 247, 0.15); color: #c084fc; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; border: 1px solid rgba(168, 85, 247, 0.3);">🏗️ ARCHITECT MODE</span>
+            <span style="background: rgba(22, 163, 74, 0.15); color: #4ade80; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; border: 1px solid rgba(22, 163, 74, 0.3);">📅 DPDP 2025 PHASE-AWARE</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Check for existing roadmap in session
+    if "roadmap_data" not in st.session_state:
+        st.session_state.roadmap_data = None
+
+    if st.session_state.roadmap_data is not None:
+        roadmap = st.session_state.roadmap_data
+
+        if st.button("🔄 Generate New Roadmap", type="secondary"):
+            st.session_state.roadmap_data = None
+            st.rerun()
+
+        # ── Overall Risk Rating Banner ──
+        risk_rating = roadmap.get("overall_risk_rating", "Moderate")
+        risk_colors = {
+            "Critical": ("#dc2626", "rgba(220, 38, 38, 0.15)"),
+            "High": ("#ea580c", "rgba(234, 88, 12, 0.15)"),
+            "Moderate": ("#d97706", "rgba(217, 119, 6, 0.15)"),
+            "Low": ("#16a34a", "rgba(22, 163, 74, 0.15)"),
+        }
+        rc = risk_colors.get(risk_rating, ("#d97706", "rgba(217, 119, 6, 0.15)"))
+        total_gaps = roadmap.get("total_gaps_found", 0)
+
+        st.markdown(
+            f"""
+            <div style="background: {rc[1]}; border: 1px solid {rc[0]}30; border-radius: 12px; padding: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin: 0; color: {rc[0]}; font-family: 'Cabinet Grotesk', sans-serif;">Overall Risk: {risk_rating}</h3>
+                    <p style="margin: 4px 0 0; color: #94a3b8; font-size: 0.9rem;">{total_gaps} compliance gap(s) identified</p>
+                </div>
+                <div style="font-size: 2.5rem;">{"🔴" if risk_rating in ('Critical', 'High') else "🟡" if risk_rating == 'Moderate' else "🟢"}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # ── Readability Health Gauge + UX Scorecard ──
+        col_gauge, col_ux = st.columns([1, 1], gap="large")
+
+        with col_gauge:
+            st.markdown("### 📊 Readability Health")
+            scorecard = roadmap.get("privacy_ux_scorecard", {})
+            readability = scorecard.get("readability_score", 0)
+            grade = scorecard.get("readability_grade", "Unknown")
+
+            fig = go.Figure(
+                go.Indicator(
+                    mode="gauge+number",
+                    value=readability,
+                    domain={"x": [0, 1], "y": [0, 1]},
+                    title={"text": f"Flesch-Kincaid ({grade})", "font": {"size": 16, "color": "white"}},
+                    gauge={
+                        "axis": {"range": [0, 100], "tickcolor": "white"},
+                        "bar": {"color": "#8b5cf6"},
+                        "bgcolor": "rgba(255,255,255,0.05)",
+                        "borderwidth": 2,
+                        "bordercolor": "rgba(255,255,255,0.1)",
+                        "steps": [
+                            {"range": [0, 30], "color": "rgba(185, 28, 28, 0.3)"},
+                            {"range": [30, 60], "color": "rgba(180, 83, 9, 0.3)"},
+                            {"range": [60, 100], "color": "rgba(22, 101, 52, 0.3)"},
+                        ],
+                    },
+                )
+            )
+            fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font={"color": "white"},
+                height=280,
+                margin=dict(l=20, r=20, t=40, b=20),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col_ux:
+            st.markdown("### 🌐 Multilingual Readiness")
+            ml = scorecard.get("multilingual_readiness", {})
+            ml_status = ml.get("status", "Not Ready")
+            ml_color = {"Ready": "#4ade80", "Partially Ready": "#fbbf24", "Not Ready": "#ef4444"}.get(ml_status, "#94a3b8")
+            st.markdown(
+                f"""
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <span style="background: {ml_color}20; color: {ml_color}; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; border: 1px solid {ml_color}40;">{ml_status}</span>
+                        <span style="color: #94a3b8; font-size: 0.8rem;">22 Scheduled Languages</span>
+                    </div>
+                    <p style="color: #d1d5db; font-size: 0.9rem; margin: 8px 0 0;">{ml.get('rationale', 'No assessment available.')}</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("### ⚠️ Jargon Alerts")
+            jargon = scorecard.get("jargon_alerts", [])
+            for ja in jargon:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(251, 191, 36, 0.08); border-left: 3px solid #fbbf24; padding: 10px 14px; margin-bottom: 8px; border-radius: 0 8px 8px 0;">
+                        <span style="color: #fbbf24; font-weight: 600;">"{ja.get('term', '')}"</span>
+                        <span style="color: #94a3b8;"> → </span>
+                        <span style="color: #4ade80; font-weight: 500;">"{ja.get('plain_language', '')}"</span>
+                        <div style="color: #6b7280; font-size: 0.8rem; margin-top: 4px;">Context: {ja.get('context', '')}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        st.markdown("---")
+
+        # ── Remediation Roadmap (Golden Clauses) ──
+        st.markdown("### 🏗️ Remediation Roadmap")
+        remediation = roadmap.get("remediation_roadmap", [])
+
+        for gap in remediation:
+            gap_id = gap.get("gap_id", "GAP-?")
+            enforcement = gap.get("enforcement_status", "active")
+            enforcement_badge = (
+                '<span style="background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid rgba(239, 68, 68, 0.3);">🔴 ACTIVE</span>'
+                if enforcement == "active"
+                else '<span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid rgba(59, 130, 246, 0.3);">🔵 UPCOMING</span>'
+            )
+
+            with st.expander(f"{gap_id}: {gap.get('gap_description', 'Gap')} — {gap.get('dpdp_section', '')}", expanded=False):
+                st.markdown(
+                    f"""
+                    <div style="margin-bottom: 8px;">{enforcement_badge} <span style="color: #94a3b8; font-size: 0.8rem; margin-left: 8px;">{gap.get('dpdp_section', '')}</span></div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                col_action, col_ops = st.columns(2)
+                with col_action:
+                    st.markdown("**⚡ Immediate Action**")
+                    st.info(gap.get("immediate_action", "N/A"))
+                with col_ops:
+                    st.markdown("**🔧 Operational Change**")
+                    st.warning(gap.get("operational_change", "N/A"))
+
+                st.markdown("**✨ Golden Clause** *(copy-ready DPDP-compliant replacement)*")
+                golden_clause = gap.get("golden_clause", "N/A")
+                st.code(golden_clause, language=None)
+
+        st.markdown("---")
+
+        # ── Executive Summary Table ──
+        st.markdown("### 📋 Executive Summary")
+        exec_summary = roadmap.get("executive_summary", [])
+        if exec_summary:
+            import pandas as pd
+            df = pd.DataFrame(exec_summary)
+            column_rename = {
+                "violation": "Violation",
+                "remediation_effort": "Effort",
+                "business_impact": "Business Impact",
+                "fix_priority": "Priority",
+            }
+            df = df.rename(columns=column_rename)
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Priority": st.column_config.TextColumn(width="medium"),
+                    "Effort": st.column_config.TextColumn(width="small"),
+                },
+            )
+        else:
+            st.caption("No executive summary items generated.")
+
+        # ── Save/Download Roadmap JSON ──
+        if st.session_state.roadmap_data:
+            roadmap_json_str = json.dumps(st.session_state.roadmap_data, indent=2, ensure_ascii=False)
+            st.download_button(
+                label="📥 Download Roadmap JSON",
+                data=roadmap_json_str,
+                file_name="privacy_roadmap.json",
+                mime="application/json",
+                type="primary",
+                use_container_width=True,
+            )
+
+    else:
+        # ── Input Form ──
+        st.markdown(
+            """
+            <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 8px; color: #c084fc; font-family: 'Cabinet Grotesk', sans-serif;">🏗️ Privacy Architect</h3>
+                <p style="color: #94a3b8; font-size: 0.95rem; margin: 0;">Transform any privacy policy or compliance audit into an actionable business roadmap with legally vetted replacement clauses, readability scoring, and a prioritised fix list.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Option 1: Generate from existing audit
+        if st.session_state.audit_complete and st.session_state.audit_results:
+            st.markdown("#### From Latest Audit")
+            st.caption(f"Use your most recent audit ({st.session_state.last_filename or 'cached result'}) as input.")
+            if st.button("🚀 Generate Roadmap from Audit Results", type="primary", use_container_width=True, key="roadmap_from_audit"):
+                if st.session_state.credits <= 0 and not st.session_state.is_premium:
+                    st.warning("You need audit credits to generate a roadmap.")
+                else:
+                    with st.spinner("Generating Privacy Architect roadmap from audit results..."):
+                        try:
+                            roadmap = generate_roadmap_from_audit(
+                                st.session_state.audit_results,
+                            )
+                            if roadmap:
+                                st.session_state.roadmap_data = roadmap
+                                roadmap_path = os.path.join(workspace_paths["cache_dir"], "privacy_roadmap.json")
+                                save_roadmap_json(roadmap, roadmap_path)
+                                st.success("Roadmap generated successfully!")
+                                st.rerun()
+                            else:
+                                st.error("Roadmap generation returned no data.")
+                        except Exception as e:
+                            st.error(f"Roadmap generation failed: {e}")
+            st.markdown("---")
+
+        # Option 2: Paste policy text
+        st.markdown("#### From Policy Text")
+        with st.form("roadmap_text_form", clear_on_submit=False):
+            policy_text = st.text_area(
+                "Paste your privacy policy, terms of service, or any legal document",
+                height=250,
+                placeholder="Paste at least 50 characters of policy text here...",
+            )
+            submitted = st.form_submit_button("🗺️ Generate Privacy Roadmap", type="primary", use_container_width=True)
+
+        if submitted:
+            if not policy_text or len(policy_text.strip()) < 50:
+                st.warning("Please paste at least 50 characters of policy text.")
+            elif st.session_state.credits <= 0 and not st.session_state.is_premium:
+                st.warning("You need audit credits to generate a roadmap.")
+            else:
+                with st.spinner("Generating Privacy Architect roadmap..."):
+                    try:
+                        roadmap = generate_privacy_roadmap(policy_text.strip())
+                        if roadmap:
+                            st.session_state.roadmap_data = roadmap
+                            roadmap_path = os.path.join(workspace_paths["cache_dir"], "privacy_roadmap.json")
+                            save_roadmap_json(roadmap, roadmap_path)
+                            st.success("Roadmap generated successfully!")
+                            st.rerun()
+                        else:
+                            st.error("Roadmap generation returned no data.")
+                    except Exception as e:
+                        st.error(f"Roadmap generation failed: {e}")
+
+        # Option 3: Upload document
+        st.markdown("#### From Document Upload")
+        with st.form("roadmap_upload_form", clear_on_submit=False):
+            uploaded_doc = st.file_uploader("Upload a PDF or TXT document", type=["pdf", "txt"], key="roadmap_file_upload")
+            upload_submitted = st.form_submit_button("🗺️ Generate from Document", type="primary", use_container_width=True)
+
+        if upload_submitted:
+            if uploaded_doc is None:
+                st.warning("Please upload a document first.")
+            elif st.session_state.credits <= 0 and not st.session_state.is_premium:
+                st.warning("You need audit credits to generate a roadmap.")
+            else:
+                with st.spinner("Reading document and generating roadmap..."):
+                    try:
+                        upload_info = persist_uploaded_input(current_user_id, workspace_paths, uploaded_file=uploaded_doc)
+                        if upload_info:
+                            # Read the file content
+                            doc_path = upload_info["path"]
+                            if doc_path.lower().endswith(".txt"):
+                                with open(doc_path, "r", encoding="utf-8") as f:
+                                    doc_text = f.read()
+                            else:
+                                from langchain_community.document_loaders import PyPDFLoader
+                                loader = PyPDFLoader(doc_path)
+                                pages = loader.load()
+                                doc_text = "\n\n".join(p.page_content for p in pages)
+
+                            if len(doc_text.strip()) < 50:
+                                st.warning("Document content is too short for analysis.")
+                            else:
+                                roadmap = generate_privacy_roadmap(doc_text.strip())
+                                if roadmap:
+                                    st.session_state.roadmap_data = roadmap
+                                    roadmap_path = os.path.join(workspace_paths["cache_dir"], "privacy_roadmap.json")
+                                    save_roadmap_json(roadmap, roadmap_path)
+                                    st.success("Roadmap generated successfully!")
+                                    st.rerun()
+                                else:
+                                    st.error("Roadmap generation returned no data.")
+                    except Exception as e:
+                        st.error(f"Roadmap generation failed: {e}")
 
 elif st.session_state.current_page == "library":
     st.markdown("<h2 style='color: white; margin-top:0; font-family: Cabinet Grotesk, sans-serif;'>Compliance Library</h2>", unsafe_allow_html=True)

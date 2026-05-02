@@ -252,6 +252,57 @@ class Lead(BaseModel):
     source: str
 
 
+class RoadmapRequest(BaseModel):
+    policy_text: str = Field(..., min_length=50, max_length=25000)
+    analysis_id: Optional[str] = None  # Link to a prior analysis if available
+
+
+class RoadmapGap(BaseModel):
+    gap_id: str
+    gap_description: str
+    immediate_action: str
+    golden_clause: str
+    operational_change: str
+    dpdp_section: str
+    enforcement_status: str  # "active" | "upcoming"
+
+
+class JargonAlert(BaseModel):
+    term: str
+    plain_language: str
+    context: str
+
+
+class MultilingualReadiness(BaseModel):
+    status: str  # "Ready" | "Partially Ready" | "Not Ready"
+    rationale: str
+
+
+class PrivacyUXScorecard(BaseModel):
+    readability_score: int
+    readability_grade: str
+    jargon_alerts: List[JargonAlert]
+    multilingual_readiness: MultilingualReadiness
+
+
+class ExecutiveSummaryItem(BaseModel):
+    violation: str
+    remediation_effort: str
+    business_impact: str
+    fix_priority: str
+
+
+class RoadmapResult(BaseModel):
+    roadmap_id: str
+    remediation_roadmap: List[RoadmapGap]
+    privacy_ux_scorecard: PrivacyUXScorecard
+    executive_summary: List[ExecutiveSummaryItem]
+    overall_risk_rating: str
+    total_gaps_found: int
+    generated_at: str
+    analysis_id: Optional[str] = None
+
+
 # ====================== Groq Prompt ======================
 
 SYSTEM_PROMPT = """### SYSTEM_PROMPT: DPDP ZERO-TRUST AUDITOR
@@ -818,6 +869,264 @@ async def admin_leads_csv(token: str = ""):
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ====================== Privacy Architect Roadmap ======================
+
+_CURRENT_DATE = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+_DPDP_DEADLINE = "2027-05-31"
+
+PRIVACY_ARCHITECT_PROMPT = f"""### ROLE
+You are a Senior Privacy Architect and Legal Strategist. Your goal is to
+transform a compliance audit into an actionable business roadmap.
+
+### CONTEXT
+- Current Date: {_CURRENT_DATE}
+- DPDP Rules 2025 full compliance deadline: {_DPDP_DEADLINE}
+- Rules that are currently "active" should be treated as immediately
+  enforceable. Rules with enforcement dates after {_CURRENT_DATE} should
+  be labelled as "upcoming" in your output.
+
+### STEP 1: REMEDIATION ROADMAP (THE FIX)
+For every compliance gap identified in the document, provide:
+1. IMMEDIATE ACTION: A single, non-technical step the business must take
+   today (e.g., "Appoint a Data Protection Officer").
+2. REPLACEMENT CLAUSE (Golden Clause): A legally vetted, DPDP-compliant
+   paragraph that can replace the offending text. For consent gaps
+   (Section 6), ensure placeholders for Consent Managers are included.
+3. OPERATIONAL CHANGE: Describe one backend process change required.
+   For "High Risk" gaps, specifically mandate a 72-hour breach notification
+   clock to the DPB and affected individuals.
+
+### STEP 2: PRIVACY UX SCORECARD (THE USER EXPERIENCE)
+Evaluate the document's transparency and accessibility for the average
+Indian consumer (aligning with the SARAL initiative: Simple, Accessible,
+Rational, Action-oriented, Lawful):
+1. READABILITY SCORE: Rate the text (0-100) using the Flesch-Kincaid scale.
+2. JARGON ALERT: Identify 3 legal terms that are too complex and suggest
+   "Plain Language" alternatives for SARAL compliance.
+3. MULTILINGUAL READINESS: Check if the notice structure allows for easy
+   translation into the 22 scheduled Indian languages as per DPDP requirements.
+   Rate as "Ready", "Partially Ready", or "Not Ready" with a rationale.
+
+### STEP 3: EXECUTIVE SUMMARY TABLE
+Return a table (as a JSON array) with columns: violation, remediation_effort
+(Low/Medium/High), business_impact (one sentence), fix_priority
+(P0 - Immediate / P1 - This Quarter / P2 - Next Quarter / P3 - Long-term).
+
+### OUTPUT FORMAT
+Respond with ONLY a valid JSON object matching this schema:
+{{{{
+  "remediation_roadmap": [
+    {{{{
+      "gap_id": "<GAP-1>",
+      "gap_description": "<what is non-compliant>",
+      "immediate_action": "<single non-technical step>",
+      "golden_clause": "<full replacement paragraph>",
+      "operational_change": "<backend process change>",
+      "dpdp_section": "<cited DPDP section>",
+      "enforcement_status": "active" | "upcoming"
+    }}}}
+  ],
+  "privacy_ux_scorecard": {{{{
+    "readability_score": <integer 0-100>,
+    "readability_grade": "<e.g. College Level>",
+    "jargon_alerts": [
+      {{{{
+        "term": "<complex term>",
+        "plain_language": "<simple alternative>",
+        "context": "<where it appears>"
+      }}}}
+    ],
+    "multilingual_readiness": {{{{
+      "status": "Ready" | "Partially Ready" | "Not Ready",
+      "rationale": "<brief explanation>"
+    }}}}
+  }}}},
+  "executive_summary": [
+    {{{{
+      "violation": "<description>",
+      "remediation_effort": "Low" | "Medium" | "High",
+      "business_impact": "<one sentence>",
+      "fix_priority": "P0 - Immediate" | "P1 - This Quarter" | "P2 - Next Quarter" | "P3 - Long-term"
+    }}}}
+  ],
+  "overall_risk_rating": "Critical" | "High" | "Moderate" | "Low",
+  "total_gaps_found": <integer>,
+  "generated_at": "{_CURRENT_DATE}"
+}}}}
+"""
+
+
+@api_router.post("/roadmap", response_model=RoadmapResult)
+@limiter.limit("3/minute;20/day")
+async def generate_roadmap(
+    request: Request,
+    req: RoadmapRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Generate a Privacy Architect roadmap from policy text.
+
+    This is a premium, authenticated endpoint that produces an actionable
+    business roadmap with golden clauses, readability scoring, and a
+    prioritised executive summary.
+    """
+
+    def _extract_json(text: str) -> dict:
+        import re
+        try:
+            return json.loads(text.strip())
+        except json.JSONDecodeError:
+            pass
+        cleaned = re.sub(r'```(?:json)?', '', text).strip()
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+        try:
+            start = text.find('{')
+            end = text.rfind('}')
+            if start != -1 and end != -1:
+                return json.loads(text[start:end+1])
+        except json.JSONDecodeError:
+            pass
+        raise json.JSONDecodeError("Failed to find valid JSON in model output", text, 0)
+
+    def _is_quota_error(exc: Exception) -> bool:
+        msg = str(exc).lower()
+        return any(
+            token in msg
+            for token in ("quota", "429", "rate limit", "exceeded", "resource_exhausted")
+        )
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
+    async def get_gemini_roadmap(text: str):
+        prompt = f"{PRIVACY_ARCHITECT_PROMPT}\n\n### INPUT DOCUMENT\n---\n{text}\n---"
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                max_output_tokens=4096,
+                response_mime_type="application/json",
+            )
+        )
+        return response.text
+
+    async def get_groq_roadmap(text: str) -> str:
+        completion = await groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": PRIVACY_ARCHITECT_PROMPT},
+                {
+                    "role": "user",
+                    "content": f"Generate a Privacy Architect roadmap for this document:\n\n---\n{text}\n---",
+                },
+            ],
+            temperature=0,
+            max_tokens=4096,
+            response_format={"type": "json_object"},
+        )
+        return completion.choices[0].message.content or ""
+
+    raw = None
+    used_provider = "gemini"
+    try:
+        raw = await asyncio.wait_for(get_gemini_roadmap(req.policy_text), timeout=60.0)
+        logger.info(f"Gemini roadmap response (first 500 chars): {raw[:500]}")
+        data = _extract_json(raw)
+    except json.JSONDecodeError as e:
+        logger.error(f"Gemini returned invalid JSON for roadmap: {e}")
+        raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
+    except asyncio.TimeoutError:
+        logger.warning("Gemini roadmap exceeded 60s timeout; falling back to Groq")
+        if groq_client is not None:
+            try:
+                raw = await get_groq_roadmap(req.policy_text)
+                data = _extract_json(raw)
+                used_provider = f"groq:{GROQ_MODEL}"
+            except Exception as ge:
+                logger.error(f"Groq roadmap fallback failed: {ge}")
+                raise HTTPException(status_code=503, detail="All AI providers unavailable.")
+        else:
+            raise HTTPException(status_code=504, detail="Roadmap generation timed out.")
+    except Exception as e:
+        if groq_client is not None and _is_quota_error(e):
+            logger.warning(f"Gemini quota error on roadmap; falling back to Groq")
+            try:
+                raw = await get_groq_roadmap(req.policy_text)
+                data = _extract_json(raw)
+                used_provider = f"groq:{GROQ_MODEL}"
+            except Exception as ge:
+                logger.error(f"Groq roadmap fallback failed: {ge}")
+                raise HTTPException(status_code=503, detail="All AI providers unavailable.")
+        else:
+            logger.error(f"Gemini roadmap error: {e}")
+            raise HTTPException(status_code=502, detail=f"Roadmap generation failed: {str(e)[:120]}")
+
+    logger.info(f"Roadmap served by provider={used_provider}")
+
+    roadmap_id = str(uuid.uuid4())
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    # Build validated result
+    remediation = data.get("remediation_roadmap", []) or []
+    scorecard_raw = data.get("privacy_ux_scorecard", {}) or {}
+    exec_summary = data.get("executive_summary", []) or []
+
+    # Ensure nested structures have defaults
+    ml_readiness = scorecard_raw.get("multilingual_readiness", {})
+    if not isinstance(ml_readiness, dict):
+        ml_readiness = {"status": "Not Ready", "rationale": "Could not assess."}
+
+    scorecard = PrivacyUXScorecard(
+        readability_score=int(scorecard_raw.get("readability_score", 0)),
+        readability_grade=scorecard_raw.get("readability_grade", "Unknown"),
+        jargon_alerts=[
+            JargonAlert(**ja) for ja in (scorecard_raw.get("jargon_alerts", []) or [])
+        ],
+        multilingual_readiness=MultilingualReadiness(**ml_readiness),
+    )
+
+    result = RoadmapResult(
+        roadmap_id=roadmap_id,
+        remediation_roadmap=[RoadmapGap(**g) for g in remediation],
+        privacy_ux_scorecard=scorecard,
+        executive_summary=[ExecutiveSummaryItem(**e) for e in exec_summary],
+        overall_risk_rating=data.get("overall_risk_rating", "Moderate"),
+        total_gaps_found=data.get("total_gaps_found", len(remediation)),
+        generated_at=created_at,
+        analysis_id=req.analysis_id,
+    )
+
+    # Persist to MongoDB
+    try:
+        await db.roadmaps.insert_one({
+            **result.model_dump(),
+            "user_id": user["id"],
+            "user_email": user.get("email"),
+            "provider": used_provider,
+        })
+    except Exception as db_err:
+        logger.warning(f"Roadmap DB insertion failed: {db_err}")
+
+    return result
+
+
+@api_router.get("/roadmaps")
+async def get_user_roadmaps(user: dict = Depends(get_current_user)):
+    """Fetch all past roadmaps for the authenticated user."""
+    try:
+        cursor = db.roadmaps.find({"user_id": user["id"]}, {"_id": 0}).sort("generated_at", -1)
+        roadmaps = await cursor.to_list(length=50)
+        return roadmaps
+    except Exception as e:
+        logger.warning(f"Failed to fetch roadmaps: {e}")
+        return []
 
 
 app.include_router(api_router)

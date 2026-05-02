@@ -236,8 +236,27 @@ def get_retriever(ingest: bool = False) -> ParentDocumentRetriever:
     
     store = PersistentDocStore(STORE_PATH)
 
-    parent_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
-    child_splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=50)
+    # ── Section-Aware "Legal-Grade" Splitters
+    # We prioritize splitting at logical legal boundaries (Section, Article, Chapter, Schedule)
+    # to ensure that the citation and its rationale stay in the same context chunk.
+    legal_separators = [
+        "\nSCHEDULE", "\nSchedule", 
+        "\nCHAPTER", "\nChapter", 
+        "\nSECTION", "\nSection", 
+        "\nARTICLE", "\nArticle",
+        "\n\n", "\n", " ", ""
+    ]
+
+    parent_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=2000, 
+        chunk_overlap=200,
+        separators=legal_separators
+    )
+    child_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=400, 
+        chunk_overlap=50,
+        separators=legal_separators
+    )
 
     retriever = ParentDocumentRetriever(
         vectorstore=vectorstore,
@@ -295,7 +314,12 @@ def index_user_document(user_id: str, user_doc_path: str) -> int:
         return 0
     document_namespace = get_document_namespace(user_id, user_doc_path)
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=80)
+    # Use Section-Aware splitting for user documents to keep clauses intact
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500, 
+        chunk_overlap=80,
+        separators=["\n\n", "\nClause", "\nSection", "\n", " ", ""]
+    )
     user_chunks = splitter.split_documents(user_docs)
     for chunk in user_chunks:
         chunk.metadata = {
@@ -469,8 +493,12 @@ def run_compliance_audit(
         print("⚠  No text found in the provided PDF.")
         return
 
-    # Split user doc into chunks — larger chunks = fewer total LLM calls
-    audit_splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=80)
+    # Split user doc into chunks — using Section-Aware logic to prevent context loss
+    audit_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=600, 
+        chunk_overlap=100,
+        separators=["\n\n", "\nSection", "\nArticle", "\nClause", "\n", " ", ""]
+    )
     audit_chunks = audit_splitter.split_documents(user_docs)
 
     google_key = st.secrets.get('GOOGLE_API_KEY')
