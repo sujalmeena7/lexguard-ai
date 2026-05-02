@@ -614,9 +614,9 @@ async def analyze_policy(
             raise HTTPException(status_code=504, detail="Audit timed out and no fallback is available.")
     except Exception as e:
         gemini_err_str = str(e)
-        if groq_client is not None and _is_quota_error(e):
+        if groq_client is not None:
             logger.warning(
-                f"Gemini quota error after retries; falling back to Groq {GROQ_MODEL}: {gemini_err_str[:200]}"
+                f"Gemini failed ({gemini_err_str[:120]}); falling back to Groq {GROQ_MODEL}"
             )
             try:
                 raw = await get_groq_completion(req.policy_text)

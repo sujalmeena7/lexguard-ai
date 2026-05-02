@@ -1,0 +1,44 @@
+{
+  "agents": {
+    "agent-1777707683451-9zd479": {
+      "agentId": "agent-1777707683451-9zd479",
+      "agentType": "coder",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic"
+      },
+      "createdAt": "2026-05-02T07:41:23.451Z",
+      "model": "sonnet",
+      "modelRoutedBy": "default"
+    },
+    "agent-1777707774517-zta2ei": {
+      "agentId": "agent-1777707774517-zta2ei",
+      "agentType": "reviewer",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic"
+      },
+      "createdAt": "2026-05-02T07:42:54.517Z",
+      "model": "sonnet",
+      "modelRoutedBy": "default"
+    },
+    "agent-1777707882033-n5qxhg": {
+      "agentId": "agent-1777707882033-n5qxhg",
+      "agentType": "reviewer",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic"
+      },
+      "createdAt": "2026-05-02T07:44:42.033Z",
+      "model": "sonnet",
+      "modelRoutedBy": "default"
+    }
+  },
+  "version": "3.0.0"
+}
