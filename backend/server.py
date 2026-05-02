@@ -395,7 +395,9 @@ Be decisive, specific, cite exact DPDP sections, and never fabricate citations."
 # ====================== Admin auth ======================
 
 def require_admin(x_admin_token: Optional[str] = Header(None)):
-    if not ADMIN_TOKEN or not hmac.compare_digest(x_admin_token or "", ADMIN_TOKEN):
+    if not ADMIN_TOKEN:
+        raise HTTPException(status_code=503, detail="Admin endpoints disabled — ADMIN_TOKEN not configured")
+    if not hmac.compare_digest(x_admin_token or "", ADMIN_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     return True
 
@@ -805,7 +807,8 @@ async def unlock_full_report(
 
 
 @api_router.get("/leads/count")
-async def leads_count(_: bool = Depends(require_admin)):
+@limiter.limit("30/minute")
+async def leads_count(request: Request, _: bool = Depends(require_admin)):
     count = await db.leads.count_documents({})
     return {"total_leads": count}
 
@@ -869,9 +872,14 @@ async def admin_lead_detail(lead_id: str, _: bool = Depends(require_admin)):
 
 
 @api_router.get("/admin/leads.csv")
-async def admin_leads_csv(token: str = ""):
-    """Export all leads as CSV. Auth via ?token=... query param (so the browser can open the URL directly)."""
-    if not ADMIN_TOKEN or not hmac.compare_digest(token, ADMIN_TOKEN):
+@limiter.limit("10/minute")
+async def admin_leads_csv(request: Request, token: str = ""):
+    """Export all leads as CSV. Auth via ?token=... query param (so the browser can open the URL directly).
+    Rate-limited per IP so a leaked token cannot be used for unbounded exfiltration."""
+    if not ADMIN_TOKEN:
+        raise HTTPException(status_code=503, detail="Admin endpoints disabled — ADMIN_TOKEN not configured")
+    if not hmac.compare_digest(token, ADMIN_TOKEN):
+        logger.warning(f"Admin CSV export auth failed from IP={_client_ip(request)}")
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
     import csv
@@ -1195,11 +1203,15 @@ for origin in os.environ.get('CORS_ORIGINS', '').split(','):
     if o and o not in cors_origins:
         cors_origins.append(o)
 
+# Optional regex for matching ephemeral preview deployments (e.g. Vercel).
+# Defaults to None so the explicit allow-list is enforced unless the operator
+# opts in via env (e.g. CORS_ORIGIN_REGEX="https://([a-z0-9-]+\\.)*vercel\\.app$").
+cors_origin_regex = os.environ.get("CORS_ORIGIN_REGEX") or None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    # Allow HTTPS origins for public web/preview deployments.
-    allow_origin_regex=r"https://.*",
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
