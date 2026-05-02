@@ -18,6 +18,7 @@ from typing import Dict, List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
 import asyncio
+import hmac
 import secrets
 import google.generativeai as genai
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -76,7 +77,9 @@ GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 # clauses. The full deep audit lives in the Streamlit dashboard's two-layer
 # pipeline (Flash triage → Pro deep audit on flagged clauses only).
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash')
-ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'dev-token-local')
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', '')
+if not ADMIN_TOKEN:
+    logging.critical("ADMIN_TOKEN env var is NOT set — admin endpoints are DISABLED. Set ADMIN_TOKEN before deploying.")
 if not GOOGLE_API_KEY:
     raise RuntimeError("GOOGLE_API_KEY environment variable is required but not set.")
 
@@ -193,6 +196,36 @@ app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# ── Security headers middleware ──
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # Prevent MIME-type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    # Enable browser XSS filter
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # Enforce HTTPS (1 year, include subdomains)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # Restrict referrer leakage
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Basic CSP — restrict script sources
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    return response
+
+# ── Request logging for suspicious patterns ──
+_SUSPICIOUS_EXACT = {"/.env", "/.git", "/wp-admin", "/wp-login.php", "/phpmyadmin"}
+_SUSPICIOUS_PREFIXES = ("/wp-", "/phpmy", "/.env", "/.git")
+@app.middleware("http")
+async def log_suspicious_requests(request: Request, call_next):
+    path = request.url.path.lower()
+    if path.startswith("/api/"):
+        return await call_next(request)
+    if path in _SUSPICIOUS_EXACT or any(path.startswith(p) for p in _SUSPICIOUS_PREFIXES):
+        logger.warning(f"Suspicious request: {request.method} {request.url.path} from IP={_client_ip(request)}")
+    return await call_next(request)
+
 @app.get("/")
 async def health_check():
     return {"service": "LexGuard AI", "status": "ok", "version": "1.0.0"}
@@ -206,14 +239,14 @@ class AnalyzeRequest(BaseModel):
 
 
 class UnlockRequest(BaseModel):
-    analysis_id: str
+    analysis_id: str = Field(..., min_length=1, max_length=64)
     email: EmailStr
-    name: Optional[str] = None
-    company: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=100)
+    company: Optional[str] = Field(None, max_length=100)
 
 
 class HandoffExchangeRequest(BaseModel):
-    handoff_code: str
+    handoff_code: str = Field(..., min_length=1, max_length=128)
 
 
 class FlaggedClause(BaseModel):
@@ -362,12 +395,22 @@ Be decisive, specific, cite exact DPDP sections, and never fabricate citations."
 # ====================== Admin auth ======================
 
 def require_admin(x_admin_token: Optional[str] = Header(None)):
-    if x_admin_token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or not hmac.compare_digest(x_admin_token or "", ADMIN_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid admin token")
     return True
 
 
 # ====================== Routes ======================
+
+@api_router.get("/config")
+async def get_config():
+    """Return Supabase public config for frontend initialization.
+    The anon key is a public key protected by RLS — safe to expose."""
+    return {
+        "supabase_url": SUPABASE_URL or "",
+        "supabase_anon_key": SUPABASE_ANON_KEY or "",
+    }
+
 
 @api_router.get("/")
 async def root():
@@ -398,7 +441,8 @@ async def create_auth_handoff(
 
 
 @api_router.post("/auth/handoff/exchange")
-async def exchange_auth_handoff(req: HandoffExchangeRequest):
+@limiter.limit("10/minute")
+async def exchange_auth_handoff(request: Request, req: HandoffExchangeRequest):
     handoff_code = req.handoff_code.strip()
     if not handoff_code:
         raise HTTPException(status_code=400, detail="handoff_code is required")
@@ -680,7 +724,8 @@ async def analyze_policy(
     return preview
 
 @api_router.get("/audits")
-async def get_user_audits(user: dict = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def get_user_audits(request: Request, user: dict = Depends(get_current_user)):
     """Fetch all past audits securely isolated to the authenticated user."""
     try:
         cursor = db.analyses.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
@@ -760,7 +805,7 @@ async def unlock_full_report(
 
 
 @api_router.get("/leads/count")
-async def leads_count():
+async def leads_count(_: bool = Depends(require_admin)):
     count = await db.leads.count_documents({})
     return {"total_leads": count}
 
@@ -768,11 +813,14 @@ async def leads_count():
 # ====================== Admin routes ======================
 
 @api_router.post("/admin/login")
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 async def admin_login(request: Request, payload: dict):
     """Validate admin token. Rate limited to prevent brute force."""
+    if not ADMIN_TOKEN:
+        raise HTTPException(status_code=503, detail="Admin endpoints disabled — ADMIN_TOKEN not configured")
     token = (payload or {}).get("token", "")
-    if token != ADMIN_TOKEN:
+    if not hmac.compare_digest(token, ADMIN_TOKEN):
+        logger.warning(f"Admin login failed from IP={_client_ip(request)}")
         raise HTTPException(status_code=401, detail="Invalid token")
     return {"ok": True}
 
@@ -823,7 +871,7 @@ async def admin_lead_detail(lead_id: str, _: bool = Depends(require_admin)):
 @api_router.get("/admin/leads.csv")
 async def admin_leads_csv(token: str = ""):
     """Export all leads as CSV. Auth via ?token=... query param (so the browser can open the URL directly)."""
-    if token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or not hmac.compare_digest(token, ADMIN_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
     import csv
@@ -1118,7 +1166,8 @@ async def generate_roadmap(
 
 
 @api_router.get("/roadmaps")
-async def get_user_roadmaps(user: dict = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def get_user_roadmaps(request: Request, user: dict = Depends(get_current_user)):
     """Fetch all past roadmaps for the authenticated user."""
     try:
         cursor = db.roadmaps.find({"user_id": user["id"]}, {"_id": 0}).sort("generated_at", -1)

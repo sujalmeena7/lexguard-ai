@@ -1,9 +1,14 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
-const supabaseClient = window.__LG_SUPABASE__ || (typeof supabase !== "undefined" && window.ENV_SUPABASE_URL && window.ENV_SUPABASE_ANON_KEY
-  ? supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY)
-  : null);
+// Lazy-init Supabase client after config is ready
+function _getSupabase() {
+  if (window.__LG_SUPABASE__) return window.__LG_SUPABASE__;
+  if (typeof supabase !== "undefined" && window.ENV_SUPABASE_URL && window.ENV_SUPABASE_ANON_KEY) {
+    return supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY);
+  }
+  return null;
+}
 
 export default function AuthModal({ open, mode, onClose, onSwitchMode }) {
   const [email, setEmail] = useState("");
@@ -27,7 +32,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }) {
     setError("");
     setSuccess("");
 
-    if (!supabaseClient) {
+    if (!_getSupabase()) {
       setError("Supabase is not configured.");
       return;
     }
@@ -36,9 +41,9 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }) {
     try {
       let result;
       if (isSignIn) {
-        result = await supabaseClient.auth.signInWithPassword({ email, password });
+        result = await _getSupabase().auth.signInWithPassword({ email, password });
       } else {
-        result = await supabaseClient.auth.signUp({ email, password });
+        result = await _getSupabase().auth.signUp({ email, password });
       }
 
       if (result.error) throw result.error;
@@ -56,7 +61,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }) {
   }, [email, password, isSignIn]);
 
   const handleOAuth = useCallback(async (provider) => {
-    if (!supabaseClient) {
+    if (!_getSupabase()) {
       setError("Supabase is not configured.");
       return;
     }
@@ -64,7 +69,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }) {
       setError("SSO authentication is not yet configured. Please use email/password or Google sign-in.");
       return;
     }
-    const { error } = await supabaseClient.auth.signInWithOAuth({
+    const { error } = await _getSupabase().auth.signInWithOAuth({
       provider,
       options: { redirectTo: window.location.origin + "/" },
     });
@@ -73,7 +78,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }) {
 
   const handleForgot = useCallback(async (e) => {
     e.preventDefault();
-    if (!supabaseClient) {
+    if (!_getSupabase()) {
       setError("Supabase is not configured.");
       return;
     }
@@ -81,7 +86,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }) {
       setError("Please enter your email address first.");
       return;
     }
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    const { error } = await _getSupabase().auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + "/",
     });
     if (error) {

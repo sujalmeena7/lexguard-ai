@@ -5,6 +5,8 @@ const DASHBOARD_URL = window.ENV_DASHBOARD_URL || "/";
 
 async function goToDashboard(e) {
   e.preventDefault();
+  // Wait for config to be ready before accessing Supabase globals
+  await (window.__LEXGUARD_CONFIG_READY__ || Promise.resolve());
   const client = window.__LG_SUPABASE__ || (typeof supabase !== "undefined" && window.ENV_SUPABASE_URL && window.ENV_SUPABASE_ANON_KEY
     ? supabase.createClient(window.ENV_SUPABASE_URL, window.ENV_SUPABASE_ANON_KEY)
     : null);

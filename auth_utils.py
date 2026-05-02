@@ -113,6 +113,19 @@ def get_supabase_client_error() -> Optional[str]:
     return st.session_state.get("_supabase_client_error")
 
 
+def _validate_password_strength(password: str) -> Tuple[bool, str]:
+    """Enforce minimum password strength: 8+ chars, 1 uppercase, 1 digit, 1 special."""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not any(c.isupper() for c in password):
+        return False, "Password must contain at least one uppercase letter."
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one digit."
+    if not any(c in "!@#$%^&*()_+-=[]{}|;:',.<>?/`~" for c in password):
+        return False, "Password must contain at least one special character."
+    return True, ""
+
+
 def sign_up_with_email(email: str, password: str) -> Tuple[bool, str]:
     client = get_supabase_client()
     if client is None:
@@ -121,13 +134,17 @@ def sign_up_with_email(email: str, password: str) -> Tuple[bool, str]:
     if not _check_limit("SIGNUP_ATTEMPT", limit=3, window_minutes=60):
         return False, "Too many signup attempts. Please try again later."
 
+    ok, msg = _validate_password_strength(password)
+    if not ok:
+        return False, msg
+
     try:
         _log_event("SIGNUP_ATTEMPT", metadata={"email": email})
         client.auth.sign_up({"email": email, "password": password})
         return True, "Account created. Please verify your inbox before signing in."
     except Exception as exc:
         _log_event("SIGNUP_FAILURE", severity="WARNING", description=str(exc), metadata={"email": email})
-        return False, f"Sign up failed: {exc}"
+        return False, "Sign up failed. Please try again or contact support."
 
 
 def sign_in_with_email(email: str, password: str) -> Tuple[bool, str]:
@@ -161,7 +178,7 @@ def sign_in_with_email(email: str, password: str) -> Tuple[bool, str]:
         return True, "Signed in successfully."
     except Exception as exc:
         _log_event("LOGIN_FAILURE", severity="WARNING", description=str(exc), metadata={"email": email})
-        return False, f"Sign in failed: {exc}"
+        return False, "Sign in failed. Please check your credentials and try again."
 
 
 def restore_session_from_token() -> bool:
@@ -217,7 +234,7 @@ def reset_password_request(email: str) -> Tuple[bool, str]:
         return True, "Password reset email sent. Please check your inbox."
     except Exception as exc:
         _log_event("PASSWORD_RESET_FAILURE", severity="WARNING", description=str(exc), metadata={"email": email})
-        return False, f"Failed to send reset email: {exc}"
+        return False, "Failed to send reset email. Please verify your email address and try again."
 
 
 def update_password(new_password: str) -> Tuple[bool, str]:
