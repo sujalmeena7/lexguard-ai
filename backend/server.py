@@ -22,7 +22,8 @@ from datetime import datetime, timezone, timedelta
 import asyncio
 import hmac
 import secrets
-import google.generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 # Configure Logging
@@ -85,8 +86,7 @@ if not ADMIN_TOKEN:
 if not GOOGLE_API_KEY:
     raise RuntimeError("GOOGLE_API_KEY environment variable is required but not set.")
 
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel(GEMINI_MODEL)
+genai_client = genai.Client(api_key=GOOGLE_API_KEY)
 
 # ── Groq fallback (used when Gemini hits quota/429) ──
 # When GROQ_API_KEY is set, /api/analyze automatically retries on Groq
@@ -584,9 +584,10 @@ async def analyze_policy(
     )
     async def get_gemini_completion(text: str):
         prompt = f"{SYSTEM_PROMPT}\n\nAudit this document against DPDP Act 2023:\n\n---\n{text}\n---"
-        response = await model.generate_content_async(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        response = await genai_client.aio.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
                 temperature=0,
                 # Schema is bounded (~6 clauses + 6 checklist items); 2048 is
                 # plenty and keeps Flash latency tight (~5-10s end-to-end).
@@ -1132,9 +1133,10 @@ async def generate_roadmap(
     )
     async def get_gemini_roadmap(text: str):
         prompt = f"{PRIVACY_ARCHITECT_PROMPT}\n\n### INPUT DOCUMENT\n---\n{text}\n---"
-        response = await model.generate_content_async(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        response = await genai_client.aio.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
                 temperature=0,
                 max_output_tokens=4096,
                 response_mime_type="application/json",
