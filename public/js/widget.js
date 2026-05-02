@@ -47,7 +47,7 @@
         return text;
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
+    const initWidget = () => {
         const widget = document.getElementById('lg-widget');
         if (!widget) return;
 
@@ -440,5 +440,11 @@
         };
         els.resetBtn.addEventListener('click', reset);
         els.resetBtn2.addEventListener('click', reset);
-    });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWidget);
+    } else {
+        initWidget();
+    }
 })();
