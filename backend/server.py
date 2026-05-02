@@ -118,10 +118,51 @@ if SUPABASE_URL and SUPABASE_ANON_KEY:
         logging.error(f"Supabase init failed: {e}")
 
 AUTH_HANDOFF_TTL_SECONDS = int(os.environ.get("AUTH_HANDOFF_TTL_SECONDS", "120"))
+# In-memory fallback used only when MongoDB is unavailable. NOT safe for
+# multi-worker / multi-replica deployments — a code generated on worker A
+# will not be visible to worker B. The MongoDB-backed path below is the
+# authoritative store; this dict only exists so single-process dev works
+# when Mongo is offline.
 _auth_handoff_store: Dict[str, Dict[str, str]] = {}
 
 
+def _auth_handoff_collection_available() -> bool:
+    """True when we have a real MongoDB connection (not the _NullDB stub)."""
+    return not isinstance(db, _NullDB)
+
+
+async def _store_auth_handoff(handoff_code: str, payload: Dict[str, str]) -> None:
+    """Persist an auth handoff. Uses Mongo when available so it survives
+    across workers/replicas; falls back to the in-memory dict only when
+    MongoDB is offline (single-process dev mode)."""
+    if _auth_handoff_collection_available():
+        doc = {"_id": handoff_code, **payload}
+        try:
+            await db.auth_handoffs.insert_one(doc)
+            return
+        except Exception as exc:
+            logger.warning(f"Auth handoff Mongo write failed; using in-memory fallback: {exc}")
+    _auth_handoff_store[handoff_code] = payload
+
+
+async def _consume_auth_handoff(handoff_code: str) -> Optional[Dict[str, str]]:
+    """Atomically fetch + delete a handoff payload (single-use)."""
+    if _auth_handoff_collection_available():
+        try:
+            doc = await db.auth_handoffs.find_one_and_delete({"_id": handoff_code})
+            if doc:
+                doc.pop("_id", None)
+                # Strip the Mongo TTL helper field before returning to caller
+                doc.pop("expires_dt", None)
+                return doc
+        except Exception as exc:
+            logger.warning(f"Auth handoff Mongo read failed; trying in-memory fallback: {exc}")
+    return _auth_handoff_store.pop(handoff_code, None)
+
+
 def _cleanup_expired_handoffs() -> None:
+    """Best-effort sweep of the in-memory fallback. The Mongo TTL index
+    handles expiry automatically for the persistent path."""
     now_iso = datetime.now(timezone.utc).isoformat()
     expired_codes = [
         code
@@ -205,6 +246,9 @@ async def lifespan(_app: FastAPI):
         await db.leads.create_index("lead_id", unique=True)
         await db.leads.create_index("created_at")
         await db.leads.create_index("analysis_id")
+        # TTL index expires handoff codes automatically once `expires_dt` passes,
+        # so abandoned codes are cleaned up even without a sweeper.
+        await db.auth_handoffs.create_index("expires_dt", expireAfterSeconds=0)
         logger.info("MongoDB indexes created/verified")
     except Exception as e:
         logger.error(f"Index creation failed: {e}")
@@ -454,12 +498,15 @@ async def create_auth_handoff(
 
     _cleanup_expired_handoffs()
     handoff_code = secrets.token_urlsafe(32)
-    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=AUTH_HANDOFF_TTL_SECONDS)).isoformat()
-    _auth_handoff_store[handoff_code] = {
+    expires_dt = datetime.now(timezone.utc) + timedelta(seconds=AUTH_HANDOFF_TTL_SECONDS)
+    payload = {
         "access_token": access_token,
         "user_id": user["id"],
-        "expires_at": expires_at,
+        "expires_at": expires_dt.isoformat(),
+        # Stored as a real datetime so the Mongo TTL index can expire it.
+        "expires_dt": expires_dt,
     }
+    await _store_auth_handoff(handoff_code, payload)
     return {"handoff_code": handoff_code, "expires_in": AUTH_HANDOFF_TTL_SECONDS}
 
 
@@ -471,7 +518,7 @@ async def exchange_auth_handoff(request: Request, req: HandoffExchangeRequest):
         raise HTTPException(status_code=400, detail="handoff_code is required")
 
     _cleanup_expired_handoffs()
-    payload = _auth_handoff_store.pop(handoff_code, None)
+    payload = await _consume_auth_handoff(handoff_code)
     if not payload:
         raise HTTPException(status_code=404, detail="Invalid or expired handoff code")
 
