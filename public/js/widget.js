@@ -48,8 +48,9 @@
     };
 
     const initWidget = () => {
+        console.log('[widget.js] initWidget running');
         const widget = document.getElementById('lg-widget');
-        if (!widget) return;
+        if (!widget) { console.warn('[widget.js] #lg-widget not found'); return; }
 
         const els = {
             input: document.getElementById('lg-input'),
@@ -236,7 +237,8 @@
         updateCharCount();
 
         els.sampleBtn.addEventListener('click', () => {
-            if (!els.input) return;
+            console.log('[widget.js] sampleBtn clicked via event listener');
+            if (!els.input) { console.warn('[widget.js] els.input missing'); return; }
             els.input.value = SAMPLE_POLICY;
             els.input.focus();
             updateCharCount();
