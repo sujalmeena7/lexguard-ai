@@ -213,9 +213,16 @@
         updateCharCount();
 
         els.sampleBtn.addEventListener('click', () => {
+            if (!els.input) return;
             els.input.value = SAMPLE_POLICY;
             els.input.focus();
             updateCharCount();
+            // Auto-run the audit after a short delay so the user sees the text being entered
+            setTimeout(() => {
+                if (els.analyzeBtn && !els.analyzeBtn.disabled) {
+                    els.analyzeBtn.click();
+                }
+            }, 300);
         });
 
         // ---------- analyze ----------
