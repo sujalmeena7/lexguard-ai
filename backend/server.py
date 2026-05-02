@@ -9,9 +9,11 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import os
+import re
 import json
 import logging
 import hashlib
+from contextlib import asynccontextmanager
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import Dict, List, Optional
@@ -116,10 +118,51 @@ if SUPABASE_URL and SUPABASE_ANON_KEY:
         logging.error(f"Supabase init failed: {e}")
 
 AUTH_HANDOFF_TTL_SECONDS = int(os.environ.get("AUTH_HANDOFF_TTL_SECONDS", "120"))
+# In-memory fallback used only when MongoDB is unavailable. NOT safe for
+# multi-worker / multi-replica deployments — a code generated on worker A
+# will not be visible to worker B. The MongoDB-backed path below is the
+# authoritative store; this dict only exists so single-process dev works
+# when Mongo is offline.
 _auth_handoff_store: Dict[str, Dict[str, str]] = {}
 
 
+def _auth_handoff_collection_available() -> bool:
+    """True when we have a real MongoDB connection (not the _NullDB stub)."""
+    return not isinstance(db, _NullDB)
+
+
+async def _store_auth_handoff(handoff_code: str, payload: Dict[str, str]) -> None:
+    """Persist an auth handoff. Uses Mongo when available so it survives
+    across workers/replicas; falls back to the in-memory dict only when
+    MongoDB is offline (single-process dev mode)."""
+    if _auth_handoff_collection_available():
+        doc = {"_id": handoff_code, **payload}
+        try:
+            await db.auth_handoffs.insert_one(doc)
+            return
+        except Exception as exc:
+            logger.warning(f"Auth handoff Mongo write failed; using in-memory fallback: {exc}")
+    _auth_handoff_store[handoff_code] = payload
+
+
+async def _consume_auth_handoff(handoff_code: str) -> Optional[Dict[str, str]]:
+    """Atomically fetch + delete a handoff payload (single-use)."""
+    if _auth_handoff_collection_available():
+        try:
+            doc = await db.auth_handoffs.find_one_and_delete({"_id": handoff_code})
+            if doc:
+                doc.pop("_id", None)
+                # Strip the Mongo TTL helper field before returning to caller
+                doc.pop("expires_dt", None)
+                return doc
+        except Exception as exc:
+            logger.warning(f"Auth handoff Mongo read failed; trying in-memory fallback: {exc}")
+    return _auth_handoff_store.pop(handoff_code, None)
+
+
 def _cleanup_expired_handoffs() -> None:
+    """Best-effort sweep of the in-memory fallback. The Mongo TTL index
+    handles expiry automatically for the persistent path."""
     now_iso = datetime.now(timezone.utc).isoformat()
     expired_codes = [
         code
@@ -192,7 +235,31 @@ def _client_ip(request: Request) -> str:
 
 limiter = Limiter(key_func=_client_ip)
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Replaces deprecated @app.on_event startup/shutdown handlers."""
+    try:
+        await db.analyses.create_index("analysis_id", unique=True)
+        await db.analyses.create_index("created_at")
+        await db.leads.create_index("email")
+        await db.leads.create_index("lead_id", unique=True)
+        await db.leads.create_index("created_at")
+        await db.leads.create_index("analysis_id")
+        # TTL index expires handoff codes automatically once `expires_dt` passes,
+        # so abandoned codes are cleaned up even without a sweeper.
+        await db.auth_handoffs.create_index("expires_dt", expireAfterSeconds=0)
+        logger.info("MongoDB indexes created/verified")
+    except Exception as e:
+        logger.error(f"Index creation failed: {e}")
+    try:
+        yield
+    finally:
+        if client is not None:
+            client.close()
+
+
+app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -431,12 +498,15 @@ async def create_auth_handoff(
 
     _cleanup_expired_handoffs()
     handoff_code = secrets.token_urlsafe(32)
-    expires_at = (datetime.now(timezone.utc) + timedelta(seconds=AUTH_HANDOFF_TTL_SECONDS)).isoformat()
-    _auth_handoff_store[handoff_code] = {
+    expires_dt = datetime.now(timezone.utc) + timedelta(seconds=AUTH_HANDOFF_TTL_SECONDS)
+    payload = {
         "access_token": access_token,
         "user_id": user["id"],
-        "expires_at": expires_at,
+        "expires_at": expires_dt.isoformat(),
+        # Stored as a real datetime so the Mongo TTL index can expire it.
+        "expires_dt": expires_dt,
     }
+    await _store_auth_handoff(handoff_code, payload)
     return {"handoff_code": handoff_code, "expires_in": AUTH_HANDOFF_TTL_SECONDS}
 
 
@@ -448,7 +518,7 @@ async def exchange_auth_handoff(request: Request, req: HandoffExchangeRequest):
         raise HTTPException(status_code=400, detail="handoff_code is required")
 
     _cleanup_expired_handoffs()
-    payload = _auth_handoff_store.pop(handoff_code, None)
+    payload = await _consume_auth_handoff(handoff_code)
     if not payload:
         raise HTTPException(status_code=404, detail="Invalid or expired handoff code")
 
@@ -844,7 +914,6 @@ async def admin_stats(_: bool = Depends(require_admin)):
     total_analyses = await db.analyses.count_documents({})
     unlocked_analyses = await db.analyses.count_documents({"unlocked": True})
     # Last 24h
-    from datetime import timedelta
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     leads_24h = await db.leads.count_documents({"created_at": {"$gte": since}})
     analyses_24h = await db.analyses.count_documents({"created_at": {"$gte": since}})
@@ -1205,28 +1274,3 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-
-@app.on_event("startup")
-async def startup_indexes():
-    """Create MongoDB indexes for performance at scale."""
-    try:
-        await db.analyses.create_index("analysis_id", unique=True)
-        await db.analyses.create_index("created_at")
-        await db.leads.create_index("email")
-        await db.leads.create_index("lead_id", unique=True)
-        await db.leads.create_index("created_at")
-        await db.leads.create_index("analysis_id")
-        logger.info("MongoDB indexes created/verified")
-    except Exception as e:
-        logger.error(f"Index creation failed: {e}")
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    if client is not None:
-        client.close()
