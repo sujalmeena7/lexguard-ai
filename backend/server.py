@@ -9,9 +9,11 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import os
+import re
 import json
 import logging
 import hashlib
+from contextlib import asynccontextmanager
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import Dict, List, Optional
@@ -192,7 +194,28 @@ def _client_ip(request: Request) -> str:
 
 limiter = Limiter(key_func=_client_ip)
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Replaces deprecated @app.on_event startup/shutdown handlers."""
+    try:
+        await db.analyses.create_index("analysis_id", unique=True)
+        await db.analyses.create_index("created_at")
+        await db.leads.create_index("email")
+        await db.leads.create_index("lead_id", unique=True)
+        await db.leads.create_index("created_at")
+        await db.leads.create_index("analysis_id")
+        logger.info("MongoDB indexes created/verified")
+    except Exception as e:
+        logger.error(f"Index creation failed: {e}")
+    try:
+        yield
+    finally:
+        if client is not None:
+            client.close()
+
+
+app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -844,7 +867,6 @@ async def admin_stats(_: bool = Depends(require_admin)):
     total_analyses = await db.analyses.count_documents({})
     unlocked_analyses = await db.analyses.count_documents({"unlocked": True})
     # Last 24h
-    from datetime import timedelta
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     leads_24h = await db.leads.count_documents({"created_at": {"$gte": since}})
     analyses_24h = await db.analyses.count_documents({"created_at": {"$gte": since}})
@@ -1205,28 +1227,3 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-
-@app.on_event("startup")
-async def startup_indexes():
-    """Create MongoDB indexes for performance at scale."""
-    try:
-        await db.analyses.create_index("analysis_id", unique=True)
-        await db.analyses.create_index("created_at")
-        await db.leads.create_index("email")
-        await db.leads.create_index("lead_id", unique=True)
-        await db.leads.create_index("created_at")
-        await db.leads.create_index("analysis_id")
-        logger.info("MongoDB indexes created/verified")
-    except Exception as e:
-        logger.error(f"Index creation failed: {e}")
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    if client is not None:
-        client.close()
