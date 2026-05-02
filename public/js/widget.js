@@ -22,6 +22,31 @@
         'scoring compliance · ranking risks',
     ];
 
+    // Normalize ALL-CAPS text to sentence case (frontend safety net)
+    const normalizeText = (text) => {
+        if (!text || typeof text !== 'string') return text || '';
+        const alpha = text.split('').filter(c => /[a-zA-Z]/.test(c));
+        if (!alpha.length) return text;
+        const upperCount = alpha.filter(c => c === c.toUpperCase() && /[A-Z]/.test(c)).length;
+        if (upperCount / alpha.length > 0.5) {
+            let normalized = text.toLowerCase();
+            normalized = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+            normalized = normalized.replace(/([.!?]\s+)([a-z])/g, (match, sep, letter) => sep + letter.toUpperCase());
+            normalized = normalized.replace(/(\n)([a-z])/g, (match, sep, letter) => sep + letter.toUpperCase());
+            const protected = [
+                ['aadhaar', 'Aadhaar'], ['dpdp', 'DPDP'], ['pii', 'PII'], ['kyc', 'KYC'],
+                ['gdpr', 'GDPR'], ['hipaa', 'HIPAA'], ['india', 'India'], ['indian', 'Indian'],
+                ['ai', 'AI'], ['api', 'API'], ['dpdp act', 'DPDP Act'], ['i', 'I']
+            ];
+            protected.forEach(([lower, proper]) => {
+                const re = new RegExp('\\b' + lower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\b', 'gi');
+                normalized = normalized.replace(re, proper);
+            });
+            return normalized;
+        }
+        return text;
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
         const widget = document.getElementById('lg-widget');
         if (!widget) return;
@@ -154,9 +179,9 @@
                     <span class="lg-clause-id">${escapeHtml(c.clause_id || 'Clause')}</span>
                     <span class="lg-clause-section">${escapeHtml(c.dpdp_section || '')}</span>
                 </div>
-                ${c.clause_excerpt ? `<div class="lg-clause-excerpt">&ldquo;${escapeHtml(c.clause_excerpt)}&rdquo;</div>` : ''}
-                <div class="lg-clause-issue">${escapeHtml(c.issue || '')}</div>
-                ${c.suggested_fix ? `<div class="lg-clause-fix"><strong>SUGGESTED FIX</strong>${escapeHtml(c.suggested_fix)}</div>` : ''}
+                ${c.clause_excerpt ? `<div class="lg-clause-excerpt">&ldquo;${escapeHtml(normalizeText(c.clause_excerpt))}&rdquo;</div>` : ''}
+                <div class="lg-clause-issue">${escapeHtml(normalizeText(c.issue || ''))}</div>
+                ${c.suggested_fix ? `<div class="lg-clause-fix"><strong>Suggested fix</strong>${escapeHtml(normalizeText(c.suggested_fix))}</div>` : ''}
             `;
             return card;
         };
@@ -193,7 +218,7 @@
                     <span class="lg-check-icon ${ic.cls}">${ic.glyph}</span>
                     <div class="lg-check-body">
                         <div class="lg-check-area">${escapeHtml(it.focus_area)}</div>
-                        <div class="lg-check-note">${escapeHtml(it.note)}</div>
+                        <div class="lg-check-note">${escapeHtml(normalizeText(it.note))}</div>
                     </div>
                     <span class="lg-check-status ${statusClass(it.status)}">${escapeHtml((it.status || '').toUpperCase())}</span>
                 `;
@@ -326,7 +351,7 @@
             els.scoreBarFill.style.width = data.compliance_score + '%';
             els.verdict.className = `lg-verdict ${verdictClass(data.verdict)}`;
             els.verdict.querySelector('.lg-verdict-text').textContent = data.verdict;
-            els.summary.textContent = data.summary;
+            els.summary.textContent = normalizeText(data.summary);
 
             els.clauses.innerHTML = '';
             (data.flagged_clauses || []).forEach(c => els.clauses.appendChild(renderClauseCard(c)));

@@ -2,6 +2,29 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from '@supabase/supabase-js';
+
+// Normalize ALL-CAPS text to sentence case (safety net for old/backend data)
+function normalizeText(text: string): string {
+  if (!text || typeof text !== 'string') return text || '';
+  const alpha = text.split('').filter(c => /[a-zA-Z]/.test(c));
+  if (!alpha.length) return text;
+  const upperCount = alpha.filter(c => c === c.toUpperCase() && /[A-Z]/.test(c)).length;
+  if (upperCount / alpha.length > 0.5) {
+    let normalized = text.toLowerCase();
+    normalized = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    normalized = normalized.replace(/([.!?]\s+)([a-z])/g, (match, sep, letter) => sep + letter.toUpperCase());
+    const protectedTerms = new Map([
+      ['aadhaar', 'Aadhaar'], ['dpdp', 'DPDP'], ['pii', 'PII'], ['kyc', 'KYC'],
+      ['gdpr', 'GDPR'], ['hipaa', 'HIPAA'], ['india', 'India'], ['indian', 'Indian'],
+      ['ai', 'AI'], ['api', 'API'], ['dpdp act', 'DPDP Act'], ['i', 'I']
+    ]);
+    for (const [lower, proper] of protectedTerms) {
+      normalized = normalized.replace(new RegExp('\\b' + lower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\b', 'gi'), proper);
+    }
+    return normalized;
+  }
+  return text;
+}
 import {
   Search, Bell, Settings, LayoutDashboard, FileText, Library, FileSearch, Send,
   Cpu, Activity, CheckCircle2, AlertTriangle, ShieldCheck, User, ChevronDown, ChevronRight, Upload, Link as LinkIcon, LogIn, LogOut
@@ -200,14 +223,23 @@ export default function Dashboard() {
       setComplianceScore(data.compliance_score);
       
       // Format the backend response into a rich markdown-like chat message
-      let msgContent = `I have completed the deep audit against the DPDP Act 2023. The document scores **${data.compliance_score}%**.\n\n**Verdict:** ${data.verdict}\n\n${data.summary}\n\n`;
+      const safe = { summary: normalizeText(data.summary || ''), verdict: normalizeText(data.verdict || '') };
+      let msgContent = `I have completed the deep audit against the DPDP Act 2023. The document scores **${data.compliance_score}%**.
+
+**Verdict:** ${safe.verdict}
+
+${safe.summary}
+
+`;
       
       let citationsList: {id: string, text: string}[] = [];
       
       if (data.flagged_clauses && data.flagged_clauses.length > 0) {
           msgContent += "**Flagged Issues:**\n";
           data.flagged_clauses.forEach((c: any) => {
-             msgContent += `- **${c.clause_id} (${c.dpdp_section})**: ${c.issue} \n  *Recommendation: ${c.suggested_fix}*\n\n`;
+             const issue = normalizeText(c.issue || '');
+             const fix = normalizeText(c.suggested_fix || '');
+             msgContent += `- **${c.clause_id} (${c.dpdp_section})**: ${issue} \n  *Recommendation: ${fix}*\n\n`;
              citationsList.push({ id: c.clause_id, text: c.dpdp_section });
           });
       }

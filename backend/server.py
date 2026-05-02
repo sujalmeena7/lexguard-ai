@@ -534,6 +534,84 @@ async def exchange_auth_handoff(request: Request, req: HandoffExchangeRequest):
     return {"access_token": access_token}
 
 
+# ── Text normalization (module-level so every endpoint can reuse) ──
+def _redact_pii(text: str) -> str:
+    """Redact common Indian PII patterns from text as a backend safety net."""
+    if not text or not isinstance(text, str):
+        return text or ""
+    text = re.sub(r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b', '[AADHAAR]', text)
+    text = re.sub(r'\b(?:\+91[-\s]?)?[6-9]\d{9}\b', '[PHONE]', text)
+    text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', '[EMAIL]', text)
+    return text
+
+def _normalize_text(text: str) -> str:
+    """Convert ALL-CAPS strings to sentence case; leave mixed-case text alone.
+    Protected terms (e.g., DPDP, Aadhaar, PII) retain their correct casing.
+    Also fixes excessive uppercase even when some lowercase is mixed in."""
+    if not text or not isinstance(text, str):
+        return text or ""
+    alpha = [c for c in text if c.isalpha()]
+    if not alpha:
+        return text
+    upper_ratio = sum(1 for c in alpha if c.isupper()) / len(alpha)
+    if upper_ratio > 0.5:
+        text = text.lower()
+        sentences = re.split(r'([.!?]\s+)', text)
+        result = []
+        for i, s in enumerate(sentences):
+            if i % 2 == 0 and s:
+                s = s[0].upper() + s[1:] if len(s) > 1 else s.upper()
+            result.append(s)
+        text = ''.join(result)
+        text = re.sub(r'(?<=\n)([a-z])', lambda m: m.group(1).upper(), text)
+        protected = [
+            ("aadhaar", "Aadhaar"),
+            ("dpdp", "DPDP"),
+            ("pii", "PII"),
+            ("kyc", "KYC"),
+            ("gdpr", "GDPR"),
+            ("hipaa", "HIPAA"),
+            ("india", "India"),
+            ("indian", "Indian"),
+            ("ai", "AI"),
+            ("api", "API"),
+            ("dpdp act", "DPDP Act"),
+            ("i", "I"),
+        ]
+        for lower, proper in protected:
+            text = re.sub(rf'\b{re.escape(lower)}\b', proper, text, flags=re.IGNORECASE)
+    return text
+
+def _normalize_verdict(v: str) -> str:
+    return {"LOW RISK": "Low Risk", "MODERATE RISK": "Moderate Risk",
+            "HIGH RISK": "High Risk", "CRITICAL RISK": "High Risk"}.get(v, _normalize_text(v))
+
+def _normalize_risk(v: str) -> str:
+    return {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low",
+            "CRITICAL": "High"}.get(v, _normalize_text(v))
+
+def _normalize_status(v: str) -> str:
+    return {"COMPLIANT": "Compliant", "NON-COMPLIANT": "Non-Compliant",
+            "NOT ADDRESSED": "Not Addressed", "PARTIAL": "Partial"}.get(v, _normalize_text(v))
+
+def _normalize_audit_data(data: dict) -> dict:
+    """Recursively normalize text case and redact PII from model output."""
+    data["verdict"] = _normalize_verdict(data.get("verdict", ""))
+    data["summary"] = _normalize_text(data.get("summary", ""))
+    for fc in data.get("flagged_clauses", []) or []:
+        fc["risk_level"] = _normalize_risk(fc.get("risk_level", ""))
+        fc["issue"] = _normalize_text(fc.get("issue", ""))
+        fc["suggested_fix"] = _normalize_text(fc.get("suggested_fix", ""))
+        fc["clause_excerpt"] = _redact_pii(_normalize_text(fc.get("clause_excerpt", "")))
+        fc["dpdp_section"] = fc.get("dpdp_section", "")
+        fc["clause_id"] = fc.get("clause_id", "")
+    for item in data.get("checklist", []) or []:
+        item["status"] = _normalize_status(item.get("status", ""))
+        item["note"] = _normalize_text(item.get("note", ""))
+        item["focus_area"] = item.get("focus_area", "")
+    return data
+
+
 @api_router.post("/analyze", response_model=AnalysisResult)
 @limiter.limit("5/minute;50/day")
 async def analyze_policy(
@@ -613,79 +691,6 @@ async def analyze_policy(
             response_format={"type": "json_object"},
         )
         return completion.choices[0].message.content or ""
-
-    def _redact_pii(text: str) -> str:
-        """Redact common Indian PII patterns from text as a backend safety net."""
-        if not text or not isinstance(text, str):
-            return text or ""
-        # Aadhaar (12 digits, optional spaces/hyphens)
-        text = re.sub(r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b', '[AADHAAR]', text)
-        # Indian phone numbers (+91 optional, 10 digits)
-        text = re.sub(r'\b(?:\+91[-\s]?)?[6-9]\d{9}\b', '[PHONE]', text)
-        # Email addresses
-        text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', '[EMAIL]', text)
-        return text
-
-    def _normalize_text(text: str) -> str:
-        """Convert ALL-CAPS strings to sentence case; leave mixed-case text alone.
-        Protected terms (e.g., DPDP, Aadhaar, PII) retain their correct casing."""
-        if not text or not isinstance(text, str):
-            return text or ""
-        alpha = [c for c in text if c.isalpha()]
-        if not alpha:
-            return text
-        upper_ratio = sum(1 for c in alpha if c.isupper()) / len(alpha)
-        if upper_ratio > 0.7:
-            text = text.lower()
-            text = text[0].upper() + text[1:] if text else text
-            # Restore protected terms to their canonical casing
-            protected = [
-                ("aadhaar", "Aadhaar"),
-                ("dpdp", "DPDP"),
-                ("pii", "PII"),
-                ("kyc", "KYC"),
-                ("gdpr", "GDPR"),
-                ("hipaa", "HIPAA"),
-                ("india", "India"),
-                ("indian", "Indian"),
-            ]
-            import re
-            for lower, proper in protected:
-                text = re.sub(rf'\b{re.escape(lower)}\b', proper, text, flags=re.IGNORECASE)
-        return text
-
-    def _normalize_verdict(v: str) -> str:
-        return {"LOW RISK": "Low Risk", "MODERATE RISK": "Moderate Risk",
-                "HIGH RISK": "High Risk", "CRITICAL RISK": "High Risk"}.get(v, _normalize_text(v))
-
-    def _normalize_risk(v: str) -> str:
-        return {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low",
-                "CRITICAL": "High"}.get(v, _normalize_text(v))
-
-    def _normalize_status(v: str) -> str:
-        return {"COMPLIANT": "Compliant", "NON-COMPLIANT": "Non-Compliant",
-                "NOT ADDRESSED": "Not Addressed", "PARTIAL": "Partial"}.get(v, _normalize_text(v))
-
-    def _normalize_audit_data(data: dict) -> dict:
-        """Recursively normalize text case and redact PII from model output."""
-        # Verdict
-        data["verdict"] = _normalize_verdict(data.get("verdict", ""))
-        # Summary
-        data["summary"] = _normalize_text(data.get("summary", ""))
-        # Flagged clauses
-        for fc in data.get("flagged_clauses", []) or []:
-            fc["risk_level"] = _normalize_risk(fc.get("risk_level", ""))
-            fc["issue"] = _normalize_text(fc.get("issue", ""))
-            fc["suggested_fix"] = _normalize_text(fc.get("suggested_fix", ""))
-            fc["clause_excerpt"] = _redact_pii(_normalize_text(fc.get("clause_excerpt", "")))
-            fc["dpdp_section"] = fc.get("dpdp_section", "")
-            fc["clause_id"] = fc.get("clause_id", "")
-        # Checklist
-        for item in data.get("checklist", []) or []:
-            item["status"] = _normalize_status(item.get("status", ""))
-            item["note"] = _normalize_text(item.get("note", ""))
-            item["focus_area"] = item.get("focus_area", "")
-        return data
 
     def _is_quota_error(exc: Exception) -> bool:
         msg = str(exc).lower()
@@ -803,6 +808,9 @@ async def get_user_audits(request: Request, user: dict = Depends(get_current_use
     try:
         cursor = db.analyses.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
         audits = await cursor.to_list(length=100)
+        # Normalize old DB entries that may have ALL-CAPS text
+        for a in audits:
+            _normalize_audit_data(a)
         return audits
     except Exception as e:
         logger.warning(f"Failed to fetch audits: {e}")
@@ -864,6 +872,9 @@ async def unlock_full_report(
         )
     except Exception as db_err:
         logger.warning(f"Database update failed: {db_err}")
+
+    # Normalize in case old DB entries have ALL-CAPS text
+    _normalize_audit_data(doc)
 
     return AnalysisResult(
         analysis_id=doc["analysis_id"],
@@ -1244,6 +1255,36 @@ async def generate_roadmap(
     return result
 
 
+def _normalize_roadmap_data(data: dict) -> dict:
+    """Normalize text case in roadmap entries (back-compat for old ALL-CAPS data)."""
+    if not isinstance(data, dict):
+        return data
+    for key in ("overall_risk_rating", "generated_at", "roadmap_id"):
+        if key in data:
+            continue  # skip non-text fields
+    data["overall_risk_rating"] = _normalize_text(data.get("overall_risk_rating", ""))
+    for gap in data.get("remediation_roadmap", []) or []:
+        for field in ("gap_description", "immediate_action", "golden_clause", "operational_change", "dpdp_section"):
+            if field in gap:
+                gap[field] = _normalize_text(gap[field])
+    for item in data.get("executive_summary", []) or []:
+        for field in ("violation", "remediation_effort", "business_impact", "fix_priority"):
+            if field in item:
+                item[field] = _normalize_text(item[field])
+    scorecard = data.get("privacy_ux_scorecard", {})
+    if isinstance(scorecard, dict):
+        scorecard["readability_grade"] = _normalize_text(scorecard.get("readability_grade", ""))
+        for ja in scorecard.get("jargon_alerts", []) or []:
+            for field in ("term", "plain_language", "context"):
+                if field in ja:
+                    ja[field] = _normalize_text(ja[field])
+        mr = scorecard.get("multilingual_readiness", {})
+        if isinstance(mr, dict):
+            mr["status"] = _normalize_text(mr.get("status", ""))
+            mr["rationale"] = _normalize_text(mr.get("rationale", ""))
+    return data
+
+
 @api_router.get("/roadmaps")
 @limiter.limit("30/minute")
 async def get_user_roadmaps(request: Request, user: dict = Depends(get_current_user)):
@@ -1251,6 +1292,8 @@ async def get_user_roadmaps(request: Request, user: dict = Depends(get_current_u
     try:
         cursor = db.roadmaps.find({"user_id": user["id"]}, {"_id": 0}).sort("generated_at", -1)
         roadmaps = await cursor.to_list(length=50)
+        for r in roadmaps:
+            _normalize_roadmap_data(r)
         return roadmaps
     except Exception as e:
         logger.warning(f"Failed to fetch roadmaps: {e}")

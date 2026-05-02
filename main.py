@@ -382,9 +382,17 @@ def _normalize_text(text: str) -> str:
     if not alpha:
         return text
     upper_ratio = sum(1 for c in alpha if c.isupper()) / len(alpha)
-    if upper_ratio > 0.7:
+    if upper_ratio > 0.5:
         text = text.lower()
-        text = text[0].upper() + text[1:] if text else text
+        # Capitalize first letter of each sentence
+        sentences = re.split(r'([.!?]\s+)', text)
+        result = []
+        for i, s in enumerate(sentences):
+            if i % 2 == 0 and s:
+                s = s[0].upper() + s[1:] if len(s) > 1 else s.upper()
+            result.append(s)
+        text = ''.join(result)
+        text = re.sub(r'(?<=\n)([a-z])', lambda m: m.group(1).upper(), text)
         # Restore protected terms
         protected = [
             ("aadhaar", "Aadhaar"),
@@ -395,6 +403,10 @@ def _normalize_text(text: str) -> str:
             ("hipaa", "HIPAA"),
             ("india", "India"),
             ("indian", "Indian"),
+            ("ai", "AI"),
+            ("api", "API"),
+            ("dpdp act", "DPDP Act"),
+            ("i", "I"),
         ]
         for lower, proper in protected:
             text = re.sub(rf'\b{re.escape(lower)}\b', proper, text, flags=re.IGNORECASE)
