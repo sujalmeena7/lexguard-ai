@@ -36,6 +36,29 @@ from database import (
     log_security_event,
     check_rate_limit,
 )
+
+# Ensure session defaults are initialized immediately
+def ensure_user_session_defaults() -> None:
+    defaults = {
+        "current_page": "audit",
+        "credits": 0,
+        "is_premium": False,
+        "show_key_input": False,
+        "authenticated": False,
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    if st.session_state.authenticated:
+        profile = get_or_create_user_profile(
+            str(st.session_state.user_id), str(st.session_state.user_email)
+        )
+        st.session_state.credits = profile.get("credits", 0)
+        st.session_state.is_premium = profile.get("is_premium", False)
+
+ensure_user_session_defaults()
+
 from main import (
     get_document_namespace,
     get_retriever,
@@ -43,6 +66,8 @@ from main import (
     get_user_workspace_vector_stats,
     index_user_document,
     run_compliance_audit,
+    DEEP_MODEL,
+    TRIAGE_MODEL,
 )
 from report_gen import generate_report
 from privacy_architect import (
@@ -50,7 +75,6 @@ from privacy_architect import (
     generate_roadmap_from_audit,
     save_roadmap_json,
 )
-
 
 # Premium upgrade access key. Read from Streamlit secrets or environment;
 # never hardcoded. When unset, the Upgrade-to-Premium UI is hidden so no
@@ -354,25 +378,6 @@ def save_user_cache(paths: Dict[str, str]) -> None:
             json.dump(cache_payload, cache_file, indent=2)
     except Exception as exc:
         logger.warning("Failed to write session cache to %s: %s", paths["session_cache"], exc)
-
-
-def ensure_user_session_defaults() -> None:
-    defaults = {
-        "current_page": "audit",
-        "credits": 0,
-        "is_premium": False,
-        "show_key_input": False,
-    }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-    if st.session_state.authenticated:
-        profile = get_or_create_user_profile(
-            str(st.session_state.user_id), str(st.session_state.user_email)
-        )
-        st.session_state.credits = profile.get("credits", 0)
-        st.session_state.is_premium = profile.get("is_premium", False)
 
     if "audit_complete" not in st.session_state:
         reset_audit_state()

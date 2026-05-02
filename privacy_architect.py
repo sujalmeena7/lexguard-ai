@@ -129,26 +129,27 @@ PRIVACY_ARCHITECT_PROMPT_STR = textwrap.dedent("""\
     """)
 
 
-def _extract_roadmap_json(text: str) -> dict:
-    """Robustly extract the roadmap JSON object from a model response."""
-    if not text:
-        raise ValueError("Empty roadmap response")
-    # 1) Try raw parse
+def _extract_roadmap_json(text: str) -> Dict:
+    """Extract JSON from raw LLM output, handling markdown fences and unescaped control characters."""
+    # 1) Try literal parse
     try:
-        return json.loads(text.strip())
+        return json.loads(text.strip(), strict=False)
     except json.JSONDecodeError:
         pass
     # 2) Strip markdown fences
     cleaned = re.sub(r"```(?:json)?", "", text).strip()
     try:
-        return json.loads(cleaned)
+        return json.loads(cleaned, strict=False)
     except json.JSONDecodeError:
         pass
     # 3) Find first { to last }
     start, end = text.find("{"), text.rfind("}")
     if start != -1 and end != -1 and end > start:
-        return json.loads(text[start:end + 1])
-    raise json.JSONDecodeError("Roadmap JSON not found", text, 0)
+        try:
+            return json.loads(text[start : end + 1], strict=False)
+        except json.JSONDecodeError:
+            pass
+    raise json.JSONDecodeError("Roadmap JSON not found or invalid control chars", text, 0)
 
 
 def _is_quota_error(exc: Exception) -> bool:
