@@ -214,7 +214,7 @@
           <textarea id="lg-input" class="lg-textarea" data-testid="lg-input" placeholder="Paste any paragraph — we'll return a DPDP 2023 verdict, compliance score, and the top flagged clauses in under 2 seconds.&#10;&#10;Example: 'We may collect, process and share your personal data with our partners and affiliates for purposes we deem necessary. By using this service you consent to all current and future data usage…'" rows="9" maxlength="25000"></textarea>
           <div class="lg-meta-row">
             <div class="lg-chars" data-testid="lg-char-count"><span id="lg-char-count">0</span> / 25,000 chars</div>
-            <button type="button" class="lg-sample" id="lg-sample-btn" data-testid="lg-sample-btn" onclick="insertSampleClause()">
+            <button type="button" class="lg-sample" id="lg-sample-btn" data-testid="lg-sample-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               Try a sample clause
             </button>
@@ -297,20 +297,6 @@
       </div>
     </div>
   </section>
-
-  <!-- Sample clause fallback handler (runs before widget.js to guarantee click works) -->
-  <script>
-    window.insertSampleClause = function() {
-      var el = document.getElementById('lg-input');
-      if (!el) return;
-      el.value = 'We may collect, process, store, and share your personal data — including your name, email, phone number, location, browsing behaviour, device identifiers, and financial information — with our affiliates, business partners, marketing agencies, and any third-party service providers for purposes we deem necessary, in perpetuity. By using this service, you are deemed to have given your consent to all current and any future uses of your data, even if our policy changes without prior notice. We may retain your data indefinitely, even after your account is closed, and we reserve the right not to respond to requests for data deletion if we believe retention serves a legitimate business interest. In the event of a data breach, we will evaluate on a case-by-case basis whether notification is warranted.';
-      var cc = document.getElementById('lg-char-count');
-      if (cc) cc.textContent = el.value.length.toLocaleString('en-IN');
-      var btn = document.getElementById('lg-analyze-btn');
-      if (btn) btn.disabled = false;
-      setTimeout(function() { if (btn) btn.click(); }, 300);
-    };
-  </script>
 
   <!-- ── Features Section ── -->
   <section id="about" class="relative z-10 bg-black/80 backdrop-blur-sm py-20 px-6">

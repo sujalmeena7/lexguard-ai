@@ -38,6 +38,32 @@
       "createdAt": "2026-05-02T07:44:42.033Z",
       "model": "sonnet",
       "modelRoutedBy": "default"
+    },
+    "agent-1777759827514-9i38qc": {
+      "agentId": "agent-1777759827514-9i38qc",
+      "agentType": "architect",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic"
+      },
+      "createdAt": "2026-05-02T22:10:27.514Z",
+      "model": "opus",
+      "modelRoutedBy": "default"
+    },
+    "agent-1777759869900-iofw2r": {
+      "agentId": "agent-1777759869900-iofw2r",
+      "agentType": "architect",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic"
+      },
+      "createdAt": "2026-05-02T22:11:09.901Z",
+      "model": "opus",
+      "modelRoutedBy": "default"
     }
   },
   "version": "3.0.0"

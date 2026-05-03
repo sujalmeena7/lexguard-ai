@@ -33,12 +33,12 @@
             normalized = normalized.charAt(0).toUpperCase() + normalized.slice(1);
             normalized = normalized.replace(/([.!?]\s+)([a-z])/g, (match, sep, letter) => sep + letter.toUpperCase());
             normalized = normalized.replace(/(\n)([a-z])/g, (match, sep, letter) => sep + letter.toUpperCase());
-            const protected = [
+            const protectedTerms = [
                 ['aadhaar', 'Aadhaar'], ['dpdp', 'DPDP'], ['pii', 'PII'], ['kyc', 'KYC'],
                 ['gdpr', 'GDPR'], ['hipaa', 'HIPAA'], ['india', 'India'], ['indian', 'Indian'],
                 ['ai', 'AI'], ['api', 'API'], ['dpdp act', 'DPDP Act'], ['i', 'I']
             ];
-            protected.forEach(([lower, proper]) => {
+            protectedTerms.forEach(([lower, proper]) => {
                 const re = new RegExp('\\b' + lower.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\b', 'gi');
                 normalized = normalized.replace(re, proper);
             });
