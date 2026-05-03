@@ -26,7 +26,7 @@
     border: 1px solid var(--lg-border);
     border-radius: 18px;
     color: var(--lg-text);
-    font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     box-shadow:
         0 30px 80px -20px rgba(8, 15, 40, 0.55),
         0 0 0 1px rgba(255, 255, 255, 0.02) inset;
