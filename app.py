@@ -595,7 +595,7 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-    @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400&f[]=satoshi@400,500,700,900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 
     :root {
         --primary: #002FA7;
@@ -609,7 +609,16 @@ st.markdown(
     .stApp {
         background-color: var(--bg-dark);
         color: #ffffff;
-        font-family: 'Satoshi', sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    /* Force Inter on all body-level text to override Streamlit defaults */
+    .stApp p, .stApp span, .stApp li, .stApp div, .stApp label,
+    .stApp .stMarkdown, .stApp [data-testid="stMarkdownContainer"],
+    .stApp textarea, .stApp input {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        font-variant: normal !important;
+        text-transform: none !important;
     }
 
     #MainMenu {visibility: hidden;}
@@ -628,6 +637,7 @@ st.markdown(
         color: white;
         border: 1px solid var(--border);
         border-radius: 4px;
+        font-family: 'Inter', sans-serif !important;
         font-weight: 500;
         transition: all 0.2s ease;
         width: 100%;
@@ -658,8 +668,8 @@ st.markdown(
     }
 
     [data-testid="stMetricValue"] {
-        font-family: 'Cabinet Grotesk', sans-serif;
-        font-weight: 800;
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-weight: 700;
         letter-spacing: -0.02em;
     }
 
@@ -671,8 +681,8 @@ st.markdown(
     }
 
     h1, h2, h3 {
-        font-family: 'Cabinet Grotesk', sans-serif;
-        font-weight: 800;
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-weight: 700;
         letter-spacing: -0.03em;
     }
 
