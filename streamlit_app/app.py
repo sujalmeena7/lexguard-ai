@@ -704,7 +704,76 @@ st.markdown(
         color: var(--zinc-400) !important;
         font-size: 0.9rem;
     }
+
+    /* ── Hamburger Menu Toggle ── */
+    .lg-hamburger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 99999;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: rgba(15, 17, 21, 0.85);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(8px);
+    }
+    .lg-hamburger:hover {
+        background: rgba(255,255,255,0.08);
+        border-color: var(--primary);
+    }
+    .lg-hamburger svg {
+        width: 20px;
+        height: 20px;
+        stroke: #ffffff;
+        stroke-width: 2;
+        stroke-linecap: round;
+    }
+
+    /* Sidebar overlay mode for mobile */
+    [data-testid="stSidebar"] {
+        transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .sidebar--collapsed [data-testid="stSidebar"] {
+        transform: translateX(-100%);
+        opacity: 0;
+        pointer-events: none;
+    }
+    .sidebar--collapsed .lg-hamburger {
+        left: 12px;
+    }
+    .sidebar--expanded .lg-hamburger {
+        left: calc(min(21rem, 90vw) + 12px);
+    }
+    @media (max-width: 768px) {
+        .sidebar--expanded .lg-hamburger {
+            left: calc(80vw + 12px);
+        }
+    }
 </style>
+<script>
+(function(){
+    const btn = document.createElement('div');
+    btn.className = 'lg-hamburger';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>';
+    btn.title = 'Toggle menu';
+    document.body.appendChild(btn);
+
+    // Toggle sidebar by simulating the native collapse button
+    btn.addEventListener('click', function(){
+        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        if (sidebar) {
+            const toggleBtn = sidebar.querySelector('button[kind="header"]');
+            if (toggleBtn) toggleBtn.click();
+        }
+    });
+})();
+</script>
 """,
     unsafe_allow_html=True,
 )
