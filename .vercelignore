@@ -1,45 +1,55 @@
-# Keep Vercel deployment scoped to the static landing page.
-# Everything below is the Streamlit / Python app (hosted on Streamlit Community Cloud, not Vercel).
+# Keep Vercel deployment scoped to: api/ (proxy) + public/ (static site)
+# Everything else is Python/Streamlit/Next.js — NOT deployed via Vercel.
 
-# Python app source
-app.py
-main.py
-report_gen.py
+# Python source & packages
+core/
+streamlit/
+backend/
+tests/
+dashboard/
+frontend/
+*.py
+
+# Python config files
 requirements.txt
-audit_report.json
-info.json
-test_policy.txt
-local_store.txt
-full_path.txt
-p_show.txt
-parent_retreiver.txt
-pip_show.txt
-assets/
+runtime.txt
+pyproject.toml
+setup.py
+setup.cfg
+
+# Python environments
+venv/
+.venv/
+env/
+ENV/
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 
-# Python envs
-venv/
-.venv/
-env/
-ENV/
-
-# Vector DB
+# Storage & data
+storage/
+data/
 db/
+db_workspace/
+data_store/
+dist/
 docstore.json
 session_cache.json
+audit_report.json
 
 # Streamlit config
 .streamlit/
 
-# Emergent preview scaffolding
-# frontend/
-# backend/
-# design_guidelines.json
-# memory/
+# Config & scripts
+config/
+scripts/
+memory/
+assets/
 
 # Misc
 *.pdf
 .DS_Store
+CLAUDE.md
+.gitconfig
+.mcp.json
