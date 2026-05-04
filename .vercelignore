@@ -3,7 +3,7 @@
 
 # Python source & packages
 core/
-streamlit/
+streamlit_app/
 backend/
 tests/
 dashboard/
