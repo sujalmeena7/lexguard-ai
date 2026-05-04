@@ -12,6 +12,7 @@ from typing import Dict, List, Optional
 
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 from core.auth import (
     init_auth_state,
@@ -756,17 +757,27 @@ st.markdown(
         }
     }
 </style>
+""",
+    unsafe_allow_html=True,
+)
+
+# Inject hamburger toggle button via components (allows real JS execution)
+components.html("""
 <script>
 (function(){
-    const btn = document.createElement('div');
+    // Don't create duplicate buttons on rerun
+    if (document.getElementById('lg-hamburger-btn')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'lg-hamburger-btn';
     btn.className = 'lg-hamburger';
     btn.innerHTML = '<svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>';
     btn.title = 'Toggle menu';
+    btn.setAttribute('aria-label', 'Toggle sidebar');
     document.body.appendChild(btn);
 
-    // Toggle sidebar by simulating the native collapse button
     btn.addEventListener('click', function(){
-        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        const sidebar = parent.document.querySelector('[data-testid="stSidebar"]');
         if (sidebar) {
             const toggleBtn = sidebar.querySelector('button[kind="header"]');
             if (toggleBtn) toggleBtn.click();
@@ -774,9 +785,7 @@ st.markdown(
     });
 })();
 </script>
-""",
-    unsafe_allow_html=True,
-)
+""", height=0)
 
 
 # Auth bootstrap and guardrails
