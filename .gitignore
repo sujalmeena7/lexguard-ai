@@ -1,5 +1,6 @@
 # ── Streamlit Secrets 
 .streamlit/secrets.toml
+streamlit/.streamlit/secrets.toml
 
 # ── Local Session & Audit Cache
 data_store/
@@ -13,10 +14,22 @@ p_show.txt
 pip_show.txt
 parent_retreiver.txt
 
-# ── Vector DB & Document Store
+# ── Storage (runtime data — gitignored)
+storage/local/*
+!storage/local/.gitkeep
+storage/vector_db/*
+!storage/vector_db/.gitkeep
+storage/workspaces/*
+!storage/workspaces/.gitkeep
+storage/docstore.json
+storage/logs/*.log
+!storage/logs/.gitkeep
+
+# ── Legacy paths (kept for backward compat)
 db/
 db_workspace/
 docstore.json
+data/
 
 # ── Python Cache
 __pycache__/
@@ -44,11 +57,10 @@ build/
 dist/
 *.egg-info/
 
-# ── Emergent preview scaffolding (not part of the repo) 
-# /frontend/
-# /backend/
-# /design_guidelines.json
-# /memory/
+# ── AI Tool Scaffolding
+.claude/
+.claude-flow/
+.swarm/
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
@@ -83,7 +95,6 @@ dist/
 dist
 
 # Environment files (comprehensive coverage)
-
 *token.json*
 *credentials.json*
 
@@ -130,8 +141,6 @@ agenthub/agents/youtube/db
 
 memory/test_credentials.md
 
-# Mobile development
-android-sdk/-e 
 # Environment and credential files
 .env
 .env.*
@@ -140,35 +149,4 @@ credentials.json
 *.pem
 *.key
 .credentials
- origin/conflict_220426_1610
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
-
-# ── User Data Workspace
-data/
 

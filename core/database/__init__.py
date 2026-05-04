@@ -1,0 +1,15 @@
+from core.database.supabase_db import (
+    SCHEMA_REFERENCE_SQL,
+    delete_user_audit,
+    fetch_user_audits,
+    fetch_user_uploaded_files,
+    save_audit_log,
+    save_uploaded_file,
+    deduct_user_credit,
+    get_or_create_user_profile,
+    update_user_premium_status,
+    add_user_credits,
+    log_security_event,
+    check_rate_limit,
+    get_supabase_client,
+)

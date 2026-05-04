@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 import plotly.graph_objects as go
 import streamlit as st
 
-from auth_utils import (
+from core.auth import (
     init_auth_state,
     restore_session_from_token,
     sign_in_with_email,
@@ -22,7 +22,7 @@ from auth_utils import (
     reset_password_request,
     update_password,
 )
-from database import (
+from core.database import (
     SCHEMA_REFERENCE_SQL,
     delete_user_audit,
     fetch_user_audits,
@@ -59,7 +59,7 @@ def ensure_user_session_defaults() -> None:
 
 ensure_user_session_defaults()
 
-from main import (
+from core.auditor import (
     get_document_namespace,
     get_retriever,
     get_user_workspace_retriever,
@@ -69,8 +69,8 @@ from main import (
     DEEP_MODEL,
     TRIAGE_MODEL,
 )
-from report_gen import generate_report
-from privacy_architect import (
+from core.reports import generate_report
+from core.privacy import (
     generate_privacy_roadmap,
     generate_roadmap_from_audit,
     save_roadmap_json,
@@ -84,8 +84,8 @@ ACCESS_KEY = (
     or None
 )
 PREMIUM_CREDIT_GRANT = 10
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-USER_DATA_ROOT = os.path.join(BASE_DIR, "data")
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+USER_DATA_ROOT = os.path.join(_PROJECT_ROOT, "storage", "local")
 logger = logging.getLogger(__name__)
 
 
@@ -110,7 +110,7 @@ def mask_pii(text: str) -> str:
 
 def get_user_workspace_paths(user_id: str) -> Dict[str, str]:
     safe_user_id = sanitize_user_id(user_id)
-    user_path = f"data/{safe_user_id}/"
+    user_path = f"storage/local/{safe_user_id}/"
     uploads_rel_dir = f"{user_path}uploads/"
     cache_rel_dir = f"{user_path}cache/"
     user_root = os.path.join(USER_DATA_ROOT, safe_user_id)
@@ -144,7 +144,7 @@ def resolve_user_storage_path(workspace_paths: Dict[str, str], storage_path: Opt
     for rel_prefix in (workspace_paths["uploads_rel_dir"], workspace_paths["cache_rel_dir"]):
         if normalized.startswith(rel_prefix):
             relative_fragment = normalized.replace("/", os.sep)
-            resolved_path = os.path.normpath(os.path.join(BASE_DIR, relative_fragment))
+            resolved_path = os.path.normpath(os.path.join(_PROJECT_ROOT, relative_fragment))
             if any(_is_within(resolved_path, root) for root in allowed_roots):
                 return resolved_path
             return None
@@ -791,7 +791,7 @@ if st.session_state.get("user_id") is None:
     st.stop()
 
 current_user_id = str(st.session_state.user_id)
-USER_PATH = f"data/{st.session_state.user_id}/"
+USER_PATH = f"storage/local/{st.session_state.user_id}/"
 workspace_paths = get_user_workspace_paths(current_user_id)
 ensure_workspace_dirs(workspace_paths)
 
