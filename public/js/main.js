@@ -36,7 +36,7 @@
     const BACKEND = (window.__LEXGUARD_BACKEND__ || '').replace(/\/+$/, '');
     const API = (BACKEND ? BACKEND : '') + '/api';
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const defaultDashboardUrl = isLocalhost ? 'http://localhost:8501/' : 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/';
+    const defaultDashboardUrl = isLocalhost ? 'http://localhost:3000/' : 'https://dashboard-lexguard-ai.vercel.app/';
     const DASHBOARD_URL = window.ENV_DASHBOARD_URL || defaultDashboardUrl;
     const createAuthHandoffCode = async (accessToken) => {
         if (!accessToken) return null;

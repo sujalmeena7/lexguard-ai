@@ -9,7 +9,7 @@
     const BACKEND = (window.__LEXGUARD_BACKEND__ || '').replace(/\/+$/, '');
     const API = (BACKEND ? BACKEND : '') + '/api';
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const STREAMLIT_URL = window.ENV_DASHBOARD_URL || (isLocalhost ? 'http://localhost:8501' : '');
+    const DASHBOARD_URL = window.ENV_DASHBOARD_URL || (isLocalhost ? 'http://localhost:3000' : '');
     const HAS_PLACEHOLDER_URL = BACKEND.includes('__BACKEND_URL__');
 
     const SAMPLE_POLICY = `We may collect, process, store, and share your personal data — including your name, email, phone number, location, browsing behaviour, device identifiers, and financial information — with our affiliates, business partners, marketing agencies, and any third-party service providers for purposes we deem necessary, in perpetuity. By using this service, you are deemed to have given your consent to all current and any future uses of your data, even if our policy changes without prior notice. We may retain your data indefinitely, even after your account is closed, and we reserve the right not to respond to requests for data deletion if we believe retention serves a legitimate business interest. In the event of a data breach, we will evaluate on a case-by-case basis whether notification is warranted.`;
@@ -130,8 +130,8 @@
             }
         };
 
-        const buildStreamlitUrl = async (email) => {
-            const url = new URL(`${STREAMLIT_URL}/`);
+        const buildDashboardUrl = async (email) => {
+            const url = new URL(`${DASHBOARD_URL}/`);
             url.searchParams.set('lead', email);
             url.searchParams.set('src', 'landing');
             url.searchParams.set('analysis', state.analysisId || '');
@@ -406,17 +406,17 @@
                     throw new Error(err.detail || `HTTP ${resp.status}`);
                 }
                 
-                // Email saved — show redirect state and open Streamlit in new tab
-                // Pass lead email + analysis_id so Streamlit can auto-track conversion
-                const streamlitUrl = await buildStreamlitUrl(email);
+                // Email saved — show redirect state and open dashboard in new tab
+                // Pass lead email + analysis_id so dashboard can auto-track conversion
+                const dashboardUrl = await buildDashboardUrl(email);
                 showState('full');
                 
                 // Update the fallback link href to also carry the lead param
                 document.querySelectorAll('[data-testid="lg-redirect-cta"], [data-testid="lg-redirect-fallback"]').forEach(el => {
-                    if (el.tagName === 'A') el.href = streamlitUrl;
+                    if (el.tagName === 'A') el.href = dashboardUrl;
                 });
                 
-                const newTab = window.open(streamlitUrl, '_blank', 'noopener');
+                const newTab = window.open(dashboardUrl, '_blank', 'noopener');
                 if (!newTab) {
                     const sub = document.getElementById('lg-redirect-sub');
                     if (sub) sub.textContent = "Popup blocked — click the button below to launch the dashboard manually.";

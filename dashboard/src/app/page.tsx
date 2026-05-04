@@ -36,6 +36,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { HealthGauge } from "@/components/health-gauge";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AnalysisPanel } from "@/components/analysis-panel";
+import { AuthGuard, useDashboardUser } from "@/components/auth-guard";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -126,7 +127,8 @@ const sidebarItems = [
 
 // ── Component ─────────────────────────────────────────────────────────
 
-export default function Dashboard() {
+function DashboardContent() {
+  const { user, onSignOut } = useDashboardUser();
   const [activeNav, setActiveNav] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
   const [notifications] = useState(3);
@@ -219,10 +221,10 @@ export default function Dashboard() {
               <AvatarFallback className="bg-primary/10 text-primary text-xs">SM</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="truncate text-xs font-medium">Sujal Meena</p>
+              <p className="truncate text-xs font-medium">{user!.email || "User"}</p>
               <p className="truncate text-[10px] text-muted-foreground">Admin</p>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+            <Button variant="ghost" size="icon" onClick={onSignOut} className="h-7 w-7 text-muted-foreground hover:text-destructive">
               <LogOut className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -257,10 +259,12 @@ export default function Dashboard() {
 
             <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 px-3 py-1.5">
               <Avatar className="h-7 w-7">
-                <AvatarFallback className="bg-emerald-500/10 text-emerald-600 text-[10px]">SM</AvatarFallback>
+                <AvatarFallback className="bg-emerald-500/10 text-emerald-600 text-[10px]">
+                {(user!.email?.charAt(0) || "U").toUpperCase()}
+              </AvatarFallback>
               </Avatar>
               <div className="hidden sm:block">
-                <p className="text-xs font-medium">Sujal Meena</p>
+                <p className="text-xs font-medium">{user!.email || "User"}</p>
                 <p className="text-[10px] text-muted-foreground">Enterprise Plan</p>
               </div>
             </div>
@@ -546,5 +550,13 @@ export default function Dashboard() {
         </ScrollArea>
       </main>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <AuthGuard>
+      <DashboardContent />
+    </AuthGuard>
   );
 }

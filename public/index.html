@@ -34,8 +34,8 @@
     window.ENV_SUPABASE_URL = 'https://corbyaeuxflemgilgcom.supabase.co';
     window.ENV_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI';
     window.ENV_DASHBOARD_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:8501/'
-      : 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/';
+      ? 'http://localhost:3000/'
+      : 'https://dashboard-lexguard-ai.vercel.app/';
     window.__LEXGUARD_CONFIG_READY__ = Promise.resolve();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -132,7 +132,7 @@
         <!-- Logged in state -->
         <div id="nav-logged-in" class="flex items-center gap-4 hidden">
           <span id="nav-user-email" class="text-white/60 text-sm hidden md:inline"></span>
-          <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/" id="nav-dashboard-link" class="bg-white rounded-full px-5 py-2 text-black text-sm font-medium hover:bg-white/90 transition-colors">Dashboard</a>
+          <a href="/dashboard" id="nav-dashboard-link" class="bg-white rounded-full px-5 py-2 text-black text-sm font-medium hover:bg-white/90 transition-colors">Dashboard</a>
           <button id="nav-logout-btn" class="text-white/60 text-sm font-medium hover:text-white transition-colors">Logout</button>
         </div>
         <!-- Logged out state -->
@@ -242,7 +242,7 @@
           <div class="lg-gate" data-testid="lg-gate">
             <div class="lg-gate-head">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-              <div><div class="lg-gate-title">Launch the full LexGuard Dashboard</div><div class="lg-gate-sub">Upload full PDFs · 10-page audit report · PDF export · clause-level fixes</div></div>
+              <div><div class="lg-gate-title">Launch the LexGuard AI Dashboard</div><div class="lg-gate-sub">Upload full PDFs · AI compliance audit · PDF export · clause-level fixes</div></div>
             </div>
             <form class="lg-gate-form" id="lg-gate-form" novalidate>
               <input type="email" class="lg-gate-input" id="lg-gate-email" data-testid="lg-gate-email" placeholder="work@company.in" required autocomplete="email" />
@@ -250,7 +250,7 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg> Launch Dashboard
               </button>
             </form>
-            <p class="lg-gate-legal">You'll be redirected to the LexGuard Streamlit dashboard in a new tab. No spam.</p>
+            <p class="lg-gate-legal">You'll be redirected to the LexGuard AI Dashboard. No spam.</p>
           </div>
         </div>
       </div>
@@ -263,13 +263,13 @@
             <div class="lg-credit-badge-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7" rx="2"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></div>
             <div class="lg-credit-badge-body">
               <div class="lg-credit-badge-title">+1 free audit credit granted</div>
-              <div class="lg-credit-badge-sub">We've applied a 1-free-audit credit to your Streamlit account — check your dashboard.</div>
+              <div class="lg-credit-badge-sub">We've applied a 1-free-audit credit to your account — check your dashboard.</div>
             </div>
           </div>
-          <p class="lg-redirect-sub" id="lg-redirect-sub">We've opened the LexGuard Streamlit dashboard in a new tab. Upload full PDFs, export branded reports, and audit 100+ documents.</p>
+          <p class="lg-redirect-sub" id="lg-redirect-sub">We've opened the LexGuard AI Dashboard in a new tab. Upload full PDFs, export branded reports, and audit 100+ documents.</p>
           <div class="lg-redirect-actions">
-            <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" class="lg-btn lg-btn-primary lg-btn-redirect" data-testid="lg-redirect-cta"><span class="lg-btn-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg> Open Dashboard &amp; claim credit</span></a>
-            <p class="lg-redirect-hint">Didn't open? <a href="https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
+            <a href="/dashboard" target="_blank" rel="noopener" class="lg-btn lg-btn-primary lg-btn-redirect" data-testid="lg-redirect-cta"><span class="lg-btn-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg> Open Dashboard &amp; claim credit</span></a>
+            <p class="lg-redirect-hint">Didn't open? <a href="/dashboard" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
           </div>
         </div>
       </div>
