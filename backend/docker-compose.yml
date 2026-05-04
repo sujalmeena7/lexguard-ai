@@ -1,6 +1,7 @@
 # ============================================================
 # LexGuard AI — Docker Compose for AWS EC2 (ap-south-1)
-# Compute: Single EC2 t3.medium (2 vCPU, 4GB RAM)
+# Compute: Single EC2 t3.small (1 vCPU, 2GB RAM)
+# NOTE: t3.small is memory-constrained. MongoDB cache is capped to 512MB.
 # Database: MongoDB 7 as Docker sidecar (no managed RDS cost)
 # Storage: Named volume on GP3 EBS for MongoDB persistence
 # Networking: Elastic IP + Security Groups (no ALB cost)
@@ -41,6 +42,7 @@ services:
     image: mongo:7.0
     container_name: lexguard-mongodb
     restart: unless-stopped
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.5"]
     ports:
       # Bind to localhost only for security; backend connects via Docker network
       - "127.0.0.1:27017:27017"

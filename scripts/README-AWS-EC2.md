@@ -6,14 +6,16 @@ Cost-optimized deployment using a single EC2 instance with Docker containers.
 
 | Component | Choice | Monthly Cost |
 |-----------|--------|-------------|
-| Compute | EC2 t3.medium (2 vCPU, 4GB) | ~$30 |
+| Compute | EC2 t3.small (1 vCPU, 2GB) | ~$15 |
 | Database | MongoDB 7 Docker sidecar | $0 |
 | Storage | 20GB GP3 EBS (root) | ~$1.60 |
 | Load Balancer | **None** — Elastic IP only | $0 |
 | SSL | **None** — HTTP only (add Caddy later) | $0 |
-| **Total** | | **~$32/mo** |
+| **Total** | | **~$17/mo** |
 
-With $200 AWS credits, this runs for **~6 months free**.
+With $200 AWS credits, this runs for **~13 months free**.
+
+> **Note:** t3.small is memory-constrained (2GB RAM). MongoDB cache is capped to 512MB in `docker-compose.yml` to prevent OOM kills. Monitor with `docker stats` under load.
 
 ## Important: Database Choice
 
@@ -31,7 +33,7 @@ Your backend code uses **MongoDB** (via `motor`/`pymongo`), not PostgreSQL. The 
 
 - **Region**: `ap-south-1` (Mumbai)
 - **AMI**: Ubuntu 22.04 LTS (HVM, SSD)
-- **Instance type**: `t3.medium`
+- **Instance type**: `t3.small`
 - **Storage**: 20GB GP3 (default IOPS, delete on termination)
 - **Security Group**:
   - SSH (22) — your IP only
@@ -120,10 +122,17 @@ ssh -i key.pem -L 8000:localhost:8000 ubuntu@<ELASTIC_IP>
 
 ## Cost Optimization Tips
 
-1. **t3.medium is 2x the cost of t3.small** ($30 vs $15/mo). If traffic is low, downgrade.
-2. **Reserve Instance**: 1-year no-upfront reserved t3.medium = ~$20/mo (33% savings).
-3. **Spot Instances**: t3.medium spot = ~$9/mo (70% savings) but can be interrupted.
+1. **t3.small is half the cost of t3.medium** ($15 vs $30/mo). Upgrade to t3.medium if you see memory pressure under load.
+2. **Reserve Instance**: 1-year no-upfront reserved t3.small = ~$10/mo (33% savings).
+3. **Spot Instances**: t3.small spot = ~$4.50/mo (70% savings) but can be interrupted.
 4. **Savings Plans**: Compute Savings Plans apply across all EC2 regardless of region/instance family.
+
+## Memory Monitoring (t3.small critical)
+
+Run `docker stats` after deployment. If MongoDB or the backend exceed ~800MB each, containers will restart. Solutions:
+- Reduce MongoDB cache further in `docker-compose.yml` (`--wiredTigerCacheSizeGB 0.25`)
+- Reduce uvicorn workers to 1 (already default in Dockerfile)
+- Upgrade to t3.medium if traffic grows
 
 ## Troubleshooting
 

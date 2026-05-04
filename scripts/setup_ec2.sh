@@ -1,12 +1,12 @@
 #!/bin/bash
 # ============================================================
 # LexGuard AI — EC2 Bootstrap Script (ap-south-1 / Mumbai)
-# Compute: t3.medium (2 vCPU, 4GB RAM)
+# Compute: t3.small (1 vCPU, 2GB RAM)
 # OS: Ubuntu 22.04 LTS
 # Storage: 20GB GP3 EBS
 #
 # Usage:
-#   1. Launch EC2 t3.medium in ap-south-1 with Ubuntu 22.04
+#   1. Launch EC2 t3.small in ap-south-1 with Ubuntu 22.04
 #   2. Attach 20GB GP3 EBS root volume
 #   3. Create Security Group: allow 22 (SSH), 8000 (API), 80/443 (HTTP/HTTPS)
 #   4. Allocate & associate an Elastic IP
@@ -286,7 +286,7 @@ log_info "Cost Optimization:"
 log_info "  - No ALB ($18/mo saved) — using Elastic IP directly"
 log_info "  - No RDS ($30/mo saved) — MongoDB runs in Docker sidecar"
 log_info "  - GP3 20GB EBS is the default, cost-efficient storage"
-log_info "  - t3.medium ~$30/mo — within your $200 credit budget for ~6 months"
+log_info "  - t3.small ~$15/mo — within your $200 credit budget for ~13 months"
 log_info ""
 log_info "NEXT STEPS:"
 log_info "  1. Update your Vercel frontend CORS_ORIGINS to point to this EC2 IP"
