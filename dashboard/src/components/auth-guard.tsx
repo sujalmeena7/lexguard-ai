@@ -14,7 +14,6 @@ interface AuthGuardProps {
 
 function HandoffHandler({ onUser }: { onUser: (u: User | null) => void }) {
   const router = useRouter();
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://65.1.207.29:8000";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -22,7 +21,8 @@ function HandoffHandler({ onUser }: { onUser: (u: User | null) => void }) {
     const handoffCode = params.get("handoff_code");
     if (!handoffCode) return;
 
-    fetch(`${BACKEND_URL}/api/auth/handoff/exchange`, {
+    // Proxy through local API route to avoid HTTPS→HTTP mixed content
+    fetch("/api/handoff", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ handoff_code: handoffCode }),
@@ -46,7 +46,7 @@ function HandoffHandler({ onUser }: { onUser: (u: User | null) => void }) {
         console.error("Handoff error:", err);
         router.replace("/");
       });
-  }, [router, BACKEND_URL, onUser]);
+  }, [router, onUser]);
 
   return null;
 }
@@ -99,7 +99,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     setUser(null);
   };
 
-  const landingUrl = process.env.NEXT_PUBLIC_LANDING_URL || "/";
+  const landingUrl = "https://lexguard-ai-three.vercel.app";
 
   if (loading) {
     return (

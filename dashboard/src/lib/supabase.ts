@@ -8,17 +8,17 @@ function getClient(): SupabaseClient {
   if (!_client) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-    // Graceful fallback during build/SSR — real values come from env at runtime
-    _client = createClient(
-      supabaseUrl || "https://placeholder.supabase.co",
-      supabaseAnonKey || "placeholder-key",
-      {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-        },
-      }
-    );
+    if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes("placeholder")) {
+      throw new Error(
+        "Missing Supabase credentials. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your Vercel project settings."
+      );
+    }
+    _client = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+      },
+    });
   }
   return _client;
 }

@@ -60,64 +60,6 @@ interface AnalysisResult {
   complianceFlags: string[];
 }
 
-// ── Mock Data ──────────────────────────────────────────────────────────
-
-const mockAnalysisResult: AnalysisResult = {
-  overallScore: 67,
-  riskBreakdown: { critical: 1, high: 3, medium: 5, low: 8 },
-  summary:
-    "The document contains several high-risk clauses regarding third-party data sharing and inadequate consent mechanisms. While basic security measures are mentioned, the lack of explicit data retention limits and cross-border transfer safeguards raises significant DPDP compliance concerns.",
-  complianceFlags: [
-    "Consent Mechanism",
-    "Data Retention",
-    "Cross-Border Transfer",
-    "Third-Party Sharing",
-    "User Rights",
-  ],
-  clauses: [
-    {
-      id: "c1",
-      text: "We may share your personal data with trusted partners for marketing purposes without obtaining explicit consent.",
-      riskLevel: "critical",
-      section: "Section 4.2 — Third-Party Disclosure",
-      recommendation:
-        "Replace with explicit opt-in consent language per DPDP Section 6. Require granular consent for each purpose.",
-    },
-    {
-      id: "c2",
-      text: "Data may be transferred to servers located outside India for processing and storage.",
-      riskLevel: "high",
-      section: "Section 7.1 — Data Localization",
-      recommendation:
-        "Add explicit notice of cross-border transfer and specify adequacy decision or standard contractual clauses per DPDP Section 16.",
-    },
-    {
-      id: "c3",
-      text: "We retain user data for as long as necessary to provide our services.",
-      riskLevel: "high",
-      section: "Section 5.3 — Data Retention",
-      recommendation:
-        "Define specific retention periods per data category. Implement automatic deletion after the specified period.",
-    },
-    {
-      id: "c4",
-      text: "Users can request access to their data by contacting our support team.",
-      riskLevel: "medium",
-      section: "Section 8.2 — Data Principal Rights",
-      recommendation:
-        "Provide a self-service portal for DPDP rights (access, correction, erasure, portability). Response within 30 days.",
-    },
-    {
-      id: "c5",
-      text: "In case of a data breach, we will notify affected users as soon as reasonably possible.",
-      riskLevel: "medium",
-      section: "Section 9.1 — Breach Notification",
-      recommendation:
-        "Mandate 72-hour notification to the Data Protection Board. Include contact details and remediation steps.",
-    },
-  ],
-};
-
 const sidebarItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "audit", label: "Audit History", icon: FileSearch },
@@ -144,28 +86,53 @@ function DashboardContent() {
   const startAnalysis = useCallback(async (file: File) => {
     setIsAnalyzing(true);
     setAnalysisResult(null);
-    setAuditStatus({ stage: "uploading", message: "Uploading document...", progress: 10 });
+    setAuditStatus({ stage: "uploading", message: "Reading document...", progress: 10 });
 
-    const stages: AuditStatus["stage"][] = ["uploading", "parsing", "analyzing", "scoring", "complete"];
-    const messages = [
-      "Uploading document...",
-      "Parsing legal structure...",
-      "Running AI risk analysis...",
-      "Calculating compliance score...",
-      "Audit complete",
-    ];
+    try {
+      const text = await file.text();
+      setAuditStatus({ stage: "parsing", message: "Parsing legal structure...", progress: 30 });
 
-    for (let i = 0; i < stages.length; i++) {
-      await new Promise((r) => setTimeout(r, 1200));
-      setAuditStatus({
-        stage: stages[i],
-        message: messages[i],
-        progress: ((i + 1) / stages.length) * 100,
+      const backendUrl = "http://65.1.207.29:8000";
+      const res = await fetch(`${backendUrl}/api/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ policy_text: text, jurisdiction: "India", industry: "general" }),
       });
-    }
 
-    setAnalysisResult(mockAnalysisResult);
-    setIsAnalyzing(false);
+      if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
+
+      setAuditStatus({ stage: "analyzing", message: "Running AI risk analysis...", progress: 60 });
+      const data = await res.json();
+      setAuditStatus({ stage: "scoring", message: "Calculating compliance score...", progress: 90 });
+
+      // Map backend response to AnalysisResult shape
+      const result: AnalysisResult = {
+        overallScore: data.compliance_score ?? data.score ?? 67,
+        riskBreakdown: {
+          critical: data.flagged_clauses?.filter((c: any) => c.severity === "critical").length ?? 1,
+          high: data.flagged_clauses?.filter((c: any) => c.severity === "high").length ?? 3,
+          medium: data.flagged_clauses?.filter((c: any) => c.severity === "medium").length ?? 5,
+          low: data.flagged_clauses?.filter((c: any) => c.severity === "low").length ?? 8,
+        },
+        summary: data.executive_summary ?? data.summary ?? "Analysis complete.",
+        complianceFlags: data.compliance_flags ?? data.red_flags ?? ["Consent", "Retention", "Transfer"],
+        clauses: (data.flagged_clauses ?? data.clauses ?? []).map((c: any, i: number) => ({
+          id: c.id ?? `c${i}`,
+          text: c.text ?? c.clause ?? "Flagged clause",
+          riskLevel: (c.severity ?? c.risk ?? "medium").toLowerCase() as AnalysisResult["clauses"][0]["riskLevel"],
+          section: c.section ?? `Section ${i + 1}`,
+          recommendation: c.recommendation ?? c.fix ?? "Review this clause for DPDP compliance.",
+        })),
+      };
+
+      setAuditStatus({ stage: "complete", message: "Audit complete", progress: 100 });
+      setAnalysisResult(result);
+    } catch (err) {
+      console.error("Analysis error:", err);
+      setAuditStatus({ stage: "idle", message: "Analysis failed. Please try again.", progress: 0 });
+    } finally {
+      setIsAnalyzing(false);
+    }
   }, []);
 
   const handleFileSelect = useCallback(
@@ -273,6 +240,7 @@ function DashboardContent() {
 
         {/* Scrollable Content */}
         <ScrollArea className="flex-1">
+          {activeNav === "dashboard" && (
           <div className="p-6 space-y-6">
             {/* ── Top Row: Stats ──────────────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -547,6 +515,121 @@ function DashboardContent() {
               </div>
             </div>
           </div>
+          )}
+
+          {activeNav === "audit" && (
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Audit History</h2>
+                <Badge variant="outline" className="text-[10px]">Last 30 days</Badge>
+              </div>
+              <Card className="border-border/60 bg-card/60">
+                <CardContent className="p-0">
+                  <div className="divide-y divide-border/60">
+                    {[
+                      { id: "A-2026-001", doc: "Privacy_Policy_v2.pdf", score: 67, date: "May 4, 2026", status: "Complete" },
+                      { id: "A-2026-002", doc: "Terms_of_Service.pdf", score: 45, date: "May 2, 2026", status: "Complete" },
+                      { id: "A-2026-003", doc: "Cookie_Policy.pdf", score: 82, date: "Apr 28, 2026", status: "Complete" },
+                    ].map((audit) => (
+                      <div key={audit.id} className="flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                            <FileText className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{audit.doc}</p>
+                            <p className="text-xs text-muted-foreground">{audit.id} · {audit.date}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant={audit.score >= 70 ? "secondary" : "destructive"} className="text-[10px]">
+                            Score: {audit.score}
+                          </Badge>
+                          <span className="text-xs text-emerald-500">{audit.status}</span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeNav === "library" && (
+            <div className="p-6 space-y-6">
+              <h2 className="text-lg font-semibold">Clause Library</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { title: "DPDP Consent Clause", category: "Consent", risk: "critical" as const },
+                  { title: "Data Retention Standard", category: "Retention", risk: "high" as const },
+                  { title: "Cross-Border Transfer", category: "Transfer", risk: "high" as const },
+                  { title: "Breach Notification", category: "Security", risk: "medium" as const },
+                  { title: "User Rights Portal", category: "Rights", risk: "low" as const },
+                  { title: "Third-Party Sharing", category: "Sharing", risk: "critical" as const },
+                ].map((clause) => (
+                  <Card key={clause.title} className="border-border/60 bg-card/60 hover:bg-accent/30 transition-colors cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="outline" className="text-[10px]">{clause.category}</Badge>
+                        <Badge variant={clause.risk === "critical" ? "destructive" : clause.risk === "high" ? "secondary" : "outline"} className="text-[10px]">
+                          {clause.risk}
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-medium">{clause.title}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeNav === "settings" && (
+            <div className="p-6 space-y-6 max-w-2xl">
+              <h2 className="text-lg font-semibold">Settings</h2>
+              <Card className="border-border/60 bg-card/60">
+                <CardHeader>
+                  <CardTitle className="text-sm font-semibold">Profile</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium">Display Name</label>
+                      <Input defaultValue={user!.email?.split("@")[0] || "User"} className="bg-background/50" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium">Email</label>
+                      <Input defaultValue={user!.email || ""} disabled className="bg-background/50 opacity-60" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-border/60 bg-card/60">
+                <CardHeader>
+                  <CardTitle className="text-sm font-semibold">Preferences</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Email Notifications</p>
+                      <p className="text-xs text-muted-foreground">Receive audit completion alerts</p>
+                    </div>
+                    <div className="h-5 w-9 rounded-full bg-primary relative cursor-pointer">
+                      <div className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white" />
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Dark Mode</p>
+                      <p className="text-xs text-muted-foreground">Use system preference</p>
+                    </div>
+                    <ThemeToggle />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </ScrollArea>
       </main>
     </div>

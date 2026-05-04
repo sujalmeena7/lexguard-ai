@@ -64,6 +64,49 @@
         return url.toString();
     };
 
+    // Update nav dashboard link with handoff code when user is signed in
+    const updateNavDashboardLink = async (session) => {
+        const link = document.getElementById('nav-dashboard-link');
+        if (!link) return;
+        const url = await buildDashboardUrl(session);
+        link.href = url;
+    };
+
+    // Check existing session and update UI
+    const checkSession = async () => {
+        if (!supabaseClient) return;
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const navLoggedIn = document.getElementById('nav-logged-in');
+        const navLoggedOut = document.getElementById('nav-logged-out');
+        const navUserEmail = document.getElementById('nav-user-email');
+
+        if (session && session.user) {
+            if (navLoggedIn) navLoggedIn.classList.remove('hidden');
+            if (navLoggedOut) navLoggedOut.classList.add('hidden');
+            if (navUserEmail) navUserEmail.textContent = session.user.email;
+            await updateNavDashboardLink(session);
+        } else {
+            if (navLoggedIn) navLoggedIn.classList.add('hidden');
+            if (navLoggedOut) navLoggedOut.classList.remove('hidden');
+        }
+    };
+
+    // Listen for auth state changes
+    if (supabaseClient) {
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                await checkSession();
+            } else if (event === 'SIGNED_OUT') {
+                const navLoggedIn = document.getElementById('nav-logged-in');
+                const navLoggedOut = document.getElementById('nav-logged-out');
+                if (navLoggedIn) navLoggedIn.classList.add('hidden');
+                if (navLoggedOut) navLoggedOut.classList.remove('hidden');
+                const link = document.getElementById('nav-dashboard-link');
+                if (link) link.href = DASHBOARD_URL;
+            }
+        });
+    }
+
     const setAuthMode = (mode) => {
         if (!authModal) return;
         const isSignIn = mode === 'signin';
@@ -147,6 +190,7 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+        checkSession();
 
         // --- Scroll reveal -----------------------------------------
         const revealables = document.querySelectorAll(
@@ -493,9 +537,16 @@ Sent from lexguard-ai landing page.
         });
     }
 
+    // Nav logout
+    const navLogoutBtn = document.getElementById('nav-logout-btn');
+    if (navLogoutBtn && supabaseClient) {
+        navLogoutBtn.addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+        });
+    }
+
     });
 })();
-
 
 document.addEventListener('DOMContentLoaded', () => {
     const themeBtn = document.getElementById('theme-toggle');
