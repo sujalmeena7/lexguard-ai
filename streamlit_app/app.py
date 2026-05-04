@@ -973,14 +973,19 @@ with st.sidebar:
     # Navigation Menu
     if st.button("🎛️ Dashboard", use_container_width=True):
         st.session_state.current_page = "dashboard"
+        st.rerun()
     if st.button("📑 Document Audit", use_container_width=True):
         st.session_state.current_page = "audit"
+        st.rerun()
     if st.button("🗺️ Privacy Roadmap", use_container_width=True):
         st.session_state.current_page = "roadmap"
+        st.rerun()
     if st.button("📚 Compliance Library", use_container_width=True):
         st.session_state.current_page = "library"
+        st.rerun()
     if st.button("⚙️ Settings", use_container_width=True):
         st.session_state.current_page = "settings"
+        st.rerun()
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     

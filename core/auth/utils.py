@@ -45,6 +45,7 @@ AUTH_STATE_DEFAULTS = {
     "user_id": None,
     "user_email": None,
     "auth_access_token": None,
+    "auth_refresh_token": None,
     "_supabase_client_error": None,
 }
 
@@ -174,6 +175,9 @@ def sign_in_with_email(email: str, password: str) -> Tuple[bool, str]:
         st.session_state.auth_access_token = (
             auth_response.session.access_token if auth_response.session else None
         )
+        st.session_state.auth_refresh_token = (
+            auth_response.session.refresh_token if auth_response.session else None
+        )
         _log_event("LOGIN_SUCCESS", user_id=user.id, metadata={"email": email})
         return True, "Signed in successfully."
     except Exception as exc:
@@ -182,28 +186,55 @@ def sign_in_with_email(email: str, password: str) -> Tuple[bool, str]:
 
 
 def restore_session_from_token() -> bool:
-    """Attempt to restore auth state using a previously saved access token."""
+    """Attempt to restore auth state using a previously saved access token.
+
+    If the access token has expired, tries to refresh it using the stored
+    refresh_token before falling back to unauthenticated state.
+    """
     init_auth_state()
-    token = st.session_state.get("auth_access_token")
-    if not token:
+    access_token = st.session_state.get("auth_access_token")
+    refresh_token = st.session_state.get("auth_refresh_token")
+
+    if not access_token and not refresh_token:
         return False
 
     client = get_supabase_client()
     if client is None:
         return False
 
-    try:
-        user_response = client.auth.get_user(token)
-        user = user_response.user
-        if user is None:
-            return False
+    # 1. Try existing access token first
+    if access_token:
+        try:
+            user_response = client.auth.get_user(access_token)
+            user = user_response.user
+            if user is not None:
+                st.session_state.authenticated = True
+                st.session_state.user_id = user.id
+                st.session_state.user_email = user.email
+                # Re-attach JWT to client for subsequent DB calls
+                client.auth.set_session(access_token, refresh_token or "")
+                return True
+        except Exception:
+            pass  # Token expired or invalid — fall through to refresh
 
-        st.session_state.authenticated = True
-        st.session_state.user_id = user.id
-        st.session_state.user_email = user.email
-        return True
-    except Exception:
-        return False
+    # 2. Try refreshing with the stored refresh token
+    if refresh_token:
+        try:
+            refresh_response = client.auth.refresh_session(refresh_token)
+            if refresh_response and refresh_response.session and refresh_response.user:
+                st.session_state.authenticated = True
+                st.session_state.user_id = refresh_response.user.id
+                st.session_state.user_email = refresh_response.user.email
+                st.session_state.auth_access_token = refresh_response.session.access_token
+                st.session_state.auth_refresh_token = refresh_response.session.refresh_token
+                return True
+        except Exception:
+            pass  # Refresh failed — clear tokens and require re-auth
+
+    # 3. Clean up stale tokens so we don't keep retrying
+    st.session_state.auth_access_token = None
+    st.session_state.auth_refresh_token = None
+    return False
 
 
 def sign_out() -> None:
