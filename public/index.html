@@ -31,26 +31,12 @@
     window.__LEXGUARD_BACKEND__ = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? 'http://localhost:8000'
       : '';
+    window.ENV_SUPABASE_URL = 'https://corbyaeuxflemgilgcom.supabase.co';
+    window.ENV_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcmJ5YWV1eGZsZW1naWxnY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NTg5NTcsImV4cCI6MjA5MjUzNDk1N30.jNnnMRPxGxSzpuW7HrQXvcKT1VHQEacMkx_BwR3IlhI';
     window.ENV_DASHBOARD_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? 'http://localhost:8501/'
       : 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/';
-    // Fetch Supabase config from backend at runtime — never hardcode keys in HTML
-    // Expose a promise so consumers can await readiness before using ENV_* globals
-    window.__LEXGUARD_CONFIG_READY__ = fetch(window.__LEXGUARD_BACKEND__ + '/api/config')
-      .then(r => {
-        if (!r.ok) throw new Error('Config fetch failed: HTTP ' + r.status);
-        return r.json();
-      })
-      .then(cfg => {
-        if (cfg.supabase_url && cfg.supabase_anon_key) {
-          window.ENV_SUPABASE_URL = cfg.supabase_url;
-          window.ENV_SUPABASE_ANON_KEY = cfg.supabase_anon_key;
-        }
-      })
-      .catch(err => {
-        console.error('[LexGuard] Failed to load Supabase config:', err);
-        // Always resolve (never reject) so awaiting code doesn't hang
-      });
+    window.__LEXGUARD_CONFIG_READY__ = Promise.resolve();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
