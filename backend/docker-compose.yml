@@ -1,0 +1,93 @@
+# ============================================================
+# LexGuard AI — Docker Compose for AWS EC2 (ap-south-1)
+# Compute: Single EC2 t3.medium (2 vCPU, 4GB RAM)
+# Database: MongoDB 7 as Docker sidecar (no managed RDS cost)
+# Storage: Named volume on GP3 EBS for MongoDB persistence
+# Networking: Elastic IP + Security Groups (no ALB cost)
+# ============================================================
+
+version: "3.9"
+
+services:
+  # --- FastAPI Backend ---
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lexguard-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override MONGO_URL to point to the sidecar container
+      - MONGO_URL=mongodb://mongodb:27017/lexguard_db
+      # Default DB_NAME (can be overridden in .env)
+      - DB_NAME=lexguard_db
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - lexguard-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # --- MongoDB Sidecar (replaces managed Atlas/RDS to save ~$30/mo) ---
+  mongodb:
+    image: mongo:7.0
+    container_name: lexguard-mongodb
+    restart: unless-stopped
+    ports:
+      # Bind to localhost only for security; backend connects via Docker network
+      - "127.0.0.1:27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=lexguard_db
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - lexguard-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # --- OPTIONAL: Caddy Reverse Proxy + Auto SSL ---
+  # Uncomment this block if you want free HTTPS via Let's Encrypt.
+  # Requires a domain pointing to your Elastic IP.
+  #
+  # caddy:
+  #   image: caddy:2-alpine
+  #   container_name: lexguard-caddy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   networks:
+  #     - lexguard-network
+  #   depends_on:
+  #     - backend
+
+volumes:
+  mongodb_data:
+    driver: local
+  # caddy_data:
+  # caddy_config:
+
+networks:
+  lexguard-network:
+    driver: bridge
