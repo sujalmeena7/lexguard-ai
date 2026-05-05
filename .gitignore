@@ -150,3 +150,4 @@ credentials.json
 *.key
 .credentials
 
+.env*.local

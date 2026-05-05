@@ -21,6 +21,12 @@ import {
   Clock,
   ChevronRight,
   Sparkles,
+  Map,
+  Crown,
+  Lock,
+  Unlock,
+  Coins,
+  Download,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -63,9 +69,58 @@ interface AnalysisResult {
 const sidebarItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "audit", label: "Audit History", icon: FileSearch },
+  { id: "roadmap", label: "Privacy Roadmap", icon: Map },
   { id: "library", label: "Clause Library", icon: Library },
   { id: "settings", label: "Settings", icon: Settings },
 ];
+
+// ── Roadmap Types ─────────────────────────────────────────────────────
+
+interface RoadmapGap {
+  gap_id: string;
+  gap_description: string;
+  immediate_action: string;
+  golden_clause: string;
+  operational_change: string;
+  dpdp_section: string;
+  enforcement_status: "active" | "upcoming";
+}
+
+interface JargonAlert {
+  term: string;
+  plain_language: string;
+  context: string;
+}
+
+interface MultilingualReadiness {
+  status: "Ready" | "Partially Ready" | "Not Ready";
+  rationale: string;
+}
+
+interface PrivacyUXScorecard {
+  readability_score: number;
+  readability_grade: string;
+  jargon_alerts: JargonAlert[];
+  multilingual_readiness: MultilingualReadiness;
+}
+
+interface ExecutiveSummaryItem {
+  violation: string;
+  remediation_effort: string;
+  business_impact: string;
+  fix_priority: string;
+}
+
+interface RoadmapResult {
+  roadmap_id: string;
+  remediation_roadmap: RoadmapGap[];
+  privacy_ux_scorecard: PrivacyUXScorecard;
+  executive_summary: ExecutiveSummaryItem[];
+  overall_risk_rating: string;
+  total_gaps_found: number;
+  generated_at: string;
+  analysis_id?: string;
+}
 
 // ── Component ─────────────────────────────────────────────────────────
 
@@ -82,6 +137,44 @@ function DashboardContent() {
   });
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Roadmap state
+  const [roadmapData, setRoadmapData] = useState<RoadmapResult | null>(null);
+  const [roadmapLoading, setRoadmapLoading] = useState(false);
+  const [roadmapInput, setRoadmapInput] = useState("");
+
+  // Premium state (client-side until backend integration)
+  const [isPremium, setIsPremium] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("lg_premium") === "true";
+    }
+    return false;
+  });
+  const [credits, setCredits] = useState(() => {
+    if (typeof window !== "undefined") {
+      return parseInt(localStorage.getItem("lg_credits") || "0", 10);
+    }
+    return 0;
+  });
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [accessKey, setAccessKey] = useState("");
+  const ACCESS_KEY = "lexguard-premium-2026"; // Demo key; replace via env in production
+
+  const handlePremiumUpgrade = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessKey.trim()) return;
+    if (accessKey.trim() === ACCESS_KEY) {
+      const newCredits = credits + 10;
+      setCredits(newCredits);
+      setIsPremium(true);
+      setShowKeyInput(false);
+      setAccessKey("");
+      localStorage.setItem("lg_premium", "true");
+      localStorage.setItem("lg_credits", String(newCredits));
+    } else {
+      alert("Invalid access key.");
+    }
+  };
 
   const startAnalysis = useCallback(async (file: File) => {
     setIsAnalyzing(true);
@@ -142,6 +235,37 @@ function DashboardContent() {
     [startAnalysis]
   );
 
+  const generateRoadmap = useCallback(async () => {
+    if (!roadmapInput.trim() || roadmapInput.trim().length < 50) {
+      alert("Please enter at least 50 characters of policy text.");
+      return;
+    }
+    setRoadmapLoading(true);
+    try {
+      const backendUrl = "http://65.1.207.29:8000";
+      const res = await fetch(`${backendUrl}/api/roadmap`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ policy_text: roadmapInput }),
+      });
+      if (!res.ok) throw new Error(`Roadmap failed: ${res.status}`);
+      const data: RoadmapResult = await res.json();
+      setRoadmapData(data);
+    } catch (err) {
+      console.error("Roadmap error:", err);
+      alert("Failed to generate roadmap. Please try again.");
+    } finally {
+      setRoadmapLoading(false);
+    }
+  }, [roadmapInput]);
+
+  const riskColor = (rating: string) => {
+    const r = rating.toLowerCase();
+    if (r.includes("critical") || r.includes("high")) return { text: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/30", bar: "bg-destructive" };
+    if (r.includes("moderate")) return { text: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/30", bar: "bg-amber-500" };
+    return { text: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/30", bar: "bg-emerald-500" };
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* ── Sidebar ───────────────────────────────────────────────── */}
@@ -182,14 +306,67 @@ function DashboardContent() {
           })}
         </nav>
 
+        {/* Credits + Premium */}
+        <div className="border-t border-border px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Coins className="h-3.5 w-3.5" />
+              <span>{credits} credits</span>
+            </div>
+            {isPremium ? (
+              <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 text-[10px]">
+                <Crown className="mr-1 h-3 w-3" /> Premium
+              </Badge>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Free Plan</span>
+            )}
+          </div>
+
+          {!isPremium && !showKeyInput && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+              onClick={() => setShowKeyInput(true)}
+            >
+              <Crown className="mr-1.5 h-3.5 w-3.5" />
+              Upgrade to Premium
+            </Button>
+          )}
+
+          {showKeyInput && (
+            <form onSubmit={handlePremiumUpgrade} className="space-y-2">
+              <Input
+                type="password"
+                placeholder="Enter access key..."
+                value={accessKey}
+                onChange={(e) => setAccessKey(e.target.value)}
+                className="h-8 text-xs bg-background/50"
+              />
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" className="flex-1 text-xs h-7">
+                  <Unlock className="mr-1 h-3 w-3" /> Unlock
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowKeyInput(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+
         <div className="border-t border-border p-4">
           <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary/10 text-primary text-xs">SM</AvatarFallback>
+              <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                {(user!.email?.charAt(0) || "U").toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="truncate text-xs font-medium">{user!.email || "User"}</p>
-              <p className="truncate text-[10px] text-muted-foreground">Admin</p>
+              <p className="truncate text-[10px] text-muted-foreground">
+                {isPremium ? "Premium Plan" : "Enterprise Plan"}
+              </p>
             </div>
             <Button variant="ghost" size="icon" onClick={onSignOut} className="h-7 w-7 text-muted-foreground hover:text-destructive">
               <LogOut className="h-3.5 w-3.5" />
@@ -581,6 +758,246 @@ function DashboardContent() {
                   </Card>
                 ))}
               </div>
+            </div>
+          )}
+
+          {activeNav === "roadmap" && (
+            <div className="p-6 space-y-6">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Privacy Roadmap</h2>
+                  <p className="text-xs text-muted-foreground">Transform compliance audits into actionable business roadmaps</p>
+                </div>
+                <Badge variant="outline" className="text-[10px]">🏗️ Architect Mode</Badge>
+              </div>
+
+              {!roadmapData ? (
+                <Card className="border-border/60 bg-card/60">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium">Paste Privacy Policy or Audit Text</label>
+                      <textarea
+                        value={roadmapInput}
+                        onChange={(e) => setRoadmapInput(e.target.value)}
+                        placeholder="Paste your privacy policy, terms of service, or audit document here (min 50 characters)..."
+                        className="w-full min-h-[200px] rounded-lg border border-border/60 bg-background/50 p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {roadmapInput.length} characters {roadmapInput.length > 0 && roadmapInput.length < 50 && "(min 50)"}
+                      </span>
+                      <Button
+                        onClick={generateRoadmap}
+                        disabled={roadmapLoading || roadmapInput.trim().length < 50}
+                        className="text-xs"
+                      >
+                        {roadmapLoading ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Map className="mr-1.5 h-3.5 w-3.5" />
+                            Generate Roadmap
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" size="sm" className="text-xs" onClick={() => setRoadmapData(null)}>
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Generate New
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => {
+                      const blob = new Blob([JSON.stringify(roadmapData, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "privacy_roadmap.json";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}>
+                      <Download className="mr-1.5 h-3.5 w-3.5" /> Download JSON
+                    </Button>
+                  </div>
+
+                  {/* Risk Banner */}
+                  {(() => {
+                    const rc = riskColor(roadmapData.overall_risk_rating);
+                    return (
+                      <div className={`rounded-xl border ${rc.border} ${rc.bg} p-5 flex items-center justify-between`}>
+                        <div>
+                          <h3 className={`text-base font-semibold ${rc.text}`}>Overall Risk: {roadmapData.overall_risk_rating}</h3>
+                          <p className="text-xs text-muted-foreground mt-1">{roadmapData.total_gaps_found} compliance gap(s) identified</p>
+                        </div>
+                        <div className="text-3xl">
+                          {roadmapData.overall_risk_rating.toLowerCase().includes("critical") || roadmapData.overall_risk_rating.toLowerCase().includes("high") ? "🔴" :
+                           roadmapData.overall_risk_rating.toLowerCase().includes("moderate") ? "🟡" : "🟢"}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Scorecard Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Readability */}
+                    <Card className="border-border/60 bg-card/60">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Readability Health</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold">{roadmapData.privacy_ux_scorecard.readability_score}</span>
+                          <Badge variant="outline" className="text-[10px]">{roadmapData.privacy_ux_scorecard.readability_grade}</Badge>
+                        </div>
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500"
+                            style={{ width: `${roadmapData.privacy_ux_scorecard.readability_score}%` }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Multilingual */}
+                    <Card className="border-border/60 bg-card/60">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Multilingual Readiness</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {(() => {
+                          const s = roadmapData.privacy_ux_scorecard.multilingual_readiness.status;
+                          const color = s === "Ready" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/30" :
+                            s === "Partially Ready" ? "text-amber-500 bg-amber-500/10 border-amber-500/30" :
+                            "text-destructive bg-destructive/10 border-destructive/30";
+                          return (
+                            <div className="space-y-2">
+                              <Badge variant="outline" className={`text-[10px] ${color}`}>{s}</Badge>
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {roadmapData.privacy_ux_scorecard.multilingual_readiness.rationale}
+                              </p>
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
+
+                    {/* Jargon Count */}
+                    <Card className="border-border/60 bg-card/60">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Jargon Alerts</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold">{roadmapData.privacy_ux_scorecard.jargon_alerts.length}</span>
+                          <span className="text-xs text-muted-foreground">terms flagged</span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Complex language detected that may confuse users</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Jargon Alerts Detail */}
+                  {roadmapData.privacy_ux_scorecard.jargon_alerts.length > 0 && (
+                    <Card className="border-border/60 bg-card/60">
+                      <CardHeader>
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Jargon Replacements</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {roadmapData.privacy_ux_scorecard.jargon_alerts.map((ja, i) => (
+                          <div key={i} className="rounded-lg border-l-2 border-amber-500 bg-amber-500/5 p-3">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="font-medium text-amber-500">"{ja.term}"</span>
+                              <span className="text-muted-foreground">→</span>
+                              <span className="font-medium text-emerald-500">"{ja.plain_language}"</span>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">Context: {ja.context}</p>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Remediation Roadmap */}
+                  <Card className="border-border/60 bg-card/60">
+                    <CardHeader>
+                      <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Remediation Roadmap</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {roadmapData.remediation_roadmap.map((gap) => (
+                        <div key={gap.gap_id} className="rounded-lg border border-border/60 bg-background/50 p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={gap.enforcement_status === "active" ? "destructive" : "secondary"} className="text-[10px]">
+                              {gap.enforcement_status === "active" ? "🔴 ACTIVE" : "🔵 UPCOMING"}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{gap.dpdp_section}</span>
+                          </div>
+                          <p className="text-sm font-medium">{gap.gap_id}: {gap.gap_description}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="rounded-lg bg-primary/5 p-3">
+                              <p className="text-[10px] font-semibold uppercase text-primary mb-1">Immediate Action</p>
+                              <p className="text-xs text-muted-foreground">{gap.immediate_action}</p>
+                            </div>
+                            <div className="rounded-lg bg-amber-500/5 p-3">
+                              <p className="text-[10px] font-semibold uppercase text-amber-500 mb-1">Operational Change</p>
+                              <p className="text-xs text-muted-foreground">{gap.operational_change}</p>
+                            </div>
+                          </div>
+                          <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/10 p-3">
+                            <p className="text-[10px] font-semibold uppercase text-emerald-500 mb-1">Golden Clause</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed font-mono">{gap.golden_clause}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  {/* Executive Summary Table */}
+                  {roadmapData.executive_summary.length > 0 && (
+                    <Card className="border-border/60 bg-card/60">
+                      <CardHeader>
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Executive Summary</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-border/60">
+                                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Violation</th>
+                                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Effort</th>
+                                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Business Impact</th>
+                                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Priority</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/40">
+                              {roadmapData.executive_summary.map((item, i) => (
+                                <tr key={i} className="hover:bg-accent/30 transition-colors">
+                                  <td className="py-2 px-3 text-xs max-w-xs truncate">{item.violation}</td>
+                                  <td className="py-2 px-3 text-xs">
+                                    <Badge variant="outline" className="text-[10px]">{item.remediation_effort}</Badge>
+                                  </td>
+                                  <td className="py-2 px-3 text-xs text-muted-foreground">{item.business_impact}</td>
+                                  <td className="py-2 px-3 text-xs">
+                                    <Badge variant={item.fix_priority.toLowerCase().includes("high") ? "destructive" : "secondary"} className="text-[10px]">
+                                      {item.fix_priority}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
             </div>
           )}
 
