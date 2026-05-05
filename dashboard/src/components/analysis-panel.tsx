@@ -26,6 +26,9 @@ interface AnalysisResult {
   clauses: Clause[];
   summary: string;
   complianceFlags: string[];
+  verdict?: string;
+  checklist?: Array<{ focus_area: string; status: string; note: string }>;
+  retrievedSections?: Array<{ id: string; title: string; text: string }>;
 }
 
 interface AnalysisPanelProps {

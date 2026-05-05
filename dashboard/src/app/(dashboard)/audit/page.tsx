@@ -12,6 +12,8 @@ import {
   ArrowLeft,
   Download,
   Crown,
+  BookOpen,
+  ChevronDown,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -20,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AnalysisPanel } from "@/components/analysis-panel";
@@ -47,6 +50,7 @@ interface AnalysisResult {
   complianceFlags: string[];
   verdict?: string;
   checklist?: Array<{ focus_area: string; status: string; note: string }>;
+  retrievedSections?: Array<{ id: string; title: string; text: string }>;
 }
 
 const stageConfig: Record<string, { label: string; color: string }> = {
@@ -129,6 +133,7 @@ export default function AuditPage() {
         verdict: data.verdict ?? "",
         complianceFlags: data.checklist?.map((c: any) => c.focus_area).filter(Boolean) ?? ["Consent", "Retention", "Transfer"],
         checklist: data.checklist ?? [],
+        retrievedSections: data.retrieved_sections ?? [],
         clauses: mappedClauses,
       };
 
@@ -393,6 +398,42 @@ export default function AuditPage() {
         const noteLines = wrap(item.note, pageW - margin * 2);
         doc.text(noteLines, margin + 4, y);
         y += noteLines.length * 3.5 + 6;
+      });
+    }
+
+    // ── Legal Basis — Retrieved DPDP Sections ──
+    if (analysisResult.retrievedSections && analysisResult.retrievedSections.length > 0) {
+      checkPage(40);
+      y += 4;
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, rightX, y);
+      y += 8;
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 51, 153);
+      doc.text("Legal Basis — Retrieved DPDP Sections", margin, y);
+      y += 6;
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(100, 100, 100);
+      doc.text("These are the exact DPDP Act 2023 sections the AI retrieved and used for this audit.", margin, y);
+      y += 8;
+
+      analysisResult.retrievedSections.forEach((sec) => {
+        checkPage(50);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 51, 153);
+        doc.text(`${sec.id}: ${sec.title}`, margin, y);
+        y += 5;
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(60, 60, 60);
+        const secLines = wrap(sec.text, pageW - margin * 2);
+        doc.text(secLines, margin, y);
+        y += secLines.length * 3.2 + 6;
       });
     }
 
@@ -674,6 +715,51 @@ export default function AuditPage() {
                     highlightedClauseId={highlightedClauseId}
                     onClauseClick={(id) => setHighlightedClauseId((prev) => (prev === id ? null : id))}
                   />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Legal Basis — Retrieved DPDP Sections */}
+        {analysisResult && analysisResult.retrievedSections && analysisResult.retrievedSections.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="glass-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-semibold">Legal Basis — Retrieved DPDP Sections</CardTitle>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  These are the exact DPDP Act 2023 sections the AI retrieved and used to evaluate your document.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {analysisResult.retrievedSections.map((section, i) => (
+                    <Collapsible key={section.id} defaultOpen={i === 0}>
+                      <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-background/40 px-4 py-2.5 text-left hover:bg-accent/20 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="text-[10px] font-mono">
+                            {section.id}
+                          </Badge>
+                          <span className="text-sm font-medium">{section.title}</span>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-1 rounded-b-lg border border-t-0 border-white/10 bg-background/30 px-4 py-3">
+                          <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                            {section.text}
+                          </p>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
                 </div>
               </CardContent>
             </Card>

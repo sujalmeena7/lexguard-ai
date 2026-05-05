@@ -338,6 +338,12 @@ class ChecklistItem(BaseModel):
     note: str
 
 
+class RetrievedSection(BaseModel):
+    id: str
+    title: str
+    text: str
+
+
 class AnalysisResult(BaseModel):
     analysis_id: str
     compliance_score: int
@@ -346,6 +352,7 @@ class AnalysisResult(BaseModel):
     total_clauses_flagged: int
     flagged_clauses: List[FlaggedClause]
     checklist: List[ChecklistItem]
+    retrieved_sections: List[RetrievedSection] = []
     created_at: str
 
 
@@ -794,6 +801,7 @@ async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
         "total_clauses_flagged": len(flagged),
         "flagged_clauses": flagged,
         "checklist": checklist,
+        "retrieved_sections": retrieved_sections,
         "created_at": created_at,
         "unlocked": False,
     }
@@ -811,6 +819,7 @@ async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
         total_clauses_flagged=len(flagged),
         flagged_clauses=[FlaggedClause(**c) for c in flagged],
         checklist=[ChecklistItem(**c) for c in checklist],
+        retrieved_sections=[RetrievedSection(**s) for s in retrieved_sections],
         created_at=created_at,
     )
 
@@ -921,6 +930,7 @@ async def unlock_full_report(
         total_clauses_flagged=doc["total_clauses_flagged"],
         flagged_clauses=[FlaggedClause(**c) for c in doc.get("flagged_clauses", [])],
         checklist=[ChecklistItem(**c) for c in doc.get("checklist", [])],
+        retrieved_sections=[RetrievedSection(**s) for s in doc.get("retrieved_sections", [])],
         created_at=doc["created_at"],
     )
 
