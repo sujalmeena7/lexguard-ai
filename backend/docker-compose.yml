@@ -31,6 +31,10 @@ services:
         condition: service_healthy
     networks:
       - lexguard-network
+    deploy:
+      resources:
+        limits:
+          memory: 2.5G
     logging:
       driver: "json-file"
       options:

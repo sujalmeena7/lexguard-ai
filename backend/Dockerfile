@@ -17,6 +17,9 @@ WORKDIR /app
 # Install system dependencies (for packages that compile C extensions)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
+    cmake \
+    build-essential \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -27,6 +30,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application code
 COPY server.py .
+COPY dpdp_knowledge_base.py .
+COPY rag_engine.py .
 COPY test_gemini.py .
 COPY mock_server.py .
 

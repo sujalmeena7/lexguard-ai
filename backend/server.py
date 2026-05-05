@@ -25,6 +25,7 @@ import secrets
 from google import genai
 from google.genai import types as genai_types
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from rag_engine import get_rag_engine
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -252,6 +253,12 @@ async def lifespan(_app: FastAPI):
         logger.info("MongoDB indexes created/verified")
     except Exception as e:
         logger.error(f"Index creation failed: {e}")
+    # Initialize RAG engine (heavy model loads once at startup)
+    try:
+        rag = get_rag_engine()
+        logger.info(f"RAG engine initialized (available={rag.available})")
+    except Exception as e:
+        logger.warning(f"RAG engine initialization failed: {e}")
     try:
         yield
     finally:
@@ -683,13 +690,13 @@ async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
         reraise=True
     )
     async def get_gemini_completion(text: str):
-        prompt = f"{SYSTEM_PROMPT}\n\nAudit this document against DPDP Act 2023:\n\n---\n{text}\n---"
+        prompt = f"{SYSTEM_PROMPT}\n\n{text}"
         response = await genai_client.aio.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 temperature=0,
-                max_output_tokens=2048,
+                max_output_tokens=8192,
                 response_mime_type="application/json",
             )
         )
@@ -700,10 +707,10 @@ async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
             model=GROQ_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Audit this document against DPDP Act 2023:\n\n---\n{text}\n---"},
+                {"role": "user", "content": text},
             ],
             temperature=0,
-            max_tokens=2048,
+            max_tokens=8192,
             response_format={"type": "json_object"},
         )
         return completion.choices[0].message.content or ""
@@ -715,10 +722,20 @@ async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
             for token in ("quota", "429", "rate limit", "rate_limit", "exceeded", "resource_exhausted", "resource exhausted")
         )
 
+    # ── RAG enrichment ──
+    try:
+        rag = get_rag_engine()
+        enriched_prompt, retrieved_sections = rag.build_enriched_prompt(policy_text)
+        logger.info(f"RAG retrieved {len(retrieved_sections)} DPDP sections for analysis")
+    except Exception as rag_err:
+        logger.warning(f"RAG enrichment failed, using raw document: {rag_err}")
+        enriched_prompt = policy_text
+        retrieved_sections = []
+
     raw = None
     used_provider = "gemini"
     try:
-        raw = await asyncio.wait_for(get_gemini_completion(policy_text), timeout=45.0)
+        raw = await asyncio.wait_for(get_gemini_completion(enriched_prompt), timeout=60.0)
         logger.info(f"Gemini raw response (first 500 chars): {raw[:500]}")
         data = _extract_json(raw)
         _normalize_audit_data(data)
@@ -726,10 +743,10 @@ async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
         logger.error(f"Gemini returned invalid JSON after retries: {e}\nRaw: {raw[:1000] if raw else 'N/A'}")
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
     except asyncio.TimeoutError:
-        logger.warning(f"Gemini audit exceeded 45s timeout; falling back to Groq {GROQ_MODEL}")
+        logger.warning(f"Gemini audit exceeded 60s timeout; falling back to Groq {GROQ_MODEL}")
         if groq_client is not None:
             try:
-                raw = await get_groq_completion(policy_text)
+                raw = await get_groq_completion(enriched_prompt)
                 logger.info(f"Groq fallback raw response (first 500 chars): {raw[:500]}")
                 data = _extract_json(raw)
                 _normalize_audit_data(data)
@@ -747,7 +764,7 @@ async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
         if groq_client is not None:
             logger.warning(f"Gemini failed ({gemini_err_str[:120]}); falling back to Groq {GROQ_MODEL}")
             try:
-                raw = await get_groq_completion(policy_text)
+                raw = await get_groq_completion(enriched_prompt)
                 logger.info(f"Groq fallback raw response (first 500 chars): {raw[:500]}")
                 data = _extract_json(raw)
                 _normalize_audit_data(data)
@@ -792,8 +809,8 @@ async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
         verdict=result["verdict"],
         summary=result["summary"],
         total_clauses_flagged=len(flagged),
-        flagged_clauses=[FlaggedClause(**c) for c in flagged[:2]],
-        checklist=[],
+        flagged_clauses=[FlaggedClause(**c) for c in flagged],
+        checklist=[ChecklistItem(**c) for c in checklist],
         created_at=created_at,
     )
 
