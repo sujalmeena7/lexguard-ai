@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Depends, Header, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -612,38 +612,52 @@ def _normalize_audit_data(data: dict) -> dict:
     return data
 
 
-@api_router.post("/analyze", response_model=AnalysisResult)
-@limiter.limit("5/minute;50/day")
-async def analyze_policy(
-    request: Request,
-    req: AnalyzeRequest,
-    user: dict = Depends(get_current_user_optional),
-):
-    """Analyze privacy policy against DPDP Act 2023.
+def _extract_text_from_file(file_bytes: bytes, filename: str) -> str:
+    """Extract text from PDF or plain-text files."""
+    lower_name = filename.lower()
+    if lower_name.endswith(".pdf"):
+        try:
+            from pypdf import PdfReader
+            import io
+            reader = PdfReader(io.BytesIO(file_bytes))
+            text_parts = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+            extracted = "\n".join(text_parts).strip()
+            if len(extracted) < 50:
+                raise ValueError("PDF text extraction returned too little content; file may be image-based.")
+            return extracted
+        except Exception as e:
+            logger.error(f"PDF extraction failed: {e}")
+            raise HTTPException(status_code=400, detail=f"Could not extract text from PDF: {str(e)[:120]}")
+    else:
+        # Plain text (txt, docx not supported here — frontend should warn)
+        try:
+            text = file_bytes.decode("utf-8")
+            if len(text.strip()) < 50:
+                raise ValueError("File content too short (minimum 50 characters).")
+            return text
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="File is not valid UTF-8 text. Please upload a .txt or .pdf file.")
 
-    Public endpoint: anonymous visitors using the landing-page widget are
-    served via a per-IP anonymous user id; logged-in users get their record
-    attached to their Supabase user id. Per-IP rate limit (5/min, 50/day)
-    bounds abuse from anonymous callers.
-    """
+
+async def _execute_audit(policy_text: str, user: dict) -> AnalysisResult:
+    """Core audit logic shared by JSON and file-upload endpoints."""
 
     def _extract_json(text: str) -> dict:
         """Robustly extract JSON from model output."""
         import re
-        # 1. Try raw JSON
         try:
             return json.loads(text.strip())
         except json.JSONDecodeError:
             pass
-        
-        # 2. Strip markdown fences and try again
         cleaned = re.sub(r'```(?:json)?', '', text).strip()
         try:
             return json.loads(cleaned)
         except json.JSONDecodeError:
             pass
-            
-        # 3. Find the first '{' and last '}'
         try:
             start = text.find('{')
             end = text.rfind('}')
@@ -651,7 +665,6 @@ async def analyze_policy(
                 return json.loads(text[start:end+1])
         except json.JSONDecodeError:
             pass
-            
         raise json.JSONDecodeError("Failed to find valid JSON in model output", text, 0)
 
     @retry(
@@ -667,8 +680,6 @@ async def analyze_policy(
             contents=prompt,
             config=genai_types.GenerateContentConfig(
                 temperature=0,
-                # Schema is bounded (~6 clauses + 6 checklist items); 2048 is
-                # plenty and keeps Flash latency tight (~5-10s end-to-end).
                 max_output_tokens=2048,
                 response_mime_type="application/json",
             )
@@ -676,15 +687,11 @@ async def analyze_policy(
         return response.text
 
     async def get_groq_completion(text: str) -> str:
-        """Fallback: ask Groq Llama-3.3-70B for the same JSON schema."""
         completion = await groq_client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"Audit this document against DPDP Act 2023:\n\n---\n{text}\n---",
-                },
+                {"role": "user", "content": f"Audit this document against DPDP Act 2023:\n\n---\n{text}\n---"},
             ],
             temperature=0,
             max_tokens=2048,
@@ -696,16 +703,13 @@ async def analyze_policy(
         msg = str(exc).lower()
         return any(
             token in msg
-            for token in (
-                "quota", "429", "rate limit", "rate_limit",
-                "exceeded", "resource_exhausted", "resource exhausted",
-            )
+            for token in ("quota", "429", "rate limit", "rate_limit", "exceeded", "resource_exhausted", "resource exhausted")
         )
 
     raw = None
     used_provider = "gemini"
     try:
-        raw = await asyncio.wait_for(get_gemini_completion(req.policy_text), timeout=45.0)
+        raw = await asyncio.wait_for(get_gemini_completion(policy_text), timeout=45.0)
         logger.info(f"Gemini raw response (first 500 chars): {raw[:500]}")
         data = _extract_json(raw)
         _normalize_audit_data(data)
@@ -713,12 +717,10 @@ async def analyze_policy(
         logger.error(f"Gemini returned invalid JSON after retries: {e}\nRaw: {raw[:1000] if raw else 'N/A'}")
         raise HTTPException(status_code=502, detail="Model returned invalid response. Please retry.")
     except asyncio.TimeoutError:
-        logger.warning(
-            f"Gemini audit exceeded 45s timeout; falling back to Groq {GROQ_MODEL}"
-        )
+        logger.warning(f"Gemini audit exceeded 45s timeout; falling back to Groq {GROQ_MODEL}")
         if groq_client is not None:
             try:
-                raw = await get_groq_completion(req.policy_text)
+                raw = await get_groq_completion(policy_text)
                 logger.info(f"Groq fallback raw response (first 500 chars): {raw[:500]}")
                 data = _extract_json(raw)
                 _normalize_audit_data(data)
@@ -728,20 +730,15 @@ async def analyze_policy(
                 raise HTTPException(status_code=502, detail="Fallback model returned invalid response. Please retry.")
             except Exception as ge:
                 logger.error(f"Groq fallback also failed: {ge}")
-                raise HTTPException(
-                    status_code=503,
-                    detail="All AI providers are unavailable right now. Please retry in a minute.",
-                )
+                raise HTTPException(status_code=503, detail="All AI providers are unavailable right now. Please retry in a minute.")
         else:
             raise HTTPException(status_code=504, detail="Audit timed out and no fallback is available.")
     except Exception as e:
         gemini_err_str = str(e)
         if groq_client is not None:
-            logger.warning(
-                f"Gemini failed ({gemini_err_str[:120]}); falling back to Groq {GROQ_MODEL}"
-            )
+            logger.warning(f"Gemini failed ({gemini_err_str[:120]}); falling back to Groq {GROQ_MODEL}")
             try:
-                raw = await get_groq_completion(req.policy_text)
+                raw = await get_groq_completion(policy_text)
                 logger.info(f"Groq fallback raw response (first 500 chars): {raw[:500]}")
                 data = _extract_json(raw)
                 _normalize_audit_data(data)
@@ -751,10 +748,7 @@ async def analyze_policy(
                 raise HTTPException(status_code=502, detail="Fallback model returned invalid response. Please retry.")
             except Exception as ge:
                 logger.error(f"Groq fallback also failed: {ge}")
-                raise HTTPException(
-                    status_code=503,
-                    detail="All AI providers are unavailable right now. Please retry in a minute.",
-                )
+                raise HTTPException(status_code=503, detail="All AI providers are unavailable right now. Please retry in a minute.")
         else:
             logger.error(f"Gemini error after multiple attempts: {gemini_err_str}")
             raise HTTPException(status_code=502, detail=f"Analysis failed after multiple attempts: {gemini_err_str[:120]}")
@@ -763,7 +757,6 @@ async def analyze_policy(
 
     analysis_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
-
     flagged = data.get("flagged_clauses", []) or []
     checklist = data.get("checklist", []) or []
 
@@ -779,17 +772,12 @@ async def analyze_policy(
         "unlocked": False,
     }
 
-    # Save to DB (Tied to user_id for IDOR protection)
     try:
-        await db.analyses.insert_one({
-            **result,
-            "user_id": user["id"],
-            "user_email": user["email"]
-        })
+        await db.analyses.insert_one({**result, "user_id": user["id"], "user_email": user["email"]})
     except Exception as db_err:
         logger.warning(f"Database insertion failed (is MongoDB running?): {db_err}")
 
-    preview = AnalysisResult(
+    return AnalysisResult(
         analysis_id=analysis_id,
         compliance_score=result["compliance_score"],
         verdict=result["verdict"],
@@ -799,7 +787,30 @@ async def analyze_policy(
         checklist=[],
         created_at=created_at,
     )
-    return preview
+
+
+@api_router.post("/analyze", response_model=AnalysisResult)
+@limiter.limit("5/minute;50/day")
+async def analyze_policy(
+    request: Request,
+    req: AnalyzeRequest,
+    user: dict = Depends(get_current_user_optional),
+):
+    """Analyze privacy policy against DPDP Act 2023 (JSON endpoint)."""
+    return await _execute_audit(req.policy_text, user)
+
+
+@api_router.post("/analyze/upload", response_model=AnalysisResult)
+@limiter.limit("5/minute;50/day")
+async def analyze_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user_optional),
+):
+    """Analyze privacy policy from uploaded PDF or text file."""
+    contents = await file.read()
+    policy_text = _extract_text_from_file(contents, file.filename or "upload")
+    return await _execute_audit(policy_text, user)
 
 @api_router.get("/audits")
 @limiter.limit("30/minute")

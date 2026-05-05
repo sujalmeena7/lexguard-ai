@@ -21,5 +21,6 @@ google-genai>=1.0.0
 groq>=0.11.0
 slowapi==0.1.9
 certifi>=2024.2.2
+pypdf>=4.0.0
 tenacity>=8.0.0
 supabase==2.15.3

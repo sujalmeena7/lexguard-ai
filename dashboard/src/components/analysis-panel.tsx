@@ -74,10 +74,9 @@ export function AnalysisPanel({ result, isLoading, highlightedClauseId, onClause
   }
 
   return (
-    <ScrollArea className="h-full pr-3">
-      <div className="space-y-4 pb-4">
-        {/* Summary Card */}
-        <Card className="glass-card">
+    <div className="space-y-4 pb-4">
+      {/* Summary Card */}
+      <Card className="glass-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">Executive Summary</CardTitle>
           </CardHeader>
@@ -165,6 +164,5 @@ export function AnalysisPanel({ result, isLoading, highlightedClauseId, onClause
           })}
         </div>
       </div>
-    </ScrollArea>
   );
 }
