@@ -847,6 +847,59 @@ async def analyze_upload(
     policy_text = _extract_text_from_file(contents, file.filename or "upload")
     return await _execute_audit(policy_text, user)
 
+
+@api_router.post("/analyze/upload/stream")
+@limiter.limit("5/minute;50/day")
+async def analyze_upload_stream(
+    request: Request,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user_optional),
+):
+    """Streamed analysis with SSE progress updates."""
+    contents = await file.read()
+    policy_text = _extract_text_from_file(contents, file.filename or "upload")
+
+    async def event_generator():
+        try:
+            yield f'data: {json.dumps({"type": "progress", "stage": "parsing", "message": "Parsing document...", "progress": 10})}\n\n'
+            await asyncio.sleep(0.2)
+
+            # RAG retrieval
+            yield f'data: {json.dumps({"type": "progress", "stage": "rag", "message": "Retrieving relevant DPDP sections...", "progress": 25})}\n\n'
+            try:
+                rag = get_rag_engine()
+                enriched_prompt, retrieved_sections = rag.build_enriched_prompt(policy_text)
+            except Exception as rag_err:
+                logger.warning(f"RAG enrichment failed: {rag_err}")
+                enriched_prompt = policy_text
+                retrieved_sections = []
+            await asyncio.sleep(0.3)
+
+            yield f'data: {json.dumps({"type": "progress", "stage": "analysis", "message": "Analyzing document against DPDP Act 2023...", "progress": 40})}\n\n'
+
+            # Run the actual audit (blocking LLM call)
+            result = await _execute_audit(policy_text, user)
+
+            yield f'data: {json.dumps({"type": "progress", "stage": "scoring", "message": "Generating compliance scorecard...", "progress": 85})}\n\n'
+            await asyncio.sleep(0.3)
+
+            # Serialize result to dict for SSE
+            result_dict = result.model_dump()
+            yield f'data: {json.dumps({"type": "complete", "progress": 100, "result": result_dict})}\n\n'
+        except Exception as e:
+            logger.error(f"Streaming audit failed: {e}")
+            yield f'data: {json.dumps({"type": "error", "message": str(e)})}\n\n'
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
 @api_router.get("/audits")
 @limiter.limit("30/minute")
 async def get_user_audits(request: Request, user: dict = Depends(get_current_user)):

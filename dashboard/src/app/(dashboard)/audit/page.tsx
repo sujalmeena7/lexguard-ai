@@ -14,6 +14,7 @@ import {
   Crown,
   BookOpen,
   ChevronDown,
+  GitCompare,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -57,6 +58,7 @@ const stageConfig: Record<string, { label: string; color: string }> = {
   idle: { label: "Ready", color: "text-muted-foreground" },
   uploading: { label: "Uploading", color: "text-primary" },
   parsing: { label: "Parsing", color: "text-primary" },
+  rag: { label: "RAG Retrieval", color: "text-primary" },
   analyzing: { label: "Analyzing", color: "text-amber-500" },
   scoring: { label: "Scoring", color: "text-amber-500" },
   complete: { label: "Complete", color: "text-[#34D399]" },
@@ -70,6 +72,7 @@ export default function AuditPage() {
     progress: 0,
   });
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [previousResult, setPreviousResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [highlightedClauseId, setHighlightedClauseId] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export default function AuditPage() {
     setAnalysisResult(null);
     setErrorMessage(null);
     setUploadedFileName(file.name);
-    setAuditStatus({ stage: "uploading", message: "Reading document...", progress: 10 });
+    setAuditStatus({ stage: "uploading", message: "Reading document...", progress: 5 });
 
     try {
       const formData = new FormData();
@@ -94,7 +97,7 @@ export default function AuditPage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
-      const res = await fetch("/api/analyze", {
+      const res = await fetch("/api/analyze/upload/stream", {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
@@ -105,45 +108,80 @@ export default function AuditPage() {
         throw new Error(`Analysis failed: ${res.status} — ${errText}`);
       }
 
-      setAuditStatus({ stage: "analyzing", message: "Running AI risk analysis...", progress: 60 });
+      if (!res.body) {
+        throw new Error("No response body from stream");
+      }
 
-      const data = await res.json();
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-      setAuditStatus({ stage: "scoring", message: "Calculating compliance score...", progress: 90 });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      // Map backend response to AnalysisResult shape
-      const mappedClauses: AnalysisResult["clauses"] = (data.flagged_clauses ?? []).map((c: any, i: number) => ({
-        id: c.clause_id ?? `c${i}`,
-        text: c.clause_excerpt ?? c.text ?? c.clause ?? "Flagged clause",
-        riskLevel: ((c.risk_level ?? c.severity ?? "medium").toLowerCase()) as AnalysisResult["clauses"][0]["riskLevel"],
-        section: c.dpdp_section ?? c.section ?? `Section ${i + 1}`,
-        recommendation: c.suggested_fix ?? c.recommendation ?? "Review this clause for DPDP compliance.",
-        issue: c.issue ?? "",
-      }));
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
 
-      const result: AnalysisResult = {
-        overallScore: data.compliance_score ?? data.score ?? 67,
-        riskBreakdown: {
-          critical: mappedClauses.filter((c: AnalysisResult["clauses"][0]) => c.riskLevel === "critical").length,
-          high: mappedClauses.filter((c: AnalysisResult["clauses"][0]) => c.riskLevel === "high").length,
-          medium: mappedClauses.filter((c: AnalysisResult["clauses"][0]) => c.riskLevel === "medium").length,
-          low: mappedClauses.filter((c: AnalysisResult["clauses"][0]) => c.riskLevel === "low").length,
-        },
-        summary: data.summary ?? "Analysis complete.",
-        verdict: data.verdict ?? "",
-        complianceFlags: data.checklist?.map((c: any) => c.focus_area).filter(Boolean) ?? ["Consent", "Retention", "Transfer"],
-        checklist: data.checklist ?? [],
-        retrievedSections: data.retrieved_sections ?? [],
-        clauses: mappedClauses,
-      };
+        for (const chunk of lines) {
+          const line = chunk.trim();
+          if (!line.startsWith("data:")) continue;
 
-      setAuditStatus({ stage: "complete", message: "Audit complete", progress: 100 });
-      setAnalysisResult(result);
+          const payload = line.slice(5).trim();
+          if (!payload) continue;
 
-      // Deduct credit after successful audit
-      if (!isPremium) {
-        const newCredits = Math.max(0, credits - 1);
-        await setCredits(newCredits);
+          try {
+            const event = JSON.parse(payload);
+
+            if (event.type === "progress") {
+              setAuditStatus({
+                stage: event.stage ?? "analyzing",
+                message: event.message ?? "Processing...",
+                progress: event.progress ?? 0,
+              });
+            } else if (event.type === "complete") {
+              const data = event.result;
+
+              const mappedClauses: AnalysisResult["clauses"] = (data.flagged_clauses ?? []).map((c: any, i: number) => ({
+                id: c.clause_id ?? `c${i}`,
+                text: c.clause_excerpt ?? c.text ?? c.clause ?? "Flagged clause",
+                riskLevel: ((c.risk_level ?? c.severity ?? "medium").toLowerCase()) as AnalysisResult["clauses"][0]["riskLevel"],
+                section: c.dpdp_section ?? c.section ?? `Section ${i + 1}`,
+                recommendation: c.suggested_fix ?? c.recommendation ?? "Review this clause for DPDP compliance.",
+                issue: c.issue ?? "",
+              }));
+
+              const result: AnalysisResult = {
+                overallScore: data.compliance_score ?? data.score ?? 67,
+                riskBreakdown: {
+                  critical: mappedClauses.filter((c: AnalysisResult["clauses"][0]) => c.riskLevel === "critical").length,
+                  high: mappedClauses.filter((c: AnalysisResult["clauses"][0]) => c.riskLevel === "high").length,
+                  medium: mappedClauses.filter((c: AnalysisResult["clauses"][0]) => c.riskLevel === "medium").length,
+                  low: mappedClauses.filter((c: AnalysisResult["clauses"][0]) => c.riskLevel === "low").length,
+                },
+                summary: data.summary ?? "Analysis complete.",
+                verdict: data.verdict ?? "",
+                complianceFlags: data.checklist?.map((c: any) => c.focus_area).filter(Boolean) ?? ["Consent", "Retention", "Transfer"],
+                checklist: data.checklist ?? [],
+                retrievedSections: data.retrieved_sections ?? [],
+                clauses: mappedClauses,
+              };
+
+              setAuditStatus({ stage: "complete", message: "Audit complete", progress: 100 });
+              setAnalysisResult(result);
+
+              if (!isPremium) {
+                const newCredits = Math.max(0, credits - 1);
+                await setCredits(newCredits);
+              }
+            } else if (event.type === "error") {
+              throw new Error(event.message || "Analysis failed");
+            }
+          } catch (parseErr) {
+            console.warn("Failed to parse SSE chunk:", payload, parseErr);
+          }
+        }
       }
     } catch (err) {
       console.error("Analysis error:", err);
@@ -579,9 +617,10 @@ export default function AuditPage() {
                           style={{ boxShadow: "0 0 12px rgba(52,211,153,0.4)" }}
                         />
                       </div>
-                      <div className="mt-3 flex gap-2">
-                        {["uploading", "parsing", "analyzing", "scoring", "complete"].map((stage) => {
-                          const isDone = ["uploading", "parsing", "analyzing", "scoring", "complete"].indexOf(auditStatus.stage) >= ["uploading", "parsing", "analyzing", "scoring", "complete"].indexOf(stage);
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {["uploading", "parsing", "rag", "analyzing", "scoring", "complete"].map((stage) => {
+                          const order = ["uploading", "parsing", "rag", "analyzing", "scoring", "complete"];
+                          const isDone = order.indexOf(auditStatus.stage) >= order.indexOf(stage);
                           const isCurrent = auditStatus.stage === stage;
                           return (
                             <div key={stage} className="flex items-center gap-1.5">
@@ -636,6 +675,7 @@ export default function AuditPage() {
                         size="sm"
                         className="text-xs"
                         onClick={() => {
+                          setPreviousResult(analysisResult);
                           setAnalysisResult(null);
                           setUploadedFileName(null);
                           setAuditStatus({ stage: "idle", message: "Ready to audit", progress: 0 });
@@ -760,6 +800,79 @@ export default function AuditPage() {
                       </CollapsibleContent>
                     </Collapsible>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Comparison — Current vs Previous Audit */}
+        {analysisResult && previousResult && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card className="glass-card border-amber-500/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <GitCompare className="h-4 w-4 text-amber-500" />
+                  <CardTitle className="text-sm font-semibold">Audit Comparison</CardTitle>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Comparing the latest audit with the previous one.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    {
+                      label: "Compliance Score",
+                      current: analysisResult.overallScore,
+                      previous: previousResult.overallScore,
+                      unit: "",
+                      invert: false,
+                    },
+                    {
+                      label: "Flagged Clauses",
+                      current: analysisResult.clauses.length,
+                      previous: previousResult.clauses.length,
+                      unit: "",
+                      invert: true,
+                    },
+                    {
+                      label: "Critical Risk",
+                      current: analysisResult.riskBreakdown.critical,
+                      previous: previousResult.riskBreakdown.critical,
+                      unit: "",
+                      invert: true,
+                    },
+                    {
+                      label: "High Risk",
+                      current: analysisResult.riskBreakdown.high,
+                      previous: previousResult.riskBreakdown.high,
+                      unit: "",
+                      invert: true,
+                    },
+                  ].map((item) => {
+                    const diff = item.current - item.previous;
+                    const isBetter = item.invert ? diff < 0 : diff > 0;
+                    const isWorse = item.invert ? diff > 0 : diff < 0;
+                    return (
+                      <div key={item.label} className="rounded-lg border border-white/10 bg-background/40 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className="text-lg font-bold font-mono-num">{item.current}{item.unit}</span>
+                          {diff !== 0 && (
+                            <span className={`text-xs font-medium ${isBetter ? "text-[#34D399]" : isWorse ? "text-[#F87171]" : "text-muted-foreground"}`}>
+                              {diff > 0 ? "+" : ""}{diff}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">Previous: {item.previous}{item.unit}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

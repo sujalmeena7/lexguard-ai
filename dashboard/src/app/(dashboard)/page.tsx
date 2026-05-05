@@ -25,6 +25,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { HealthGauge } from "@/components/health-gauge";
 import { useDashboardUser } from "@/components/auth-guard";
 import { supabase } from "@/lib/supabase";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface Audit {
   analysis_id: string;
@@ -231,6 +240,55 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Compliance Trends */}
+            {audits.length > 1 && (
+              <Card className="glass-card">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Compliance Trends
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={[...audits].reverse().map((a) => ({
+                          date: new Date(a.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                          score: a.compliance_score ?? 0,
+                        }))}
+                        margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} />
+                        <YAxis domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "rgba(15,23,42,0.95)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
+                          itemStyle={{ color: "#34D399" }}
+                          formatter={(value: any) => [`Score: ${value}`, ""]}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="score"
+                          stroke="#34D399"
+                          strokeWidth={2}
+                          dot={{ fill: "#34D399", r: 3 }}
+                          activeDot={{ r: 5, fill: "#34D399" }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Audit History */}
             <Card className="glass-card">
