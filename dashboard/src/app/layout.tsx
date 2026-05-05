@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "LexGuard AI | Compliance Dashboard",
   description: "Enterprise legal compliance and document auditing powered by AI.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
