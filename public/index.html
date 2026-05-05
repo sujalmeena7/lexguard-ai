@@ -268,8 +268,8 @@
           </div>
           <p class="lg-redirect-sub" id="lg-redirect-sub">We've opened the LexGuard AI Dashboard in a new tab. Upload full PDFs, export branded reports, and audit 100+ documents.</p>
           <div class="lg-redirect-actions">
-            <a href="https://dashboard-nine-psi-85.vercel.app" target="_blank" rel="noopener" class="lg-btn lg-btn-primary lg-btn-redirect" data-testid="lg-redirect-cta"><span class="lg-btn-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg> Open Dashboard &amp; claim credit</span></a>
-            <p class="lg-redirect-hint">Didn't open? <a href="https://dashboard-nine-psi-85.vercel.app" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
+            <a href="https://dashboard-sujalmeena7s-projects.vercel.app" target="_blank" rel="noopener" class="lg-btn lg-btn-primary lg-btn-redirect" data-testid="lg-redirect-cta"><span class="lg-btn-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg> Open Dashboard &amp; claim credit</span></a>
+            <p class="lg-redirect-hint">Didn't open? <a href="https://dashboard-sujalmeena7s-projects.vercel.app" target="_blank" rel="noopener" data-testid="lg-redirect-fallback">Click here</a> to launch it manually.</p>
           </div>
         </div>
       </div>
@@ -486,82 +486,6 @@
   <script src="/js/constellation.js"></script>
 
   <!-- ── OAuth callback session handler ── -->
-  <script>
-    (function() {
-      function updateNav(user) {
-        var loggedIn = document.getElementById('nav-logged-in');
-        var loggedOut = document.getElementById('nav-logged-out');
-        var emailSpan = document.getElementById('nav-user-email');
-        if (!loggedIn || !loggedOut) return;
-        if (user) {
-          loggedIn.classList.remove('hidden');
-          loggedOut.classList.add('hidden');
-          if (emailSpan) emailSpan.textContent = user.email || '';
-        } else {
-          loggedIn.classList.add('hidden');
-          loggedOut.classList.remove('hidden');
-          if (emailSpan) emailSpan.textContent = '';
-        }
-      }
-
-      var logoutBtn = document.getElementById('nav-logout-btn');
-
-      if (typeof supabase === 'undefined') return;
-      // Await config fetch so ENV_SUPABASE_URL / ENV_SUPABASE_ANON_KEY are set
-      (window.__LEXGUARD_CONFIG_READY__ || Promise.resolve()).then(function() {
-        var url = window.ENV_SUPABASE_URL;
-        var key = window.ENV_SUPABASE_ANON_KEY;
-        if (!url || !key) return;
-        try {
-          var client = supabase.createClient(url, key);
-        client.auth.getSession().then(function(result) {
-          var user = result.data && result.data.session && result.data.session.user;
-          updateNav(user);
-          if (user) {
-            console.log('Session found:', user.email);
-            if (window.history.replaceState) {
-              window.history.replaceState(null, '', window.location.pathname + window.location.search);
-            }
-          }
-        });
-        client.auth.onAuthStateChange(function(event, session) {
-          var user = session && session.user;
-          updateNav(user);
-          if (event === 'SIGNED_IN' && user) {
-            console.log('User signed in:', user.email);
-          }
-          if (event === 'SIGNED_OUT') {
-            console.log('User signed out');
-          }
-        });
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', function() {
-            client.auth.signOut().then(function() {
-              updateNav(null);
-            });
-          });
-        }
-        var dashLink = document.getElementById('nav-dashboard-link');
-        if (dashLink) {
-          dashLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            var url = dashLink.href || window.ENV_DASHBOARD_URL || 'https://lexguard-ai-a8kv79qhvngwsute9api2n.streamlit.app/';
-            client.auth.getSession().then(function(result) {
-              if (result.data && result.data.session && result.data.session.access_token) {
-                var sep = url.indexOf('?') !== -1 ? '&' : '?';
-                url = url + sep + 'access_token=' + encodeURIComponent(result.data.session.access_token);
-              }
-              window.open(url, '_blank');
-            }).catch(function() {
-              window.open(url, '_blank');
-            });
-          });
-        }
-      } catch (e) {
-        console.error('Supabase session init failed:', e);
-      }
-      }); // end __LEXGUARD_CONFIG_READY__.then
-    })();
-  </script>
+  <!-- Auth + nav handled by js/main.js; no duplicate inline scripts needed -->
 </body>
 </html>
