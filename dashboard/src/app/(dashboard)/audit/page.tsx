@@ -79,8 +79,8 @@ export default function AuditPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const startAnalysis = useCallback(async (file: File) => {
-    if (!isPremium && credits <= 0) {
-      setErrorMessage("No credits remaining. Upgrade to Premium for unlimited audits.");
+    if (credits <= 0) {
+      setErrorMessage("No credits remaining. Upgrade to get more audits.");
       return;
     }
 
@@ -171,10 +171,8 @@ export default function AuditPage() {
               setAuditStatus({ stage: "complete", message: "Audit complete", progress: 100 });
               setAnalysisResult(result);
 
-              if (!isPremium) {
-                const newCredits = Math.max(0, credits - 1);
-                await setCredits(newCredits);
-              }
+              const newCredits = Math.max(0, credits - 1);
+              await setCredits(newCredits);
             } else if (event.type === "error") {
               throw new Error(event.message || "Analysis failed");
             }
@@ -191,7 +189,7 @@ export default function AuditPage() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [isPremium, credits, setCredits]);
+  }, [credits, setCredits]);
 
   const handleFileSelect = useCallback(
     (file: File) => {

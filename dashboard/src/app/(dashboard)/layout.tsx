@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -17,6 +17,9 @@ import {
   Unlock,
   Bell,
   Search,
+  X,
+  FileText,
+  AlertTriangle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +30,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthGuard, useDashboardUser } from "@/components/auth-guard";
+import { supabase } from "@/lib/supabase";
 
 const sidebarItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/" },
@@ -42,7 +46,40 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, onSignOut, isPremium, credits, setPremium, setCredits } = useDashboardUser();
   const [searchQuery, setSearchQuery] = useState("");
-  const [notifications] = useState(3);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{id: string; text: string; date: string; type: string}>>([]);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadNotifs() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      fetch("/api/audits", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: any[]) => {
+          const arr = Array.isArray(data) ? data : [];
+          const mapped = arr.slice(0, 5).map((a) => ({
+            id: a.analysis_id,
+            text: `Audit completed — Score ${a.compliance_score ?? 0}`,
+            date: a.created_at,
+            type: (a.compliance_score ?? 0) < 50 ? "critical" : (a.compliance_score ?? 0) < 70 ? "warning" : "success",
+          }));
+          setNotifications(mapped);
+        })
+        .catch(() => setNotifications([]));
+    }
+    loadNotifs();
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [accessKey, setAccessKey] = useState("");
@@ -160,7 +197,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="flex-1 min-w-0">
               <p className="truncate text-xs font-medium">{user!.email || "User"}</p>
               <p className="truncate text-[10px] text-muted-foreground">
-                {isPremium ? "Premium Plan" : "Enterprise Plan"}
+                {isPremium ? "Premium Plan" : "Free Plan"}
               </p>
             </div>
             <Button variant="ghost" size="icon" onClick={onSignOut} className="h-7 w-7 text-muted-foreground hover:text-destructive">
@@ -187,14 +224,49 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-3">
             <ThemeToggle />
 
-            <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-lg border border-border/50">
-              <Bell className="h-4 w-4" />
-              {notifications > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
-                  {notifications}
-                </span>
+            <div ref={notifRef} className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9 rounded-lg border border-border/50"
+                onClick={() => setNotificationsOpen((v) => !v)}
+              >
+                <Bell className="h-4 w-4" />
+                {notifications.length > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+                    {notifications.length}
+                  </span>
+                )}
+              </Button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-white/10 bg-card/95 backdrop-blur-xl shadow-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold">Notifications</p>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setNotificationsOpen(false)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No new notifications</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {notifications.map((n) => (
+                        <div key={n.id} className="flex items-start gap-3 rounded-lg bg-background/40 p-2.5">
+                          <div className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${n.type === "critical" ? "bg-[#F87171]" : n.type === "warning" ? "bg-[#F59E0B]" : "bg-[#34D399]"}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{n.text}</p>
+                            <p className="text-[10px] text-muted-foreground">{new Date(n.date).toLocaleDateString()}</p>
+                          </div>
+                          {n.type === "critical" && <AlertTriangle className="h-3.5 w-3.5 text-[#F87171] flex-shrink-0" />}
+                          {n.type !== "critical" && <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
-            </Button>
+            </div>
 
             <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 px-3 py-1.5">
               <Avatar className="h-7 w-7">
@@ -204,7 +276,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Avatar>
               <div className="hidden sm:block">
                 <p className="text-xs font-medium">{user!.email || "User"}</p>
-                <p className="text-[10px] text-muted-foreground">Enterprise Plan</p>
+                <p className="text-[10px] text-muted-foreground">{isPremium ? "Premium Plan" : "Free Plan"}</p>
               </div>
             </div>
           </div>
