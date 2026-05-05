@@ -284,7 +284,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Button>
 
               {notificationsOpen && (
-                <div className="fixed right-2 top-14 z-50 w-[calc(100vw-1rem)] max-w-sm sm:absolute sm:right-0 sm:top-12 rounded-xl border border-white/10 bg-card/95 backdrop-blur-xl shadow-2xl p-4 space-y-3">
+                <div className="fixed right-3 top-16 z-[100] w-[calc(100vw-1.5rem)] max-w-sm sm:absolute sm:right-0 sm:top-12 rounded-xl border border-border/80 bg-background shadow-[0_8px_30px_rgb(0,0,0,0.4)] p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold">Notifications</p>
                     <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setNotificationsOpen(false)}>
