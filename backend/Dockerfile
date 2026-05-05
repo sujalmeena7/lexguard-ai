@@ -29,8 +29,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY server.py .
 COPY dpdp_knowledge_base.py .
 COPY rag_engine.py .
-COPY test_gemini.py .
-COPY mock_server.py .
 
 # Create a non-root user for security (optional but recommended)
 # For EC2 single-container setups we run as root for simplicity,
