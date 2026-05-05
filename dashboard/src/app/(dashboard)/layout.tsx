@@ -20,6 +20,8 @@ import {
   X,
   FileText,
   AlertTriangle,
+  History,
+  Clock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import { supabase } from "@/lib/supabase";
 const sidebarItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { id: "audit", label: "Document Audit", icon: FileSearch, href: "/audit" },
+  { id: "history", label: "Audit History", icon: Clock, href: "/history" },
   { id: "roadmap", label: "Privacy Roadmap", icon: Map, href: "/roadmap" },
   { id: "library", label: "Clause Library", icon: Library, href: "/library" },
   { id: "settings", label: "Settings", icon: Settings, href: "/settings" },
