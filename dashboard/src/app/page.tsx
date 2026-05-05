@@ -143,6 +143,9 @@ function DashboardContent() {
   const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [roadmapInput, setRoadmapInput] = useState("");
 
+  // Interactive clause highlighting
+  const [highlightedClauseId, setHighlightedClauseId] = useState<string | null>(null);
+
   // Premium state (client-side until backend integration)
   const [isPremium, setIsPremium] = useState(() => {
     if (typeof window !== "undefined") {
@@ -267,9 +270,9 @@ function DashboardContent() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-background radial-bg">
       {/* ── Sidebar ───────────────────────────────────────────────── */}
-      <aside className="flex w-64 flex-col border-r border-border bg-card/50 backdrop-blur-xl">
+      <aside className="flex w-64 flex-col border-r border-white/10 bg-card/40 backdrop-blur-xl">
         <div className="flex items-center gap-3 px-6 py-5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Shield className="h-5 w-5" />
@@ -421,7 +424,7 @@ function DashboardContent() {
           <div className="p-6 space-y-6">
             {/* ── Top Row: Stats ──────────────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden relative">
+              <Card className="glass-card overflow-hidden relative">
                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
                   <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Active Audits
@@ -432,7 +435,7 @@ function DashboardContent() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold">12</span>
+                    <span className="text-3xl font-bold font-mono-num">12</span>
                     <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 text-[10px]">
                       <TrendingUp className="mr-0.5 h-3 w-3" /> +3 this week
                     </Badge>
@@ -441,7 +444,7 @@ function DashboardContent() {
                 </CardContent>
               </Card>
 
-              <Card className="border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden relative">
+              <Card className="glass-card overflow-hidden relative">
                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
                   <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Avg. Risk Level
@@ -455,13 +458,16 @@ function DashboardContent() {
                     <span className="text-3xl font-bold">Medium</span>
                   </div>
                   <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                    <div className="h-full w-[58%] rounded-full bg-amber-500" />
+                    <div
+                      className="h-full rounded-full bg-amber-500 animate-progress-fill glow-pulse"
+                      style={{ width: "58%", boxShadow: "0 0 8px rgba(245, 158, 11, 0.5)" }}
+                    />
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Score: 58/100 risk index</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Score: <span className="font-mono-num">58</span>/100 risk index</p>
                 </CardContent>
               </Card>
 
-              <Card className="border-border/60 bg-card/60 backdrop-blur-sm overflow-hidden relative">
+              <Card className="glass-card overflow-hidden relative">
                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
                   <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Compliance Rate
@@ -472,13 +478,18 @@ function DashboardContent() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold">84%</span>
+                    <span className="text-3xl font-bold font-mono-num">84%</span>
                     <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 text-[10px]">
                       <TrendingUp className="mr-0.5 h-3 w-3" /> +6%
                     </Badge>
                   </div>
-                  <Progress value={84} className="mt-2 h-1.5" />
-                  <p className="mt-1 text-xs text-muted-foreground">Target: 95%</p>
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 animate-progress-fill glow-pulse"
+                      style={{ width: "84%", boxShadow: "0 0 8px rgba(52, 211, 153, 0.5)" }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Target: <span className="font-mono-num">95%</span></p>
                 </CardContent>
               </Card>
             </div>
@@ -487,7 +498,7 @@ function DashboardContent() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {/* Left: Analysis Hub (2 cols) */}
               <div className="xl:col-span-2 space-y-6">
-                <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+                <Card className="glass-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
                       <div className="rounded-lg bg-primary/10 p-1.5">
@@ -516,10 +527,11 @@ function DashboardContent() {
                           </div>
                           <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                             <motion.div
-                              className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500"
+                              className="h-full rounded-full bg-gradient-to-r from-primary to-[#34D399]"
                               initial={{ width: 0 }}
                               animate={{ width: `${auditStatus.progress}%` }}
                               transition={{ duration: 0.5 }}
+                              style={{ filter: "drop-shadow(0 0 6px rgba(52, 211, 153, 0.4))" }}
                             />
                           </div>
                           <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-wider">
@@ -530,7 +542,7 @@ function DashboardContent() {
                               return (
                                 <span
                                   key={step}
-                                  className={`flex items-center gap-1 ${isCurrent ? "text-primary font-semibold" : isDone ? "text-emerald-500" : ""}`}
+                                  className={`flex items-center gap-1 ${isCurrent ? "text-primary font-semibold" : isDone ? "text-[#34D399]" : ""}`}
                                 >
                                   {isDone && <CheckCircle2 className="h-3 w-3" />}
                                   {step}
@@ -544,7 +556,7 @@ function DashboardContent() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/60 bg-card/60 backdrop-blur-sm min-h-[420px]">
+                <Card className="glass-card min-h-[420px]">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -560,46 +572,87 @@ function DashboardContent() {
                   </CardHeader>
                   <CardContent>
                     {isAnalyzing ? (
-                      <div className="space-y-3">
-                        {[1, 2, 3, 4].map((i) => (
-                          <div key={i} className="animate-pulse space-y-2">
-                            <div className="h-3 w-3/4 rounded bg-muted" />
-                            <div className="h-3 w-full rounded bg-muted" />
-                            <div className="h-3 w-5/6 rounded bg-muted" />
+                      <div className="space-y-4">
+                        {/* Premium Document Scanning Card */}
+                        <div className="relative rounded-xl border border-white/10 bg-background/30 p-6 overflow-hidden">
+                          <div className="scan-overlay" />
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                              <FileText className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">Scanning Document...</p>
+                              <p className="text-xs text-muted-foreground">AI is analyzing legal structure</p>
+                            </div>
                           </div>
-                        ))}
+                          <div className="space-y-3">
+                            {[1, 2, 3, 4].map((i) => (
+                              <div key={i} className="animate-pulse space-y-2">
+                                <div className="h-3 w-3/4 rounded bg-muted" />
+                                <div className="h-3 w-full rounded bg-muted" />
+                                <div className="h-3 w-5/6 rounded bg-muted" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     ) : analysisResult ? (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <div className="rounded-lg border border-border/60 bg-background/50 p-4">
+                        <div className="rounded-xl border border-white/10 bg-background/30 p-4 relative">
                           <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Original Document
                           </h4>
                           <ScrollArea className="h-[300px]">
-                            <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-                              <p><strong className="text-foreground">1. Data Collection</strong> — We collect personal information including name, email, phone number, and usage data through forms, cookies, and third-party integrations.</p>
-                              <p><strong className="text-foreground">2. Use of Information</strong> — Your data is used to provide services, improve user experience, and send marketing communications. We may share your data with trusted partners for these purposes without additional consent.</p>
-                              <p><strong className="text-foreground">3. Data Security</strong> — We implement industry-standard security measures including encryption and access controls to protect your personal data.</p>
-                              <p><strong className="text-foreground">4. Third-Party Disclosure</strong> — We may share your personal data with trusted partners for marketing purposes without obtaining explicit consent.</p>
-                              <p><strong className="text-foreground">5. Data Retention</strong> — We retain user data for as long as necessary to provide our services.</p>
-                              <p><strong className="text-foreground">6. Cross-Border Transfer</strong> — Data may be transferred to servers located outside India for processing and storage.</p>
-                              <p><strong className="text-foreground">7. User Rights</strong> — Users can request access to their data by contacting our support team.</p>
-                              <p><strong className="text-foreground">8. Breach Notification</strong> — In case of a data breach, we will notify affected users as soon as reasonably possible.</p>
-                            </div>
+                            {(() => {
+                              const sections = [
+                                { id: "s1", title: "Data Collection", text: "We collect personal information including name, email, phone number, and usage data through forms, cookies, and third-party integrations." },
+                                { id: "s2", title: "Use of Information", text: "Your data is used to provide services, improve user experience, and send marketing communications. We may share your data with trusted partners for these purposes without additional consent." },
+                                { id: "s3", title: "Data Security", text: "We implement industry-standard security measures including encryption and access controls to protect your personal data." },
+                                { id: "s4", title: "Third-Party Disclosure", text: "We may share your personal data with trusted partners for marketing purposes without obtaining explicit consent." },
+                                { id: "s5", title: "Data Retention", text: "We retain user data for as long as necessary to provide our services." },
+                                { id: "s6", title: "Cross-Border Transfer", text: "Data may be transferred to servers located outside India for processing and storage." },
+                                { id: "s7", title: "User Rights", text: "Users can request access to their data by contacting our support team." },
+                                { id: "s8", title: "Breach Notification", text: "In case of a data breach, we will notify affected users as soon as reasonably possible." },
+                              ];
+                              // Map clause ID to section index
+                              const clauseToSection: Record<string, number> = {
+                                "c1": 3, "c2": 5, "c3": 4, "c4": 6, "c5": 7,
+                              };
+                              const highlightedSection = highlightedClauseId ? clauseToSection[highlightedClauseId] : undefined;
+                              return (
+                                <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+                                  {sections.map((sec, idx) => {
+                                    const isHighlighted = highlightedSection === idx;
+                                    return (
+                                      <p
+                                        key={sec.id}
+                                        className={`transition-all duration-300 rounded-md p-1.5 ${isHighlighted ? "clause-highlight" : ""}`}
+                                      >
+                                        <strong className="text-foreground">{idx + 1}. {sec.title}</strong> — {sec.text}
+                                      </p>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                           </ScrollArea>
                         </div>
 
-                        <div className="rounded-lg border border-border/60 bg-background/50 p-4">
+                        <div className="rounded-xl border border-white/10 bg-background/30 p-4">
                           <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             AI Analysis
                           </h4>
                           <ScrollArea className="h-[300px]">
-                            <AnalysisPanel result={analysisResult} />
+                            <AnalysisPanel
+                              result={analysisResult}
+                              highlightedClauseId={highlightedClauseId}
+                              onClauseClick={(id) => setHighlightedClauseId(prev => prev === id ? null : id)}
+                            />
                           </ScrollArea>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex h-[300px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-background/30 text-center">
+                      <div className="flex h-[300px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-background/20 text-center">
                         <FileText className="mb-3 h-10 w-10 text-muted-foreground/30" />
                         <p className="text-sm font-medium text-muted-foreground">No document loaded</p>
                         <p className="mt-1 text-xs text-muted-foreground/60">Upload a PDF or DOCX above to begin analysis</p>
@@ -611,7 +664,7 @@ function DashboardContent() {
 
               {/* Right: AI Insights Panel */}
               <div className="space-y-6">
-                <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+                <Card className="glass-card">
                   <CardHeader className="pb-2 text-center">
                     <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Health Score
@@ -622,7 +675,7 @@ function DashboardContent() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+                <Card className="glass-card">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Quick Stats
@@ -631,15 +684,15 @@ function DashboardContent() {
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Total Audits</span>
-                      <span className="font-semibold">47</span>
+                      <span className="font-semibold font-mono-num">47</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Avg. Score</span>
-                      <span className="font-semibold text-amber-500">62</span>
+                      <span className="font-semibold font-mono-num text-[#F59E0B]">62</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">This Month</span>
-                      <span className="font-semibold">12</span>
+                      <span className="font-semibold font-mono-num">12</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Last Audit</span>
@@ -650,7 +703,7 @@ function DashboardContent() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+                <Card className="glass-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
                       <Zap className="h-4 w-4 text-amber-500" />
@@ -662,20 +715,20 @@ function DashboardContent() {
                   <CardContent>
                     {analysisResult ? (
                       <div className="space-y-3">
-                        <div className="rounded-lg bg-destructive/5 border border-destructive/10 p-3">
-                          <p className="text-xs font-semibold text-destructive mb-1">Critical Finding</p>
+                        <div className="rounded-lg bg-[#F87171]/5 border border-[#F87171]/10 p-3">
+                          <p className="text-xs font-semibold text-[#F87171] mb-1">Critical Finding</p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
                             Third-party data sharing without explicit consent violates DPDP Section 6. Immediate remediation required.
                           </p>
                         </div>
-                        <div className="rounded-lg bg-amber-500/5 border border-amber-500/10 p-3">
-                          <p className="text-xs font-semibold text-amber-500 mb-1">High Risk</p>
+                        <div className="rounded-lg bg-[#F59E0B]/5 border border-[#F59E0B]/10 p-3">
+                          <p className="text-xs font-semibold text-[#F59E0B] mb-1">High Risk</p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
                             Cross-border data transfer lacks adequacy safeguards per DPDP Section 16.
                           </p>
                         </div>
-                        <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/10 p-3">
-                          <p className="text-xs font-semibold text-emerald-500 mb-1">Positive</p>
+                        <div className="rounded-lg bg-[#34D399]/5 border border-[#34D399]/10 p-3">
+                          <p className="text-xs font-semibold text-[#34D399] mb-1">Positive</p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
                             Security measures section mentions encryption and access controls.
                           </p>
@@ -700,7 +753,7 @@ function DashboardContent() {
                 <h2 className="text-lg font-semibold">Audit History</h2>
                 <Badge variant="outline" className="text-[10px]">Last 30 days</Badge>
               </div>
-              <Card className="border-border/60 bg-card/60">
+              <Card className="glass-card">
                 <CardContent className="p-0">
                   <div className="divide-y divide-border/60">
                     {[
@@ -719,7 +772,7 @@ function DashboardContent() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <Badge variant={audit.score >= 70 ? "secondary" : "destructive"} className="text-[10px]">
+                          <Badge variant={audit.score >= 70 ? "secondary" : "destructive"} className="text-[10px] font-mono-num">
                             Score: {audit.score}
                           </Badge>
                           <span className="text-xs text-emerald-500">{audit.status}</span>
@@ -745,7 +798,7 @@ function DashboardContent() {
                   { title: "User Rights Portal", category: "Rights", risk: "low" as const },
                   { title: "Third-Party Sharing", category: "Sharing", risk: "critical" as const },
                 ].map((clause) => (
-                  <Card key={clause.title} className="border-border/60 bg-card/60 hover:bg-accent/30 transition-colors cursor-pointer">
+                  <Card key={clause.title} className="glass-card hover:bg-accent/30 transition-colors cursor-pointer">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <Badge variant="outline" className="text-[10px]">{clause.category}</Badge>
@@ -773,7 +826,7 @@ function DashboardContent() {
               </div>
 
               {!roadmapData ? (
-                <Card className="border-border/60 bg-card/60">
+                <Card className="glass-card">
                   <CardContent className="p-6 space-y-4">
                     <div className="space-y-2">
                       <label className="text-xs font-medium">Paste Privacy Policy or Audit Text</label>
@@ -847,26 +900,26 @@ function DashboardContent() {
                   {/* Scorecard Grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {/* Readability */}
-                    <Card className="border-border/60 bg-card/60">
+                    <Card className="glass-card">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Readability Health</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-bold">{roadmapData.privacy_ux_scorecard.readability_score}</span>
+                          <span className="text-3xl font-bold font-mono-num">{roadmapData.privacy_ux_scorecard.readability_score}</span>
                           <Badge variant="outline" className="text-[10px]">{roadmapData.privacy_ux_scorecard.readability_grade}</Badge>
                         </div>
                         <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500"
-                            style={{ width: `${roadmapData.privacy_ux_scorecard.readability_score}%` }}
+                            className="h-full rounded-full bg-gradient-to-r from-primary to-[#34D399] animate-progress-fill glow-pulse"
+                            style={{ width: `${roadmapData.privacy_ux_scorecard.readability_score}%`, boxShadow: "0 0 8px rgba(52, 211, 153, 0.5)" }}
                           />
                         </div>
                       </CardContent>
                     </Card>
 
                     {/* Multilingual */}
-                    <Card className="border-border/60 bg-card/60">
+                    <Card className="glass-card">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Multilingual Readiness</CardTitle>
                       </CardHeader>
@@ -889,7 +942,7 @@ function DashboardContent() {
                     </Card>
 
                     {/* Jargon Count */}
-                    <Card className="border-border/60 bg-card/60">
+                    <Card className="glass-card">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Jargon Alerts</CardTitle>
                       </CardHeader>
@@ -905,17 +958,17 @@ function DashboardContent() {
 
                   {/* Jargon Alerts Detail */}
                   {roadmapData.privacy_ux_scorecard.jargon_alerts.length > 0 && (
-                    <Card className="border-border/60 bg-card/60">
+                    <Card className="glass-card">
                       <CardHeader>
                         <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Jargon Replacements</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {roadmapData.privacy_ux_scorecard.jargon_alerts.map((ja, i) => (
-                          <div key={i} className="rounded-lg border-l-2 border-amber-500 bg-amber-500/5 p-3">
+                          <div key={i} className="rounded-lg border-l-2 border-[#F59E0B] bg-[#F59E0B]/5 p-3">
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="font-medium text-amber-500">"{ja.term}"</span>
+                              <span className="font-medium text-[#F59E0B]">"{ja.term}"</span>
                               <span className="text-muted-foreground">→</span>
-                              <span className="font-medium text-emerald-500">"{ja.plain_language}"</span>
+                              <span className="font-medium text-[#34D399]">"{ja.plain_language}"</span>
                             </div>
                             <p className="mt-1 text-xs text-muted-foreground">Context: {ja.context}</p>
                           </div>
@@ -925,13 +978,13 @@ function DashboardContent() {
                   )}
 
                   {/* Remediation Roadmap */}
-                  <Card className="border-border/60 bg-card/60">
+                  <Card className="glass-card">
                     <CardHeader>
                       <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Remediation Roadmap</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {roadmapData.remediation_roadmap.map((gap) => (
-                        <div key={gap.gap_id} className="rounded-lg border border-border/60 bg-background/50 p-4 space-y-3">
+                        <div key={gap.gap_id} className="rounded-lg border border-white/10 bg-background/30 p-4 space-y-3">
                           <div className="flex items-center gap-2">
                             <Badge variant={gap.enforcement_status === "active" ? "destructive" : "secondary"} className="text-[10px]">
                               {gap.enforcement_status === "active" ? "🔴 ACTIVE" : "🔵 UPCOMING"}
@@ -960,7 +1013,7 @@ function DashboardContent() {
 
                   {/* Executive Summary Table */}
                   {roadmapData.executive_summary.length > 0 && (
-                    <Card className="border-border/60 bg-card/60">
+                    <Card className="glass-card">
                       <CardHeader>
                         <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Executive Summary</CardTitle>
                       </CardHeader>
@@ -1004,7 +1057,7 @@ function DashboardContent() {
           {activeNav === "settings" && (
             <div className="p-6 space-y-6 max-w-2xl">
               <h2 className="text-lg font-semibold">Settings</h2>
-              <Card className="border-border/60 bg-card/60">
+              <Card className="glass-card">
                 <CardHeader>
                   <CardTitle className="text-sm font-semibold">Profile</CardTitle>
                 </CardHeader>
@@ -1021,7 +1074,7 @@ function DashboardContent() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-border/60 bg-card/60">
+              <Card className="glass-card">
                 <CardHeader>
                   <CardTitle className="text-sm font-semibold">Preferences</CardTitle>
                 </CardHeader>

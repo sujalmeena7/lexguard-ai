@@ -128,3 +128,95 @@
     @apply font-sans;
   }
 }
+
+/* ── Premium Radial Background ─────────────────────────────────────── */
+.dark .radial-bg {
+  background: radial-gradient(circle at top left, #1e293b, #0f172a);
+}
+
+/* ── Glassmorphism Card ────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.dark .glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ── Monospace Numbers ─────────────────────────────────────────────── */
+.font-mono-num {
+  font-family: var(--font-geist-mono), ui-monospace, "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Glow Text Effect ──────────────────────────────────────────────── */
+.glow-text {
+  text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+}
+
+/* ── Scanning Animation ────────────────────────────────────────────── */
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scan-overlay::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.6), transparent);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+  animation: scan-line 2s linear infinite;
+}
+
+/* ── Glow Pulse Animation ──────────────────────────────────────────── */
+@keyframes glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.4)); }
+  50% { filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.8)); }
+}
+
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ── Progress Bar Fill Animation ───────────────────────────────────── */
+@keyframes progress-fill {
+  from { width: 0; }
+}
+
+.animate-progress-fill {
+  animation: progress-fill 1.2s ease-out forwards;
+}
+
+/* ── Smooth fade-in-up for cards ───────────────────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+/* ── Clause Highlight ──────────────────────────────────────────────── */
+.clause-highlight {
+  background: rgba(99, 102, 241, 0.15);
+  border-left: 3px solid #6366F1;
+  padding-left: 8px;
+  border-radius: 0 4px 4px 0;
+  transition: all 0.3s ease;
+}

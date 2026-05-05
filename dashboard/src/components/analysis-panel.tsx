@@ -31,16 +31,18 @@ interface AnalysisResult {
 interface AnalysisPanelProps {
   result: AnalysisResult | null;
   isLoading?: boolean;
+  highlightedClauseId?: string | null;
+  onClauseClick?: (clauseId: string) => void;
 }
 
 const riskConfig = {
-  critical: { color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20", icon: FileWarning },
-  high: { color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/20", icon: AlertTriangle },
-  medium: { color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20", icon: AlertTriangle },
-  low: { color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: CheckCircle2 },
+  critical: { color: "text-[#F87171]", bg: "bg-[#F87171]/10", border: "border-[#F87171]/20", icon: FileWarning },
+  high: { color: "text-[#F59E0B]", bg: "bg-[#F59E0B]/10", border: "border-[#F59E0B]/20", icon: AlertTriangle },
+  medium: { color: "text-[#F59E0B]", bg: "bg-[#F59E0B]/10", border: "border-[#F59E0B]/20", icon: AlertTriangle },
+  low: { color: "text-[#34D399]", bg: "bg-[#34D399]/10", border: "border-[#34D399]/20", icon: CheckCircle2 },
 };
 
-export function AnalysisPanel({ result, isLoading }: AnalysisPanelProps) {
+export function AnalysisPanel({ result, isLoading, highlightedClauseId, onClauseClick }: AnalysisPanelProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -75,7 +77,7 @@ export function AnalysisPanel({ result, isLoading }: AnalysisPanelProps) {
     <ScrollArea className="h-full pr-3">
       <div className="space-y-4 pb-4">
         {/* Summary Card */}
-        <Card className="border-border/60 bg-card/80 backdrop-blur-sm">
+        <Card className="glass-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">Executive Summary</CardTitle>
           </CardHeader>
@@ -129,7 +131,10 @@ export function AnalysisPanel({ result, isLoading }: AnalysisPanelProps) {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Card className={`border-l-4 ${config.border.replace("border-", "border-l-")} bg-card/60`}>
+                <Card
+                  className={`border-l-4 ${config.border.replace("border-", "border-l-")} bg-card/60 cursor-pointer transition-all hover:bg-accent/30 ${highlightedClauseId === clause.id ? "ring-1 ring-primary/40" : ""}`}
+                  onClick={() => onClauseClick?.(clause.id)}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       <div className={`mt-0.5 rounded-full p-1.5 ${config.bg}`}>
