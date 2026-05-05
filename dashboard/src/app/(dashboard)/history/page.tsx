@@ -105,7 +105,7 @@ export default function HistoryPage() {
     return (
       <ScrollArea className="h-full">
         <div className="p-6 space-y-6 max-w-6xl mx-auto">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <Button
               variant="ghost"
               size="sm"
@@ -117,7 +117,7 @@ export default function HistoryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="text-xs"
+              className="text-xs w-full sm:w-auto"
               onClick={() => handleDownload(selectedAudit)}
             >
               <Download className="mr-1 h-3 w-3" /> Download Report
@@ -126,21 +126,21 @@ export default function HistoryPage() {
 
           <Card className="glass-card">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 flex-shrink-0">
                     <Shield className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <CardTitle className="text-sm font-semibold">Audit Details</CardTitle>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground truncate">
                       {formatDate(selectedAudit.created_at)} · ID: {selectedAudit.analysis_id.slice(0, 8)}
                     </p>
                   </div>
                 </div>
                 <Badge
                   variant={selectedAudit.compliance_score >= 70 ? "secondary" : "destructive"}
-                  className="text-[10px] font-mono-num"
+                  className="text-[10px] font-mono-num flex-shrink-0"
                 >
                   Score: {selectedAudit.compliance_score}
                 </Badge>
@@ -194,23 +194,23 @@ export default function HistoryPage() {
                     onClick={() => setSelectedAudit(audit)}
                   >
                     <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
                             <FileText className="h-4 w-4 text-primary" />
                           </div>
-                          <div>
-                            <p className="text-sm font-medium">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
                               Document Audit
                             </p>
-                            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {formatDate(audit.created_at)}
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                              <Calendar className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{formatDate(audit.created_at)}</span>
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                          <div className="text-right hidden sm:block">
                             <Badge
                               variant={audit.compliance_score >= 70 ? "secondary" : "destructive"}
                               className="text-[10px] font-mono-num"
@@ -221,6 +221,12 @@ export default function HistoryPage() {
                               {audit.verdict || "Complete"}
                             </p>
                           </div>
+                          <Badge
+                            variant={audit.compliance_score >= 70 ? "secondary" : "destructive"}
+                            className="text-[10px] font-mono-num sm:hidden"
+                          >
+                            {audit.compliance_score}
+                          </Badge>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -232,7 +238,7 @@ export default function HistoryPage() {
                           >
                             <Download className="h-4 w-4 text-muted-foreground" />
                           </Button>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
                         </div>
                       </div>
                     </CardContent>

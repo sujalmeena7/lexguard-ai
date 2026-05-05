@@ -216,14 +216,14 @@ export default function DashboardPage() {
             {/* Document Audit CTA */}
             <Card className="glass-card">
               <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 flex-shrink-0">
                       <Shield className="h-6 w-6 text-primary" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold">Run a Document Audit</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground truncate">
                         {isPremium
                           ? "Unlimited audits available."
                           : credits > 0
@@ -232,8 +232,8 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <Link href="/audit">
-                    <Button size="sm" className="text-xs">
+                  <Link href="/audit" className="w-full sm:w-auto">
+                    <Button size="sm" className="text-xs w-full sm:w-auto">
                       Start Audit <ArrowRight className="ml-1 h-3 w-3" />
                     </Button>
                   </Link>
@@ -316,25 +316,25 @@ export default function DashboardPage() {
                 ) : (
                   <div className="divide-y divide-border/60">
                     {audits.slice(0, 10).map((audit) => (
-                      <div key={audit.analysis_id} className="flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <div key={audit.analysis_id} className="flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
                             <FileText className="h-4 w-4 text-primary" />
                           </div>
-                          <div>
-                            <p className="text-sm font-medium">{audit.doc_name || "Document Audit"}</p>
-                            <p className="text-xs text-muted-foreground">{audit.analysis_id.slice(0, 8)} · {formatDate(audit.created_at)}</p>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{audit.doc_name || "Document Audit"}</p>
+                            <p className="text-xs text-muted-foreground truncate">{audit.analysis_id.slice(0, 8)} · {formatDate(audit.created_at)}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                           <Badge
                             variant={audit.compliance_score >= 70 ? "secondary" : "destructive"}
                             className="text-[10px] font-mono-num"
                           >
-                            Score: {audit.compliance_score}
+                            {audit.compliance_score}
                           </Badge>
-                          <span className="text-xs text-emerald-500">Complete</span>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                          <span className="hidden sm:inline text-xs text-emerald-500">Complete</span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
                         </div>
                       </div>
                     ))}

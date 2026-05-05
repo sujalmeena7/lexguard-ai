@@ -250,17 +250,17 @@ export default function AuditPage() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Crown className="h-4 w-4 text-amber-500" />
-                <span className="text-amber-700 dark:text-amber-400 font-medium">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Crown className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                <span className="text-amber-700 dark:text-amber-400 font-medium text-sm truncate">
                   You are on the Free Plan — no credits remaining.
                 </span>
               </div>
               <Button
                 size="sm"
                 variant="outline"
-                className="text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                className="text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10 w-full sm:w-auto"
                 onClick={() => window.location.href = "/settings"}
               >
                 <Crown className="mr-1 h-3 w-3" /> Upgrade to Premium
@@ -371,34 +371,34 @@ export default function AuditPage() {
                   className="space-y-4"
                 >
                   {/* Result Summary Bar */}
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-background/30 p-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-xl border border-white/10 bg-background/30 p-4 gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="flex flex-col items-center justify-center h-14 w-14 rounded-xl bg-primary/10">
+                      <div className="flex flex-col items-center justify-center h-14 w-14 rounded-xl bg-primary/10 flex-shrink-0">
                         <span className="text-xl font-bold font-mono-num" style={{ color: analysisResult.overallScore >= 80 ? "#34D399" : analysisResult.overallScore >= 50 ? "#F59E0B" : "#F87171" }}>
                           {analysisResult.overallScore}
                         </span>
                         <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Score</span>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-medium">Audit Complete</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate">
                           {analysisResult.clauses.length} clauses flagged · {analysisResult.riskBreakdown.critical} critical
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-xs"
+                        className="text-xs flex-1 sm:flex-initial"
                         onClick={handleDownloadReport}
                       >
-                        <Download className="mr-1 h-3 w-3" /> Download Report
+                        <Download className="mr-1 h-3 w-3" /> Download
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-xs"
+                        className="text-xs flex-1 sm:flex-initial"
                         onClick={() => {
                           setPreviousResult(analysisResult);
                           setAnalysisResult(null);
