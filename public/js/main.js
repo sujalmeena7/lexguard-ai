@@ -38,12 +38,16 @@
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const defaultDashboardUrl = isLocalhost ? 'http://localhost:3000/' : 'https://dashboard-sujalmeena7s-projects.vercel.app/';
     const DASHBOARD_URL = window.ENV_DASHBOARD_URL || defaultDashboardUrl;
-    const createAuthHandoffCode = async (accessToken) => {
-        if (!accessToken) return null;
+    const createAuthHandoffCode = async (session) => {
+        if (!session || !session.access_token) return null;
         try {
             const response = await fetch(`${API}/auth/handoff`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}` },
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refresh_token: session.refresh_token || '' }),
             });
             if (!response.ok) return null;
             const data = await response.json();
@@ -56,7 +60,7 @@
         const url = new URL(DASHBOARD_URL);
         url.searchParams.set('src', 'landing');
         if (session && session.access_token) {
-            const handoffCode = await createAuthHandoffCode(session.access_token);
+            const handoffCode = await createAuthHandoffCode(session);
             if (handoffCode) {
                 url.searchParams.set('handoff_code', handoffCode);
             }

@@ -486,10 +486,15 @@ async def root():
     return {"service": "LexGuard AI", "status": "ok"}
 
 
+class HandoffCreateRequest(BaseModel):
+    refresh_token: Optional[str] = Field(None, max_length=2048)
+
+
 @api_router.post("/auth/handoff")
 async def create_auth_handoff(
     user: dict = Depends(get_current_user),
     authorization: Optional[str] = Header(None),
+    body: Optional[HandoffCreateRequest] = None,
 ):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authentication required (Bearer token missing)")
@@ -503,6 +508,7 @@ async def create_auth_handoff(
     expires_dt = datetime.now(timezone.utc) + timedelta(seconds=AUTH_HANDOFF_TTL_SECONDS)
     payload = {
         "access_token": access_token,
+        "refresh_token": (body.refresh_token if body else None) or "",
         "user_id": user["id"],
         "expires_at": expires_dt.isoformat(),
         # Stored as a real datetime so the Mongo TTL index can expire it.
@@ -531,7 +537,10 @@ async def exchange_auth_handoff(request: Request, req: HandoffExchangeRequest):
     access_token = payload.get("access_token", "")
     if not access_token:
         raise HTTPException(status_code=404, detail="Invalid handoff payload")
-    return {"access_token": access_token}
+    return {
+        "access_token": access_token,
+        "refresh_token": payload.get("refresh_token", ""),
+    }
 
 
 # ── Text normalization (module-level so every endpoint can reuse) ──
