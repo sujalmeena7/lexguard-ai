@@ -1,0 +1,54 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            echo "=== Deploying LexGuard Backend ==="
+            cd /opt/lexguard/backend
+
+            echo "Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "Rebuilding containers (this takes ~3-5 min on first boot for model download)..."
+            docker compose down
+            docker compose build --no-cache
+            docker compose up -d
+
+            echo "Waiting for healthcheck..."
+            sleep 15
+            for i in {1..30}; do
+              if curl -fsS http://localhost:8000/ > /dev/null 2>&1; then
+                echo "Backend is healthy"
+                break
+              fi
+              echo "Healthcheck retry $i/30..."
+              sleep 5
+            done
+
+            echo "Pruning old images..."
+            docker image prune -f
+
+            echo "=== Deployment Complete ==="
+            docker ps
+            docker logs --tail 20 lexguard-backend
