@@ -14,14 +14,11 @@ ENV PYTHONFAULTHANDLER=1
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (for packages that compile C extensions)
+# Install minimal system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    g++ \
-    cmake \
-    build-essential \
     libffi-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Copy and install Python dependencies first (layer caching)
 COPY requirements.txt .

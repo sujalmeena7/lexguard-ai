@@ -24,6 +24,14 @@ jobs:
           script: |
             set -e
             echo "=== Deploying LexGuard Backend ==="
+
+            echo "Disk cleanup before build..."
+            docker system prune -a -f --volumes || true
+            docker builder prune -f || true
+            sudo apt-get clean || true
+            sudo rm -rf /var/cache/apt/archives/* /tmp/* /var/tmp/* || true
+            df -h
+
             cd /opt/lexguard/backend
 
             echo "Pulling latest code..."
@@ -31,7 +39,7 @@ jobs:
             git reset --hard origin/main
 
             echo "Rebuilding containers (this takes ~3-5 min on first boot for model download)..."
-            docker compose down
+            docker compose down --rmi all --remove-orphans || true
             docker compose build --no-cache
             docker compose up -d
 
