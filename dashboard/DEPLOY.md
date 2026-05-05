@@ -143,18 +143,6 @@ Open dashboard/?handoff_code=xxx  │
 User is authenticated on both apps
 ```
 
-## What's Different from Streamlit
-
-| Feature | Streamlit | Next.js Dashboard |
-|---------|-----------|-------------------|
-| **Hosting** | Streamlit Cloud | Vercel |
-| **Styling** | Streamlit components | Tailwind + shadcn/ui |
-| **URL** | `streamlit.app` | `vercel.app` |
-| **Theme** | Dark only | Dark + Light toggle |
-| **File upload** | Streamlit uploader | Custom drag-drop zone |
-| **Real-time** | Streamlit rerun | SSE + Framer Motion |
-| **Bundle** | Python runtime | Static export or SSR |
-
 ## Production Checklist
 
 - [ ] Update `NEXT_PUBLIC_BACKEND_URL` to HTTPS with domain

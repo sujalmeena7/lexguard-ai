@@ -6,7 +6,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)](https://fastapi.tiangolo.com)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.46-red)](https://streamlit.io)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
@@ -34,8 +34,8 @@ AI-powered compliance auditing against India's **Digital Personal Data Protectio
                     ┌─────────────────────────────────────────┐
                     │              Vercel Edge                 │
                     │  ┌──────────────┐    ┌──────────────┐  │
-                    │  │   public/    │    │   api/*.js   │  │
-                    │  │ Static Site  │    │ Proxy Layer  │  │
+                    │  │   public/    │    │  dashboard/  │  │
+                    │  │ Static Site  │    │ Next.js App  │  │
                     │  └──────────────┘    └──────────────┘  │
                     └─────────────────────────────────────────┘
                                │                    │
@@ -55,21 +55,14 @@ AI-powered compliance auditing against India's **Digital Personal Data Protectio
                                │
                                ▼
                     ┌─────────────────────────────────────────┐
-                    │         Streamlit Cloud                 │
-                    │  ┌─────────────────────────────────┐   │
-                    │  │     streamlit_app/app.py         │   │
-                    │  │  Dashboard · Auth · Reports      │   │
-                    │  └─────────────────────────────────┘   │
-                    └─────────────────────────────────────────┘
 ```
 
 ### Data Flow
 
 1. **Landing Page** (`public/`) — Static Vercel site with live audit widget
-2. **API Proxy** (`api/*.js`) — Vercel serverless functions proxy to EC2 backend
+2. **Dashboard** (`dashboard/`) — Next.js app with Supabase auth, glassmorphism UI
 3. **FastAPI Backend** (`backend/`) — Core API on AWS EC2 with MongoDB sidecar
-4. **Dashboard** (`streamlit_app/`) — Streamlit Cloud app for authenticated users
-5. **Core Engine** (`core/`) — Shared Python packages (auditor, database, auth, privacy, reports)
+4. **Core Engine** (`core/`) — Shared Python packages
 
 ---
 
@@ -90,20 +83,7 @@ lexguard-ai/
 │   ├── docker-compose.yml         # EC2 orchestration
 │   └── requirements.txt           # Backend deps
 │
-├── core/                          # Shared Python package
-│   ├── __init__.py
-│   ├── auditor/                   # RAG engine + compliance audit
-│   │   ├── engine.py              # Main audit orchestrator
-│   │   └── rag_optimizer.py       # Retrieval optimization
-│   ├── auth/                      # Supabase auth utilities
-│   │   └── utils.py
-│   ├── database/                  # Supabase DB layer
-│   │   └── supabase_db.py
-│   ├── privacy/                   # Privacy roadmap generation
-│   │   └── architect.py
-│   ├── reports/                   # PDF report generation
-│   │   └── generator.py
-│   └── retriever/                 # (reserved)
+├── core/                          # (reserved for future shared modules)
 │
 ├── public/                        # Static landing page (Vercel)
 │   ├── index.html
@@ -112,11 +92,10 @@ lexguard-ai/
 │       ├── widget.js              # Live audit widget
 │       └── main.js                # Landing page logic
 │
-├── streamlit_app/                 # Streamlit dashboard (Streamlit Cloud)
-│   ├── app.py                     # Main dashboard
-│   ├── requirements.txt             # Dashboard deps
-│   └── .streamlit/
-│       └── secrets.toml           # Streamlit secrets (gitignored)
+├── dashboard/                     # Next.js dashboard (Vercel)
+│   ├── src/app/                   # App Router pages
+│   ├── src/components/            # UI components
+│   └── public/                    # Static assets
 │
 ├── scripts/                       # DevOps scripts
 │   ├── setup_ec2.sh               # EC2 bootstrap
@@ -146,12 +125,12 @@ lexguard-ai/
 | **Backend** | FastAPI | 0.115+ |
 | | Python | 3.11 |
 | | Motor (MongoDB async) | 3.6+ |
-| **LLM / RAG** | LangChain | 0.3+ |
-| | ChromaDB | 0.4+ |
-| | Groq API | 0.11+ |
+| **LLM** | Groq API | 0.11+ |
 | | Google GenAI | 1.0+ |
-| **Dashboard** | Streamlit | 1.46 |
-| | Plotly | 6.2 |
+| **Dashboard** | Next.js | 14 |
+| | React | 18 |
+| | Tailwind CSS | 3.4 |
+| | shadcn/ui | — |
 | **Frontend** | Vanilla JS | ES2022 |
 | | CSS3 | — |
 | **Auth** | Supabase | 2.15 |
@@ -185,10 +164,10 @@ cp .env.example .env        # Fill in your keys
 pip install -r requirements.txt
 python server.py            # http://localhost:8000
 
-# 3. Dashboard (Streamlit)
-cd ../streamlit_app
-pip install -r requirements.txt
-streamlit run app.py        # http://localhost:8501
+# 3. Dashboard (Next.js)
+cd ../dashboard
+npm install
+npm run dev                 # http://localhost:3000
 
 # 4. Landing Page (static)
 cd ../public
@@ -210,14 +189,6 @@ SUPABASE_SERVICE_KEY=eyJ...
 # Optional
 CORS_ORIGINS=http://localhost:3000,http://localhost:8501
 ENVIRONMENT=development
-```
-
-Create `streamlit_app/.streamlit/secrets.toml`:
-
-```toml
-SUPABASE_URL = "https://your-project.supabase.co"
-SUPABASE_KEY = "eyJ..."
-GROQ_API_KEY = "gsk_..."
 ```
 
 ---
@@ -247,12 +218,13 @@ See [`scripts/README-AWS-EC2.md`](scripts/README-AWS-EC2.md) for full walkthroug
 3. Set environment variable: `BACKEND_URL=http://your-ec2-ip:8000`
 4. Deploy
 
-### Streamlit Cloud (Dashboard)
+### Vercel (Dashboard)
 
-1. Connect repo at [share.streamlit.io](https://share.streamlit.io)
-2. Main file: `app.py`
-3. Add secrets in Settings → Secrets
-4. Deploy
+1. Connect GitHub repo to Vercel
+2. Framework preset: **Next.js**
+3. Root directory: `dashboard/`
+4. Set environment variables (see dashboard `.env.local`)
+5. Deploy
 
 ---
 
@@ -274,6 +246,7 @@ See [`scripts/README-AWS-EC2.md`](scripts/README-AWS-EC2.md) for full walkthroug
 | `POST` | `/api/analyze` | — | Analyze policy text |
 | `POST` | `/api/unlock` | — | Unlock full audit |
 | `POST` | `/api/auth/handoff` | Bearer | Token handoff |
+| `POST` | `/api/roadmap` | Bearer | Generate privacy roadmap |
 | `GET` | `/api/config` | — | Public configuration |
 
 ---

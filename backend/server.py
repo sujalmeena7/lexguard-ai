@@ -77,7 +77,7 @@ else:
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 # Widget endpoint uses Gemini 2.0 Flash by default: ~3-5x faster than Pro and
 # accurate enough for a one-shot landing-page summary that only previews 2
-# clauses. The full deep audit lives in the Streamlit dashboard's two-layer
+# clauses. The full deep audit lives in the dashboard's two-layer
 # pipeline (Flash triage → Pro deep audit on flagged clauses only).
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash')
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', '')
