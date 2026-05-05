@@ -300,9 +300,9 @@ You MUST respond with ONLY a valid JSON object. Use this exact schema:
   "summary": "<2-3 sentence board-ready summary>",
   "flagged_clauses": [
     {
-      "clause_id": "<short identifier like '§ 4.1' or 'Clause 3'>",
+      "clause_id": "<short identifier like 'Section 4.1' or 'Clause 3'>",
       "risk_level": "<High | Medium | Low>",
-      "dpdp_section": "<Exact DPDP Act 2023 citation from Retrieved Sections, e.g. 'DPDP §6' or 'DPDP §5'>",
+      "dpdp_section": "<Exact DPDP Act 2023 citation from Retrieved Sections, e.g. 'DPDP Section 6' or 'DPDP Section 5'>",
       "clause_excerpt": "<short excerpt from the user's policy (<=200 chars)>",
       "issue": "<what is wrong, with legal rationale connecting text to the cited DPDP section. If unsure, write 'Requires manual legal review'>",
       "suggested_fix": "<concrete remediation, 1-2 sentences>"
