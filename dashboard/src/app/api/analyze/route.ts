@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   const backendUrl = "http://65.1.207.29:8000";
+  const authHeader = request.headers.get("authorization") || "";
 
   try {
     // Forward multipart form data to backend upload endpoint
@@ -9,6 +10,9 @@ export async function POST(request: NextRequest) {
 
     const res = await fetch(`${backendUrl}/api/analyze/upload`, {
       method: "POST",
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
       body: formData,
     });
 

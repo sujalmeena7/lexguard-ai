@@ -10,6 +10,8 @@ import {
   Loader2,
   Zap,
   ArrowLeft,
+  Download,
+  Crown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AnalysisPanel } from "@/components/analysis-panel";
+import { useDashboardUser } from "@/components/auth-guard";
+import { supabase } from "@/lib/supabase";
 
 interface AuditStatus {
   stage: "idle" | "uploading" | "parsing" | "analyzing" | "scoring" | "complete";
@@ -50,6 +54,7 @@ const stageConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function AuditPage() {
+  const { isPremium, credits, setCredits } = useDashboardUser();
   const [auditStatus, setAuditStatus] = useState<AuditStatus>({
     stage: "idle",
     message: "Ready to audit",
@@ -62,6 +67,11 @@ export default function AuditPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const startAnalysis = useCallback(async (file: File) => {
+    if (!isPremium && credits <= 0) {
+      setErrorMessage("No credits remaining. Upgrade to Premium for unlimited audits.");
+      return;
+    }
+
     setIsAnalyzing(true);
     setAnalysisResult(null);
     setErrorMessage(null);
@@ -72,8 +82,12 @@ export default function AuditPage() {
       const formData = new FormData();
       formData.append("file", file);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
       const res = await fetch("/api/analyze", {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
 
@@ -110,6 +124,12 @@ export default function AuditPage() {
 
       setAuditStatus({ stage: "complete", message: "Audit complete", progress: 100 });
       setAnalysisResult(result);
+
+      // Deduct credit after successful audit
+      if (!isPremium) {
+        const newCredits = Math.max(0, credits - 1);
+        await setCredits(newCredits);
+      }
     } catch (err) {
       console.error("Analysis error:", err);
       const msg = err instanceof Error ? err.message : "Analysis failed. Please try again.";
@@ -118,7 +138,7 @@ export default function AuditPage() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, []);
+  }, [isPremium, credits, setCredits]);
 
   const handleFileSelect = useCallback(
     (file: File) => {
@@ -126,6 +146,17 @@ export default function AuditPage() {
     },
     [startAnalysis]
   );
+
+  const handleDownloadReport = useCallback(() => {
+    if (!analysisResult) return;
+    const blob = new Blob([JSON.stringify(analysisResult, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-report-${uploadedFileName || "document"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [analysisResult, uploadedFileName]);
 
   return (
     <ScrollArea className="h-full">
@@ -151,6 +182,32 @@ export default function AuditPage() {
             className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
           >
             <span className="font-semibold">Error: </span>{errorMessage}
+          </motion.div>
+        )}
+
+        {/* Upgrade Banner for free users */}
+        {!isPremium && credits <= 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Crown className="h-4 w-4 text-amber-500" />
+                <span className="text-amber-700 dark:text-amber-400 font-medium">
+                  You are on the Free Plan — no credits remaining.
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+                onClick={() => window.location.href = "/settings"}
+              >
+                <Crown className="mr-1 h-3 w-3" /> Upgrade to Premium
+              </Button>
+            </div>
           </motion.div>
         )}
 
@@ -270,18 +327,28 @@ export default function AuditPage() {
                         </p>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => {
-                        setAnalysisResult(null);
-                        setUploadedFileName(null);
-                        setAuditStatus({ stage: "idle", message: "Ready to audit", progress: 0 });
-                      }}
-                    >
-                      <ArrowLeft className="mr-1 h-3 w-3" /> New Audit
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={handleDownloadReport}
+                      >
+                        <Download className="mr-1 h-3 w-3" /> Download Report
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          setAnalysisResult(null);
+                          setUploadedFileName(null);
+                          setAuditStatus({ stage: "idle", message: "Ready to audit", progress: 0 });
+                        }}
+                      >
+                        <ArrowLeft className="mr-1 h-3 w-3" /> New Audit
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -301,42 +368,40 @@ export default function AuditPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
-                  <CardTitle className="text-sm font-semibold">Original Document</CardTitle>
+                  <CardTitle className="text-sm font-semibold">Audit Summary</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                  {(() => {
-                    const sections = [
-                      { id: "s1", title: "Data Collection", text: "We collect personal information including name, email, phone number, and usage data through forms, cookies, and third-party integrations." },
-                      { id: "s2", title: "Use of Information", text: "Your data is used to provide services, improve user experience, and send marketing communications. We may share your data with trusted partners for these purposes without additional consent." },
-                      { id: "s3", title: "Data Security", text: "We implement industry-standard security measures including encryption and access controls to protect your personal data." },
-                      { id: "s4", title: "Third-Party Disclosure", text: "We may share your personal data with trusted partners for marketing purposes without obtaining explicit consent." },
-                      { id: "s5", title: "Data Retention", text: "We retain user data for as long as necessary to provide our services." },
-                      { id: "s6", title: "Cross-Border Transfer", text: "Data may be transferred to servers located outside India for processing and storage." },
-                      { id: "s7", title: "User Rights", text: "Users can request access to their data by contacting our support team." },
-                      { id: "s8", title: "Breach Notification", text: "In case of a data breach, we will notify affected users as soon as reasonably possible." },
-                    ];
-                    const clauseToSection: Record<string, number> = {
-                      "c1": 3, "c2": 5, "c3": 4, "c4": 6, "c5": 7,
-                    };
-                    const highlightedSection = highlightedClauseId ? clauseToSection[highlightedClauseId] : undefined;
-                    return (
-                      <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-                        {sections.map((sec, idx) => {
-                          const isHighlighted = highlightedSection === idx;
-                          return (
-                            <p
-                              key={sec.id}
-                              className={`transition-all duration-300 rounded-md p-1.5 ${isHighlighted ? "clause-highlight" : ""}`}
-                            >
-                              <strong className="text-foreground">{idx + 1}. {sec.title}</strong> — {sec.text}
-                            </p>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
+                <div className="h-[400px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {analysisResult.summary}
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Compliance Flags</p>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisResult.complianceFlags.map((flag, i) => (
+                        <Badge key={i} variant="outline" className="text-[10px]">
+                          {flag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Risk Breakdown</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: "Critical", value: analysisResult.riskBreakdown.critical, color: "text-[#F87171] bg-[#F87171]/10" },
+                        { label: "High", value: analysisResult.riskBreakdown.high, color: "text-[#F59E0B] bg-[#F59E0B]/10" },
+                        { label: "Medium", value: analysisResult.riskBreakdown.medium, color: "text-[#3B82F6] bg-[#3B82F6]/10" },
+                        { label: "Low", value: analysisResult.riskBreakdown.low, color: "text-[#34D399] bg-[#34D399]/10" },
+                      ].map((r) => (
+                        <div key={r.label} className={`rounded-lg p-2 text-center ${r.color}`}>
+                          <p className="text-lg font-bold">{r.value}</p>
+                          <p className="text-[10px] uppercase tracking-wider">{r.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

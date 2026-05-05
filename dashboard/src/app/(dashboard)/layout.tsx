@@ -40,36 +40,22 @@ const ACCESS_KEY = "lexguard-premium-2026";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, onSignOut } = useDashboardUser();
+  const { user, onSignOut, isPremium, credits, setPremium, setCredits } = useDashboardUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [notifications] = useState(3);
 
-  const [isPremium, setIsPremium] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("lg_premium") === "true";
-    }
-    return false;
-  });
-  const [credits, setCredits] = useState(() => {
-    if (typeof window !== "undefined") {
-      return parseInt(localStorage.getItem("lg_credits") || "0", 10);
-    }
-    return 0;
-  });
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [accessKey, setAccessKey] = useState("");
 
-  const handlePremiumUpgrade = (e: React.FormEvent) => {
+  const handlePremiumUpgrade = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessKey.trim()) return;
     if (accessKey.trim() === ACCESS_KEY) {
       const newCredits = credits + 10;
-      setCredits(newCredits);
-      setIsPremium(true);
+      await setPremium(true);
+      await setCredits(newCredits);
       setShowKeyInput(false);
       setAccessKey("");
-      localStorage.setItem("lg_premium", "true");
-      localStorage.setItem("lg_credits", String(newCredits));
     } else {
       alert("Invalid access key.");
     }
