@@ -59,10 +59,12 @@ export default function AuditPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [highlightedClauseId, setHighlightedClauseId] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const startAnalysis = useCallback(async (file: File) => {
     setIsAnalyzing(true);
     setAnalysisResult(null);
+    setErrorMessage(null);
     setUploadedFileName(file.name);
     setAuditStatus({ stage: "uploading", message: "Reading document...", progress: 10 });
 
@@ -70,8 +72,7 @@ export default function AuditPage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const backendUrl = "http://65.1.207.29:8000";
-      const res = await fetch(`${backendUrl}/api/analyze/upload`, {
+      const res = await fetch("/api/analyze", {
         method: "POST",
         body: formData,
       });
@@ -111,7 +112,9 @@ export default function AuditPage() {
       setAnalysisResult(result);
     } catch (err) {
       console.error("Analysis error:", err);
-      setAuditStatus({ stage: "idle", message: err instanceof Error ? err.message : "Analysis failed. Please try again.", progress: 0 });
+      const msg = err instanceof Error ? err.message : "Analysis failed. Please try again.";
+      setErrorMessage(msg);
+      setAuditStatus({ stage: "idle", message: msg, progress: 0 });
     } finally {
       setIsAnalyzing(false);
     }
@@ -139,6 +142,17 @@ export default function AuditPage() {
             </p>
           </div>
         </div>
+
+        {/* Error Banner */}
+        {errorMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+          >
+            <span className="font-semibold">Error: </span>{errorMessage}
+          </motion.div>
+        )}
 
         {/* Upload Zone */}
         <Card className="glass-card">

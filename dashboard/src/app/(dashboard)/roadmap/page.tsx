@@ -82,8 +82,7 @@ export default function RoadmapPage() {
     }
     setRoadmapLoading(true);
     try {
-      const backendUrl = "http://65.1.207.29:8000";
-      const res = await fetch(`${backendUrl}/api/roadmap`, {
+      const res = await fetch("/api/roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ policy_text: roadmapInput }),

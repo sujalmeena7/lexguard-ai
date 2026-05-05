@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useCallback, useState } from "react";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
 interface FileUploadZoneProps {
   onFileSelect: (file: File) => void;
   acceptedTypes?: string;
 }
 
-export function FileUploadZone({ onFileSelect, acceptedTypes = ".pdf,.doc,.docx" }: FileUploadZoneProps) {
+export function FileUploadZone({ onFileSelect, acceptedTypes = ".pdf,.doc,.docx,.txt" }: FileUploadZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -29,17 +30,21 @@ export function FileUploadZone({ onFileSelect, acceptedTypes = ".pdf,.doc,.docx"
     const file = e.dataTransfer.files[0];
     if (file) {
       setSelectedFile(file);
-      onFileSelect(file);
     }
-  }, [onFileSelect]);
+  }, []);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      onFileSelect(file);
     }
-  }, [onFileSelect]);
+  }, []);
+
+  const handleStart = useCallback(() => {
+    if (selectedFile) {
+      onFileSelect(selectedFile);
+    }
+  }, [selectedFile, onFileSelect]);
 
   const clearFile = useCallback(() => {
     setSelectedFile(null);
@@ -65,6 +70,9 @@ export function FileUploadZone({ onFileSelect, acceptedTypes = ".pdf,.doc,.docx"
                 {(selectedFile.size / 1024).toFixed(1)} KB
               </p>
             </div>
+            <Button size="sm" className="text-xs h-8" onClick={handleStart}>
+              <Play className="mr-1 h-3.5 w-3.5" /> Start Audit
+            </Button>
             <button
               onClick={clearFile}
               className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
