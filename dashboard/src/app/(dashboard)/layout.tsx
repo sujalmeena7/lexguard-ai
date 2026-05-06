@@ -284,7 +284,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Button>
 
               {notificationsOpen && (
-                <div className="fixed right-3 top-16 z-[100] w-[calc(100vw-1.5rem)] max-w-sm sm:absolute sm:right-0 sm:top-12 rounded-xl border border-border/80 bg-background shadow-[0_8px_30px_rgb(0,0,0,0.4)] p-4 space-y-3">
+                <div className="fixed right-3 top-16 z-[999] w-[calc(100vw-1.5rem)] max-w-sm sm:absolute sm:right-0 sm:top-12 rounded-xl border border-white/10 bg-[#0f172a] shadow-[0_8px_30px_rgb(0,0,0,0.6)] p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold">Notifications</p>
                     <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setNotificationsOpen(false)}>
@@ -296,7 +296,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {notifications.map((n) => (
-                        <div key={n.id} className="flex items-start gap-3 rounded-lg bg-background/40 p-2.5">
+                        <div key={n.id} className="flex items-start gap-3 rounded-lg bg-[#1e293b] p-2.5">
                           <div className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${n.type === "critical" ? "bg-[#F87171]" : n.type === "warning" ? "bg-[#F59E0B]" : "bg-[#34D399]"}`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">{n.text}</p>
